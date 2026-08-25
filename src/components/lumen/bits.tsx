@@ -170,23 +170,24 @@ export function parseAmount(value: string, token: TokenSymbol): bigint {
 /* the guard panel                                                     */
 /* ------------------------------------------------------------------ */
 
+// Monochrome severity: calm states sit on grey, attention inverts to black.
 const GUARD_TONE: Record<
   GuardReport['level'],
   { label: string; pill: string; icon: ReactNode }
 > = {
   protected: {
     label: 'Private — nothing links',
-    pill: 'bg-good-soft text-good',
+    pill: 'bg-sunk text-ink',
     icon: <ShieldCheck size={15} />,
   },
   tuned: {
     label: 'Tuned for privacy',
-    pill: 'bg-good-soft text-good',
+    pill: 'bg-sunk text-ink',
     icon: <Sparkle size={15} />,
   },
   attention: {
     label: 'Worth a look',
-    pill: 'bg-warn-soft text-warn',
+    pill: 'bg-ink text-white',
     icon: <Warning size={15} />,
   },
 }
@@ -223,9 +224,7 @@ export function GuardPanel({ report }: { report: GuardReport }) {
             <li key={check.id} className="flex gap-2.5">
               <span
                 className={`mt-0.5 grid size-5 flex-none place-items-center rounded-full ${
-                  check.status === 'warn'
-                    ? 'bg-warn-soft text-warn'
-                    : 'bg-good-soft text-good'
+                  check.status === 'warn' ? 'bg-ink text-white' : 'bg-sunk text-ink'
                 }`}
               >
                 {check.status === 'warn' ? (
@@ -267,7 +266,7 @@ export function TxLink({ hash }: { hash: string }) {
 
 export function SuccessMark() {
   return (
-    <div className="pop mx-auto grid size-16 place-items-center rounded-full bg-good-soft text-good">
+    <div className="pop mx-auto grid size-16 place-items-center rounded-full bg-ink text-white">
       <Check size={30} strokeWidth={2.4} />
     </div>
   )
@@ -275,7 +274,7 @@ export function SuccessMark() {
 
 export function ErrorNote({ message, onDismiss }: { message: string; onDismiss?: () => void }) {
   return (
-    <div className="rise flex items-start gap-2.5 rounded-2xl bg-warn-soft px-4 py-3 text-warn">
+    <div className="rise flex items-start gap-2.5 rounded-2xl bg-ink px-4 py-3 text-white">
       <Warning size={16} className="mt-0.5 flex-none" />
       <p className="flex-1 text-[13.5px] leading-snug">{message}</p>
       {onDismiss ? (

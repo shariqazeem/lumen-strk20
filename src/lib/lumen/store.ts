@@ -63,6 +63,12 @@ interface LumenState {
   balancesLoading: boolean
   /** Balances are consent-gated; null until the user explicitly reveals. */
   balancesRevealedAt: number | null
+  /**
+   * Pool registration, learned from the wallet: null = unknown, false = this
+   * account has never touched the pool (a fresh user, not an error), true =
+   * registered. The wallet registers automatically on the first deposit.
+   */
+  registered: boolean | null
 
   prices: Partial<Record<TokenSymbol, number>>
   poolFee: bigint
@@ -161,6 +167,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   balances: [],
   balancesLoading: false,
   balancesRevealedAt: null,
+  registered: null,
 
   prices: {},
   poolFee: FALLBACK_POOL_FEE_STRK,
@@ -210,6 +217,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       walletName: null,
       balances: [],
       balancesRevealedAt: null,
+      registered: null,
       ledger: [],
       people: [],
       spaces: [],
@@ -225,8 +233,24 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ balancesLoading: true, error: null })
     try {
       const balances = await readShieldedBalances(account)
-      set({ balances, balancesLoading: false, balancesRevealedAt: Date.now() })
+      set({ balances, balancesLoading: false, balancesRevealedAt: Date.now(), registered: true })
     } catch (error) {
+      // NOT_REGISTERED (118) is not a failure: this account simply has no
+      // private balance yet. The wallet registers it on the first deposit, so
+      // the correct read is "empty", shown as the welcoming zero state.
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? Number((error as { code: unknown }).code)
+          : undefined
+      if (code === 118) {
+        set({
+          balances: [],
+          balancesLoading: false,
+          balancesRevealedAt: Date.now(),
+          registered: false,
+        })
+        return
+      }
       set({
         balancesLoading: false,
         error: error instanceof Error ? error.message : 'The wallet declined the balance request.',
@@ -552,6 +576,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       walletName: 'Preview',
       balances: demo.balances,
       balancesRevealedAt: now,
+      registered: true,
       ledger: demo.ledger,
       people: demo.people,
       spaces: demo.spaces,

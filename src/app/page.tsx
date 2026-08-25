@@ -1,48 +1,131 @@
 'use client'
 
 /**
- * The Lumen landing — one promise told calmly.
+ * The Lumen landing — one promise, told in black and white.
  *
- * The page sells the product by *being* the product: the hero phone is the
- * real home surface (same design system, demo data), the receipt is the real
- * receipt card, the guard pill is the real guard pill. No screenshots.
+ * The page sells the product by being the product: the hero phone is the real
+ * home surface (same design system, demo data), the receipt is the real
+ * receipt card, the guard pill is the real guard pill. Strict monochrome —
+ * the only color on the page comes from emoji.
+ *
+ * Motion: a count-up balance, a pointer-tilted device, floating props, an
+ * endless marquee, a climbing "public chain" feed, staggered reveals, and a
+ * how-it-works line that draws itself. All CSS-driven; every loop honors
+ * prefers-reduced-motion.
  */
 
 import Link from 'next/link'
-import { useReveal } from '@/lib/hooks/use-motion'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react'
+import { usePrefersReducedMotion, useReveal } from '@/lib/hooks/use-motion'
 import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Check,
+  Eye,
   Globe,
   LumenMark,
-  People,
   Plus,
-  Receipt,
   ShieldCheck,
   Sparkle,
 } from '@/components/lumen/icons'
-import type { ReactNode } from 'react'
 
-function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
-  const { ref, shown } = useReveal<HTMLDivElement>({ threshold: 0.18 })
+/* ------------------------------------------------------------------ */
+/* motion helpers                                                      */
+/* ------------------------------------------------------------------ */
+
+function Reveal({
+  children,
+  className = '',
+  stagger = false,
+}: {
+  children: ReactNode
+  className?: string
+  stagger?: boolean
+}) {
+  const { ref, shown } = useReveal<HTMLDivElement>({ threshold: 0.16 })
   return (
-    <div ref={ref} className={`reveal ${shown ? 'shown' : ''} ${className}`}>
+    <div
+      ref={ref}
+      className={`${stagger ? 'reveal-stagger' : 'reveal'} ${shown ? 'shown' : ''} ${className}`}
+    >
       {children}
     </div>
   )
 }
 
+/** Count from 0 to `target` once the element is on screen. */
+function useCountUp(target: number, ms = 1400): { ref: (node: HTMLElement | null) => void; value: number } {
+  const reduced = usePrefersReducedMotion()
+  const [value, setValue] = useState(0)
+  const started = useRef(false)
+
+  const ref = useCallback(
+    (node: HTMLElement | null) => {
+      if (!node || started.current) return
+      if (typeof IntersectionObserver === 'undefined' || reduced) {
+        started.current = true
+        setValue(target)
+        return
+      }
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting) || started.current) return
+        started.current = true
+        observer.disconnect()
+        const t0 = performance.now()
+        const tick = (t: number) => {
+          const p = Math.min(1, (t - t0) / ms)
+          const eased = 1 - Math.pow(1 - p, 4)
+          setValue(target * eased)
+          if (p < 1) requestAnimationFrame(tick)
+        }
+        requestAnimationFrame(tick)
+      })
+      observer.observe(node)
+    },
+    [target, ms, reduced],
+  )
+
+  return { ref, value }
+}
+
+/** Pointer-follow tilt for the hero device. Inert under reduced motion. */
+function useTilt(max = 7) {
+  const reduced = usePrefersReducedMotion()
+  const [style, setStyle] = useState<{ transform: string }>({ transform: '' })
+
+  const onMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (reduced || event.pointerType === 'touch') return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = (event.clientX - rect.left) / rect.width - 0.5
+    const y = (event.clientY - rect.top) / rect.height - 0.5
+    setStyle({
+      transform: `perspective(1100px) rotateY(${x * max}deg) rotateX(${-y * max}deg)`,
+    })
+  }
+
+  const onLeave = () => setStyle({ transform: '' })
+  return { style, onMove, onLeave }
+}
+
 /* ------------------------------------------------------------------ */
-/* hero phone — the real home surface with demo data                   */
+/* hero device — the real home surface with demo data                  */
 /* ------------------------------------------------------------------ */
 
 function PhoneMock() {
+  const balance = useCountUp(2841.36)
+  const [whole, cents] = balance.value.toFixed(2).split('.')
+
   return (
-    <div className="w-[330px] rounded-[44px] border border-rule bg-canvas p-2.5 shadow-[0_40px_100px_-20px_rgba(18,18,20,0.35)]">
+    <div className="w-[330px] rounded-[44px] border border-rule bg-canvas p-2.5 shadow-[0_48px_110px_-24px_rgba(18,18,20,0.4)]">
       <div className="overflow-hidden rounded-[36px] bg-canvas px-4 pb-6 pt-4">
-        {/* header */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-1.5">
             <span className="grid size-6 place-items-center rounded-lg bg-ink text-white">
@@ -53,7 +136,6 @@ function PhoneMock() {
           <span className="size-6 rounded-full bg-card shadow-[0_1px_2px_rgba(18,18,20,0.08)]" />
         </div>
 
-        {/* glass card */}
         <div className="glass mt-3 px-5 pb-5 pt-4">
           <div className="flex items-center justify-between">
             <p className="text-[10.5px] font-medium text-glass-muted">Your money</p>
@@ -62,8 +144,12 @@ function PhoneMock() {
               Private
             </span>
           </div>
-          <p className="tabular mt-2 text-[34px] font-semibold leading-none tracking-[-0.03em]">
-            $2,841<span className="align-top text-[17px] opacity-60">.36</span>
+          <p
+            ref={balance.ref}
+            className="tabular mt-2 text-[34px] font-semibold leading-none tracking-[-0.03em]"
+          >
+            ${Number(whole).toLocaleString('en-US')}
+            <span className="align-top text-[17px] opacity-60">.{cents}</span>
           </p>
           <div className="mt-3 flex gap-1">
             <span className="tabular rounded-full bg-white/8 px-2 py-0.5 text-[9.5px] text-glass-muted">
@@ -76,7 +162,6 @@ function PhoneMock() {
           <p className="mt-3 text-[9.5px] text-glass-faint">Only you can see this.</p>
         </div>
 
-        {/* actions */}
         <div className="mt-2.5 grid grid-cols-3 gap-2">
           {[
             { label: 'Pay', icon: <ArrowUpRight size={13} /> },
@@ -92,7 +177,6 @@ function PhoneMock() {
           ))}
         </div>
 
-        {/* activity */}
         <p className="mt-4 px-1 text-[11px] font-semibold">Activity</p>
         <div className="card mt-1.5 divide-y divide-rule">
           {[
@@ -103,14 +187,14 @@ function PhoneMock() {
             <div key={row.title} className="flex items-center gap-2.5 px-3 py-2.5">
               <span
                 className={`grid size-6 flex-none place-items-center rounded-full ${
-                  row.pub ? 'bg-warn-soft text-warn' : 'bg-sunk text-ink-soft'
+                  row.pub ? 'bg-ink text-white' : 'bg-sunk text-ink-soft'
                 }`}
               >
                 {row.pub ? <Plus size={11} /> : <ArrowUpRight size={11} />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[10.5px] font-semibold">{row.title}</span>
-                <span className={`block text-[9px] ${row.pub ? 'text-warn' : 'text-ink-muted'}`}>
+                <span className={`block text-[9px] ${row.pub ? 'font-semibold text-ink' : 'text-ink-muted'}`}>
                   {row.sub}
                 </span>
               </span>
@@ -123,14 +207,10 @@ function PhoneMock() {
   )
 }
 
-/* ------------------------------------------------------------------ */
-/* floating props                                                      */
-/* ------------------------------------------------------------------ */
-
 function FloatingReceipt() {
   return (
-    <div className="card w-[210px] overflow-hidden">
-      <div className="lumen-strip h-1" />
+    <div className="card w-[212px] overflow-hidden">
+      <div className="h-1 bg-ink" />
       <div className="px-4 py-3.5">
         <p className="flex items-center gap-1 text-[9px] font-semibold text-ink-muted">
           <LumenMark size={10} />
@@ -156,19 +236,15 @@ function FloatingReceipt() {
 
 function FloatingGuard() {
   return (
-    <div className="card w-[240px] px-3.5 py-3">
-      <span className="inline-flex items-center gap-1 rounded-full bg-good-soft px-2 py-0.5 text-[9.5px] font-semibold text-good">
+    <div className="card w-[236px] px-3.5 py-3">
+      <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2 py-0.5 text-[9.5px] font-semibold text-ink">
         <Sparkle size={10} />
         Tuned for privacy
       </span>
       <ul className="mt-2.5 space-y-1.5">
-        {[
-          'No public record',
-          'Amount blends in — adjusted',
-          'No schedule published',
-        ].map((line) => (
+        {['No public record', 'Amount blends in — adjusted', 'No schedule published'].map((line) => (
           <li key={line} className="flex items-center gap-1.5 text-[9.5px] font-medium text-ink-soft">
-            <span className="grid size-3.5 place-items-center rounded-full bg-good-soft text-good">
+            <span className="grid size-3.5 place-items-center rounded-full bg-ink text-white">
               <Check size={8} strokeWidth={3} />
             </span>
             {line}
@@ -180,57 +256,139 @@ function FloatingGuard() {
 }
 
 /* ------------------------------------------------------------------ */
+/* the exposure feed — what a transparent chain publishes              */
+/* ------------------------------------------------------------------ */
+
+const FEED_ROWS = [
+  { from: '0x7a31…04ec', to: '0x99d2…b7f1', amount: '$3,200.00', tag: 'salary?' },
+  { from: '0x99d2…b7f1', to: '0x40c8…11aa', amount: '$938.12', tag: 'rent, again' },
+  { from: '0x99d2…b7f1', to: '0x8be1…77cd', amount: '$212.47', tag: 'same friend, weekly' },
+  { from: '0x99d2…b7f1', to: '0xcc09…3d21', amount: '$85.00', tag: 'clinic' },
+  { from: '0x99d2…b7f1', to: '0x40c8…11aa', amount: '$938.12', tag: 'rent, again' },
+  { from: '0x99d2…b7f1', to: '0x1f77…9e02', amount: '$1,500.00', tag: 'moved to savings' },
+  { from: '0x2d40…8c1b', to: '0x99d2…b7f1', amount: '$450.00', tag: 'side income' },
+  { from: '0x99d2…b7f1', to: '0x8be1…77cd', amount: '$212.47', tag: 'same friend, weekly' },
+] as const
+
+function ExposureFeed() {
+  const rows = [...FEED_ROWS, ...FEED_ROWS]
+  return (
+    <div className="feed-mask h-[330px] overflow-hidden">
+      <div className="feed-scroll space-y-2">
+        {rows.map((row, index) => (
+          <div
+            key={index}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-rule bg-card px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-mono text-[11px] text-ink-soft">
+                {row.from} <span className="text-ink-faint">→</span> {row.to}
+              </p>
+              <p className="mt-0.5 text-[11px] font-semibold text-ink-muted">{row.tag}</p>
+            </div>
+            <span className="tabular flex-none text-[13px] font-semibold">{row.amount}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* feature artifacts                                                   */
+/* ------------------------------------------------------------------ */
+
+function BoundaryArtifact() {
+  return (
+    <div className="card px-6 py-6">
+      <div className="flex items-center justify-center gap-3">
+        <span className="grid size-12 place-items-center rounded-full bg-ink text-white">
+          <LumenMark size={22} />
+        </span>
+        <span className="text-[12px] font-semibold text-ink-muted">you, once</span>
+      </div>
+      <div className="mx-auto mt-4 h-6 w-px bg-rule-strong" />
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        {[
+          { emoji: '🏠', name: 'Landlord', sees: 'rent only' },
+          { emoji: '🌊', name: 'Amara', sees: 'dinners only' },
+          { emoji: '💼', name: 'Client', sees: 'invoices only' },
+        ].map((person) => (
+          <div key={person.name} className="rounded-2xl border border-rule bg-card-soft px-3 py-4 text-center">
+            <span className="text-[22px]">{person.emoji}</span>
+            <p className="mt-1.5 text-[12.5px] font-semibold">{person.name}</p>
+            <p className="text-[10.5px] text-ink-muted">sees {person.sees}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-center text-[11px] text-ink-faint">
+        None of them can see each other, your balance, or your history.
+      </p>
+    </div>
+  )
+}
+
+function TuningArtifact() {
+  return (
+    <div className="card px-6 py-6">
+      <div className="flex items-center justify-center gap-4">
+        <div className="text-center">
+          <p className="text-[10.5px] font-semibold text-ink-muted">You type</p>
+          <p className="tabular mt-1 text-[26px] font-semibold tracking-[-0.02em] text-ink-faint line-through decoration-2">
+            100
+          </p>
+        </div>
+        <ArrowRight size={18} className="text-ink-muted" />
+        <div className="text-center">
+          <p className="text-[10.5px] font-semibold text-ink-muted">Lumen sends</p>
+          <p className="tabular mt-1 text-[26px] font-semibold tracking-[-0.02em]">99.889991</p>
+        </div>
+      </div>
+      <div className="mx-auto mt-5 w-fit">
+        <FloatingGuard />
+      </div>
+      <p className="mt-4 text-center text-[11px] text-ink-faint">
+        Round numbers, mirrored exits and rigid rhythms are how private money gets traced. The
+        engine fixes them before your wallet ever signs.
+      </p>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* page                                                                */
 /* ------------------------------------------------------------------ */
 
-const FEATURES = [
-  {
-    icon: <People size={20} />,
-    title: 'Every relationship, its own boundary',
-    body: 'Your landlord, your friends, your clients — each sees only what you send them. Nothing connects one relationship to another, and none of them can see your balance, your history, or each other.',
-  },
-  {
-    icon: <Receipt size={20} />,
-    title: 'Prove a payment. Nothing else.',
-    body: 'Every payment mints a receipt you can hand to exactly one person: this amount, this moment, settled on-chain. It discloses that single fact — never your balance, never your other life.',
-  },
-  {
-    icon: <Sparkle size={20} />,
-    title: 'A silent engine watches the leaks',
-    body: 'Round amounts, mirrored entries and exits, rhythms that become signatures — the patterns that undo private money. Lumen checks every move against them and quietly fixes what it can. You never see a score. You just stay private.',
-  },
+const TICKER = [
+  'No public sender',
+  'No public amount',
+  'No public history',
+  'No account',
+  'No server',
+  'No tracking',
+  'Starknet mainnet',
 ] as const
 
-const TRUTHS = {
-  private: [
-    'Who you pay, and how much',
-    'Your balance and everything in it',
-    'Your spaces, people and history',
-    'Receiving money',
-  ],
-  public: [
-    'Adding money (a deposit, checked for hygiene)',
-    'Cashing out (warned, tuned, timed)',
-    'That the pool itself processed something',
-  ],
-} as const
-
 export default function Landing() {
+  const tilt = useTilt()
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
     <div className="relative overflow-hidden">
-      {/* faint aurora at the very top of the page */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] opacity-60"
-        style={{
-          background:
-            'radial-gradient(60% 100% at 30% 0%, rgba(255, 217, 168, 0.35), transparent 60%), radial-gradient(50% 90% at 70% 0%, rgba(216, 203, 255, 0.32), transparent 60%), radial-gradient(40% 80% at 50% 0%, rgba(255, 201, 214, 0.22), transparent 55%)',
-        }}
-      />
-
-      <div className="relative mx-auto max-w-[1080px] px-6">
-        {/* nav */}
-        <nav className="flex items-center justify-between py-6">
+      {/* nav */}
+      <nav
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
+          scrolled ? 'nav-blur border-b border-rule' : ''
+        }`}
+      >
+        <div className="mx-auto flex max-w-[1120px] items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-xl bg-ink text-white">
               <LumenMark size={20} />
@@ -240,198 +398,358 @@ export default function Landing() {
           <Link href="/app" className="btn btn-ink btn-small">
             Open Lumen
           </Link>
-        </nav>
+        </div>
+      </nav>
 
+      <div className="relative mx-auto max-w-[1120px] px-6">
         {/* hero */}
-        <header className="grid items-center gap-14 pb-24 pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:pt-20">
+        <header className="grid min-h-[92vh] items-center gap-16 pb-16 pt-32 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             <p className="rise inline-flex items-center gap-2 rounded-full border border-rule bg-card px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-soft">
-              <span className="size-1.5 rounded-full bg-good" />
+              <span className="size-1.5 rounded-full bg-ink" />
               Live on Starknet mainnet · STRK20
             </p>
-            <h1 className="rise rise-1 mt-6 text-[52px] font-semibold leading-[1.02] tracking-[-0.038em] sm:text-[64px]">
+            <h1 className="rise rise-1 mt-7 text-[56px] font-semibold leading-[0.98] tracking-[-0.04em] sm:text-[76px]">
               Your money,
               <br />
-              <span className="lumen-text">nobody&rsquo;s business.</span>
+              <span className="stroke-text">nobody&rsquo;s</span>
+              <br />
+              business.
             </h1>
-            <p className="rise rise-2 mt-6 max-w-[44ch] text-[17px] leading-relaxed text-ink-muted">
-              Every payment you make on a public chain becomes a permanent record anyone can read.
-              Lumen is money that doesn&rsquo;t do that — pay, receive and save with privacy as the
-              default, not a feature.
+            <p className="rise rise-2 mt-7 max-w-[44ch] text-[17px] leading-relaxed text-ink-muted">
+              Every payment on a public chain becomes a permanent record anyone can read. Lumen is
+              money that doesn&rsquo;t do that — pay, receive and save with privacy as the default,
+              not a feature.
             </p>
-            <div className="rise rise-3 mt-8 flex flex-wrap items-center gap-3">
+            <div className="rise rise-3 mt-9 flex flex-wrap items-center gap-3">
               <Link href="/app" className="btn btn-ink">
                 Open Lumen
                 <ArrowRight size={17} />
               </Link>
-              <a href="#how" className="btn btn-quiet">
-                How it works
-              </a>
+              <Link href="/app?preview" className="btn btn-quiet">
+                <Eye size={16} />
+                Try the walkthrough
+              </Link>
             </div>
             <p className="rise rise-4 mt-5 text-[13px] text-ink-faint">
-              Non-custodial. Your wallet holds every key. No account, no server, no tracking.
+              Non-custodial. Your wallet holds every key. Nothing to sign up for.
             </p>
           </div>
 
-          <div className="relative mx-auto">
-            <div className="rise rise-2">
+          <div className="relative mx-auto hidden md:block">
+            <div
+              className="rise rise-2 transition-transform duration-300 ease-out will-change-transform"
+              style={tilt.style}
+              onPointerMove={tilt.onMove}
+              onPointerLeave={tilt.onLeave}
+            >
               <PhoneMock />
             </div>
-            <div className="rise rise-4 absolute -left-28 top-44 hidden -rotate-6 lg:block">
+            <div
+              className="rise rise-4 float-slow absolute -left-32 top-48 hidden lg:block"
+              style={{ '--float-tilt': '-5deg' } as React.CSSProperties}
+            >
               <FloatingReceipt />
             </div>
-            <div className="rise rise-5 absolute -right-20 bottom-24 hidden rotate-3 lg:block">
+            <div
+              className="rise rise-5 float-slower absolute -right-24 bottom-20 hidden lg:block"
+              style={{ '--float-tilt': '3deg' } as React.CSSProperties}
+            >
               <FloatingGuard />
             </div>
           </div>
         </header>
+      </div>
 
-        {/* the problem */}
-        <Reveal>
-          <section className="border-t border-rule py-20 text-center">
-            <p className="mx-auto max-w-[26ch] text-[30px] font-semibold leading-snug tracking-[-0.025em] sm:text-[36px]">
-              Ordinary money movement should not publish a{' '}
-              <span className="text-ink-muted line-through decoration-warn/60 decoration-2">
-                financial profile
-              </span>
-              .
+      {/* ticker */}
+      <div className="border-y border-rule bg-card py-3.5" aria-hidden>
+        <div className="marquee">
+          {[0, 1].map((half) => (
+            <div key={half} className="flex items-center">
+              {TICKER.map((item) => (
+                <span
+                  key={`${half}-${item}`}
+                  className="flex items-center gap-3 whitespace-nowrap px-5 text-[12.5px] font-semibold uppercase tracking-[0.14em] text-ink-muted"
+                >
+                  {item}
+                  <span className="size-1 rounded-full bg-rule-strong" />
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mx-auto max-w-[1120px] px-6">
+        {/* the exposure demo */}
+        <section className="py-28">
+          <Reveal>
+            <h2 className="mx-auto max-w-[24ch] text-center text-[34px] font-semibold leading-tight tracking-[-0.03em] sm:text-[42px]">
+              A public chain is a feed of your life.
+            </h2>
+            <p className="mx-auto mt-4 max-w-[52ch] text-center text-[15.5px] leading-relaxed text-ink-muted">
+              Salaries, rent, friends, savings — one connected graph, readable by anyone, forever.
+              Here is the same life, twice.
             </p>
-            <p className="mx-auto mt-5 max-w-[52ch] text-[15.5px] leading-relaxed text-ink-muted">
-              Salaries, rent, friends, savings — on a transparent chain they form one connected
-              graph with your name on it. Cryptographic pools hide the transaction, but research
-              keeps showing the rest leaks anyway: amounts, timing, and habits re-identify users
-              even inside shielded systems. The fix has to live in the app layer. This is it.
-            </p>
-          </section>
-        </Reveal>
+          </Reveal>
+
+          <Reveal stagger className="mt-14 grid gap-6 lg:grid-cols-2">
+            <div className="rounded-[28px] border border-rule bg-card-soft p-6">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-ink-muted">
+                <Globe size={15} />
+                On a transparent chain
+              </p>
+              <div className="mt-5">
+                <ExposureFeed />
+              </div>
+              <p className="mt-4 text-[12px] text-ink-faint">
+                Live guesswork like this is an industry. Address labels, exchange records and one
+                slip connect it to your name.
+              </p>
+            </div>
+
+            <div className="glass flex flex-col p-6">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-glass-ink">
+                <ShieldCheck size={15} />
+                The same life on Lumen
+              </p>
+              <div className="mt-5 flex flex-1 flex-col justify-center space-y-2.5">
+                {[
+                  { label: 'Salary received', value: 'not visible' },
+                  { label: 'Rent, paid monthly', value: 'not visible' },
+                  { label: 'Friends, savings, clinic', value: 'not visible' },
+                ].map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex items-center justify-between rounded-2xl bg-white/6 px-4 py-3.5"
+                  >
+                    <span className="text-[13.5px] text-glass-muted">{row.label}</span>
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-glass-ink">
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-2xl border border-white/12 px-4 py-3.5">
+                  <span className="text-[13.5px] text-glass-muted">A deposit, once</span>
+                  <span className="tabular text-[13px] font-semibold text-glass-ink">public</span>
+                </div>
+              </div>
+              <p className="mt-4 text-[12px] text-glass-faint">
+                One boundary crossing — checked and tuned so even it points nowhere.
+              </p>
+            </div>
+          </Reveal>
+        </section>
 
         {/* features */}
-        <section className="grid gap-5 border-t border-rule py-20 md:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <Reveal key={feature.title}>
-              <div className="card h-full px-7 py-8">
-                <span className="grid size-11 place-items-center rounded-2xl bg-ink text-white">
-                  {feature.icon}
-                </span>
-                <h3 className="mt-5 text-[19px] font-semibold leading-snug tracking-[-0.02em]">
-                  {feature.title}
+        <section className="border-t border-rule py-28">
+          <Reveal>
+            <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
+              Three things no wallet does.
+            </h2>
+          </Reveal>
+
+          <div className="mt-16 space-y-24">
+            <Reveal className="grid items-center gap-10 lg:grid-cols-2">
+              <div>
+                <p className="font-mono text-[12px] text-ink-faint">01</p>
+                <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
+                  Every relationship gets its own boundary.
                 </h3>
-                <p className="mt-3 text-[14px] leading-relaxed text-ink-muted">{feature.body}</p>
+                <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
+                  Your landlord, your friends, your clients — each sees only what you send them.
+                  Nothing connects one relationship to another, and the engine keeps it that way
+                  behaviourally too: a distinctive amount or a rigid rhythm that would bridge two
+                  boundaries gets caught before it happens.
+                </p>
+              </div>
+              <BoundaryArtifact />
+            </Reveal>
+
+            <Reveal className="grid items-center gap-10 lg:grid-cols-2">
+              <div className="lg:order-2">
+                <p className="font-mono text-[12px] text-ink-faint">02</p>
+                <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
+                  Prove a payment. Publish nothing.
+                </h3>
+                <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
+                  Every payment mints a receipt carrying exactly one fact — this amount, this
+                  moment, settled on-chain — that you hand to exactly one person. The settlement
+                  transaction is publicly verifiable yet names no sender, no recipient, no amount.
+                  Private money you can still do business with.
+                </p>
+              </div>
+              <div className="mx-auto lg:order-1">
+                <FloatingReceipt />
               </div>
             </Reveal>
-          ))}
+
+            <Reveal className="grid items-center gap-10 lg:grid-cols-2">
+              <div>
+                <p className="font-mono text-[12px] text-ink-faint">03</p>
+                <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
+                  A silent engine watches the leaks.
+                </h3>
+                <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
+                  Research on shielded pools keeps finding the same thing: the cryptography holds,
+                  and behaviour betrays people anyway. Lumen runs those exact attacks against your
+                  own next move — and quietly rewrites what would leak. You never see a score. You
+                  just stay private.
+                </p>
+              </div>
+              <TuningArtifact />
+            </Reveal>
+          </div>
         </section>
 
         {/* how it works */}
-        <Reveal>
-          <section id="how" className="border-t border-rule py-20">
-            <h2 className="text-center text-[30px] font-semibold tracking-[-0.025em]">
-              Three moves. One of them is public.
+        <section className="border-t border-rule py-28">
+          <Reveal>
+            <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
+              Three moves. One is public.
             </h2>
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {[
-                {
-                  n: '01',
-                  icon: <Plus size={18} />,
-                  title: 'Add money once',
-                  body: 'One deposit into the STRK20 privacy pool. It’s the public step — so Lumen tunes the amount and keeps it separate from everything after.',
-                },
-                {
-                  n: '02',
-                  icon: <ShieldCheck size={18} />,
-                  title: 'Live privately',
-                  body: 'Pay people, get paid, set money aside. No sender, recipient or amount ever appears on-chain. Receipts prove single payments when you choose.',
-                },
-                {
-                  n: '03',
-                  icon: <Globe size={18} />,
-                  title: 'Cash out rarely',
-                  body: 'Leaving is opt-out, warned and checked — the engine breaks amount and timing links before the public sees anything.',
-                },
-              ].map((step) => (
-                <div key={step.n} className="rounded-3xl border border-rule bg-card-soft px-7 py-8">
-                  <div className="flex items-center justify-between">
-                    <span className="grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_1px_2px_rgba(18,18,20,0.06)]">
+
+            <div className="relative mt-16">
+              <svg
+                className="absolute left-0 right-0 top-9 hidden h-px w-full md:block"
+                aria-hidden
+                preserveAspectRatio="none"
+                viewBox="0 0 100 1"
+              >
+                <line
+                  x1="8"
+                  y1="0.5"
+                  x2="92"
+                  y2="0.5"
+                  stroke="var(--color-rule-strong)"
+                  strokeWidth="1"
+                  pathLength="1"
+                  className="draw-line"
+                />
+              </svg>
+              <div className="relative grid gap-10 md:grid-cols-3">
+                {[
+                  {
+                    icon: <Plus size={20} />,
+                    title: 'Add money once',
+                    body: 'One deposit into the pool. It’s the public step — so the engine tunes the amount and keeps it separate from everything after.',
+                  },
+                  {
+                    icon: <ShieldCheck size={20} />,
+                    title: 'Live privately',
+                    body: 'Pay people, get paid, set money aside. No sender, recipient or amount ever appears on-chain.',
+                  },
+                  {
+                    icon: <Globe size={20} />,
+                    title: 'Cash out rarely',
+                    body: 'Leaving is opt-out, warned and checked — amount and timing links get broken before the public sees anything.',
+                  },
+                ].map((step, index) => (
+                  <div key={step.title} className="text-center">
+                    <span className="relative z-10 mx-auto grid size-[72px] place-items-center rounded-full border border-rule bg-card text-ink shadow-[0_1px_2px_rgba(18,18,20,0.05)]">
                       {step.icon}
                     </span>
-                    <span className="font-mono text-[12px] text-ink-faint">{step.n}</span>
+                    <p className="mt-5 font-mono text-[11px] text-ink-faint">0{index + 1}</p>
+                    <h3 className="mt-1 text-[18px] font-semibold tracking-[-0.015em]">
+                      {step.title}
+                    </h3>
+                    <p className="mx-auto mt-2.5 max-w-[34ch] text-[14px] leading-relaxed text-ink-muted">
+                      {step.body}
+                    </p>
                   </div>
-                  <h3 className="mt-5 text-[17px] font-semibold tracking-[-0.015em]">{step.title}</h3>
-                  <p className="mt-2.5 text-[14px] leading-relaxed text-ink-muted">{step.body}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </section>
-        </Reveal>
+          </Reveal>
+        </section>
 
         {/* honesty */}
-        <Reveal>
-          <section className="border-t border-rule py-20">
-            <h2 className="text-center text-[30px] font-semibold tracking-[-0.025em]">
+        <section className="border-t border-rule py-28">
+          <Reveal>
+            <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em]">
               Honest about the boundary
             </h2>
             <p className="mx-auto mt-3 max-w-[46ch] text-center text-[15px] text-ink-muted">
               Privacy tools that overclaim get people hurt. Here is exactly where the line sits.
             </p>
-            <div className="mx-auto mt-10 grid max-w-[760px] gap-5 sm:grid-cols-2">
-              <div className="glass px-7 py-7">
-                <p className="flex items-center gap-2 text-[13px] font-semibold text-glass-ink">
-                  <ShieldCheck size={15} />
-                  Never public
-                </p>
-                <ul className="mt-4 space-y-2.5">
-                  {TRUTHS.private.map((line) => (
-                    <li key={line} className="flex items-start gap-2 text-[14px] text-glass-muted">
-                      <Check size={14} className="mt-0.5 flex-none text-glass-ink" />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="card px-7 py-7">
-                <p className="flex items-center gap-2 text-[13px] font-semibold text-warn">
-                  <Globe size={15} />
-                  Public, by nature
-                </p>
-                <ul className="mt-4 space-y-2.5">
-                  {TRUTHS.public.map((line) => (
-                    <li key={line} className="flex items-start gap-2 text-[14px] text-ink-muted">
-                      <span className="mt-[7px] size-1.5 flex-none rounded-full bg-warn/50" />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
-                  Both boundary steps run through the silent engine first, so what is public
-                  cannot be matched to what is not.
-                </p>
-              </div>
+          </Reveal>
+          <Reveal stagger className="mx-auto mt-12 grid max-w-[780px] gap-6 sm:grid-cols-2">
+            <div className="glass px-7 py-7">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-glass-ink">
+                <ShieldCheck size={15} />
+                Never public
+              </p>
+              <ul className="mt-4 space-y-2.5">
+                {[
+                  'Who you pay, and how much',
+                  'Your balance and everything in it',
+                  'Your spaces, people and history',
+                  'Receiving money',
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2 text-[14px] text-glass-muted">
+                    <Check size={14} className="mt-0.5 flex-none text-glass-ink" />
+                    {line}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </section>
-        </Reveal>
+            <div className="card px-7 py-7">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+                <Globe size={15} />
+                Public, by nature
+              </p>
+              <ul className="mt-4 space-y-2.5">
+                {[
+                  'Adding money (a deposit, checked for hygiene)',
+                  'Cashing out (warned, tuned, timed)',
+                  'That the pool itself processed something',
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2 text-[14px] text-ink-muted">
+                    <span className="mt-[7px] size-1.5 flex-none rounded-full bg-ink" />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
+                Both boundary steps run through the silent engine first, so what is public cannot
+                be matched to what is not.
+              </p>
+            </div>
+          </Reveal>
+        </section>
+      </div>
 
-        {/* closing */}
-        <Reveal>
-          <section className="border-t border-rule py-24 text-center">
-            <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-ink text-white">
-              <LumenMark size={24} />
-            </span>
-            <h2 className="mt-6 text-[36px] font-semibold tracking-[-0.03em]">
-              Make privacy your default.
-            </h2>
-            <p className="mx-auto mt-3 max-w-[40ch] text-[15.5px] text-ink-muted">
-              Open Lumen with a privacy-enabled Starknet wallet and move money like it&rsquo;s
-              yours alone. Because it is.
-            </p>
-            <Link href="/app" className="btn btn-ink mt-8">
+      {/* closing band */}
+      <section className="bg-ink py-28 text-white">
+        <Reveal className="mx-auto max-w-[1120px] px-6 text-center">
+          <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-ink">
+            <LumenMark size={24} />
+          </span>
+          <h2 className="mx-auto mt-7 max-w-[18ch] text-[40px] font-semibold leading-[1.04] tracking-[-0.03em] sm:text-[52px]">
+            Make privacy your default.
+          </h2>
+          <p className="mx-auto mt-4 max-w-[40ch] text-[15.5px] leading-relaxed text-white/60">
+            Open Lumen with a privacy-enabled Starknet wallet and move money like it&rsquo;s yours
+            alone. Because it is.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/app"
+              className="btn bg-white text-ink hover:bg-white/90"
+            >
               Open Lumen
               <ArrowRight size={17} />
             </Link>
-          </section>
+            <Link href="/app?preview" className="btn border border-white/25 text-white hover:bg-white/10">
+              Try the walkthrough
+            </Link>
+          </div>
         </Reveal>
+      </section>
 
-        {/* footer */}
-        <footer className="flex flex-col items-center justify-between gap-4 border-t border-rule py-10 text-[13px] text-ink-faint sm:flex-row">
+      {/* footer */}
+      <footer className="border-t border-rule">
+        <div className="mx-auto flex max-w-[1120px] flex-col items-center justify-between gap-4 px-6 py-10 text-[13px] text-ink-faint sm:flex-row">
           <p className="flex items-center gap-2">
             <LumenMark size={15} />
             Lumen — private money, by default
@@ -448,8 +766,8 @@ export default function Landing() {
             </a>{' '}
             · Starknet mainnet · Private Sprint 2026
           </p>
-        </footer>
-      </div>
+        </div>
+      </footer>
     </div>
   )
 }

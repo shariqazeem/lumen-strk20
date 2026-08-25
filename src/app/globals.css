@@ -3,14 +3,11 @@
 /*
   Lumen — private money, by default.
 
-  Design language: porcelain light mode, Apple-grade. The whole interface is
-  calm white and warm grey; the single dark object on screen is your private
-  balance — a piece of dark glass with light leaking softly across its edge.
-  Privacy is the dark card; everything public-facing must earn its color.
-
-  One signature: the lumen glow, a soft light-spectrum gradient (gold → rose →
-  lavender → sky). It appears only where value is private — the balance card,
-  the receipt seal, the brand mark. Never on chrome, never on buttons.
+  Design language: strict monochrome, Apple-grade. Porcelain white, warm
+  greys, and one true black. The single dark object on screen is your private
+  balance — a slab of black glass. No gradients, no accent hues; the only
+  color on the surface comes from emoji. Hierarchy is carried by weight,
+  scale, and the black/white inversion, which is the whole drama.
 
   No crypto jargon leaks into class names any more than into copy.
 */
@@ -32,25 +29,18 @@
   --color-rule: rgba(18, 18, 20, 0.08);
   --color-rule-strong: rgba(18, 18, 20, 0.16);
 
-  /* The dark glass — the private balance object */
-  --color-glass: #101014;
-  --color-glass-raised: #1b1b21;
+  /* The black glass — the private balance object */
+  --color-glass: #0c0c0e;
+  --color-glass-raised: #17171a;
   --color-glass-ink: #f5f4f8;
   --color-glass-muted: rgba(245, 244, 248, 0.55);
   --color-glass-faint: rgba(245, 244, 248, 0.32);
 
-  /* The lumen spectrum — private value only */
-  --color-glow-gold: #ffd9a8;
-  --color-glow-rose: #ffc9d6;
-  --color-glow-violet: #d8cbff;
-  --color-glow-sky: #bfe0ff;
-
-  /* Semantics — used sparingly */
-  --color-good: #2e7d4f;
-  --color-good-soft: #e4f2e9;
-  --color-warn: #b3540e;
-  --color-warn-soft: #faeadd;
-  --color-public: #b3540e;
+  /* Semantic states are monochrome too: emphasis, not hue. */
+  --color-good: #121214;
+  --color-good-soft: #eceae6;
+  --color-warn: #121214;
+  --color-warn-soft: #eceae6;
 
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     ui-sans-serif, system-ui, sans-serif;
@@ -144,14 +134,10 @@
     }
   }
 
-  /* The dark glass object. Light leaks along its top edge. */
+  /* The black glass object. Pure ink, a faint top sheen, nothing else. */
   .glass {
     position: relative;
-    background:
-      radial-gradient(120% 90% at 85% -20%, rgba(255, 217, 168, 0.16), transparent 55%),
-      radial-gradient(120% 90% at 15% -25%, rgba(216, 203, 255, 0.15), transparent 55%),
-      radial-gradient(140% 120% at 50% 130%, rgba(191, 224, 255, 0.07), transparent 60%),
-      linear-gradient(175deg, var(--color-glass-raised), var(--color-glass) 55%);
+    background: linear-gradient(178deg, var(--color-glass-raised), var(--color-glass) 62%);
     color: var(--color-glass-ink);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-glass);
@@ -165,12 +151,10 @@
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(
-      160deg,
-      rgba(255, 217, 168, 0.5),
-      rgba(255, 201, 214, 0.28) 22%,
-      rgba(255, 255, 255, 0.1) 45%,
-      rgba(255, 255, 255, 0.04) 70%,
-      rgba(191, 224, 255, 0.18)
+      178deg,
+      rgba(255, 255, 255, 0.22),
+      rgba(255, 255, 255, 0.05) 40%,
+      rgba(255, 255, 255, 0.02)
     );
     -webkit-mask:
       linear-gradient(#fff 0 0) content-box,
@@ -183,28 +167,17 @@
     pointer-events: none;
   }
 
-  /* The lumen glow, as a thin standalone strip (receipt seal, brand rule). */
-  .lumen-strip {
-    background: linear-gradient(
-      90deg,
-      var(--color-glow-gold),
-      var(--color-glow-rose) 34%,
-      var(--color-glow-violet) 67%,
-      var(--color-glow-sky)
-    );
+  /* Outlined display type — the monochrome answer to a gradient headline. */
+  .stroke-text {
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--color-ink);
   }
 
-  .lumen-text {
-    background: linear-gradient(
-      100deg,
-      #b0770a,
-      #c04e6d 35%,
-      #6d51c9 68%,
-      #2f6ca8
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* Never let the headline vanish where text-stroke is unsupported. */
+  @supports not (-webkit-text-stroke: 1px black) {
+    .stroke-text {
+      color: var(--color-ink-faint);
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -342,15 +315,78 @@
 
   .reveal {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(28px);
     transition:
-      opacity 0.8s var(--ease-out-quart),
-      transform 0.8s var(--ease-out-quart);
+      opacity 0.9s var(--ease-out-quart),
+      transform 0.9s var(--ease-out-quart);
   }
 
   .reveal.shown {
     opacity: 1;
     transform: none;
+  }
+
+  /* Staggered children: parent gets .reveal + .shown, children inherit delay. */
+  .reveal-stagger > * {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.8s var(--ease-out-quart),
+      transform 0.8s var(--ease-out-quart);
+  }
+
+  .reveal-stagger.shown > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  .reveal-stagger.shown > *:nth-child(1) { transition-delay: 0.05s; }
+  .reveal-stagger.shown > *:nth-child(2) { transition-delay: 0.14s; }
+  .reveal-stagger.shown > *:nth-child(3) { transition-delay: 0.23s; }
+  .reveal-stagger.shown > *:nth-child(4) { transition-delay: 0.32s; }
+  .reveal-stagger.shown > *:nth-child(5) { transition-delay: 0.41s; }
+
+  /* Slow vertical drift for floating props around the hero device. */
+  .float-slow {
+    animation: float-drift 7s ease-in-out infinite;
+  }
+
+  .float-slower {
+    animation: float-drift 9s ease-in-out infinite reverse;
+  }
+
+  /* Infinite horizontal ticker. Content must be duplicated once inside. */
+  .marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee-scroll 28s linear infinite;
+  }
+
+  /* The exposure feed: rows climb forever behind a masked window. */
+  .feed-scroll {
+    animation: feed-climb 16s linear infinite;
+  }
+
+  .feed-mask {
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent);
+  }
+
+  /* SVG stroke that draws itself when .shown lands on an ancestor. */
+  .draw-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 1.6s var(--ease-out-quart) 0.3s;
+  }
+
+  .shown .draw-line {
+    stroke-dashoffset: 0;
+  }
+
+  .nav-blur {
+    background: rgba(243, 242, 240, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   .unblur {
@@ -372,11 +408,18 @@
     .pop,
     .ticker,
     .sheet,
-    .sheet-backdrop {
+    .sheet-backdrop,
+    .float-slow,
+    .float-slower,
+    .marquee,
+    .feed-scroll {
       animation-duration: 0.01ms !important;
       animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
     }
-    .reveal {
+    .reveal,
+    .reveal-stagger > *,
+    .draw-line {
       transition-duration: 0.01ms;
     }
   }
@@ -444,6 +487,21 @@
 @keyframes backdrop-out {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+@keyframes float-drift {
+  0%, 100% { transform: translateY(0) rotate(var(--float-tilt, 0deg)); }
+  50% { transform: translateY(-14px) rotate(var(--float-tilt, 0deg)); }
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes feed-climb {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
 }
 
 @keyframes shimmer {

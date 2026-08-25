@@ -174,11 +174,15 @@ export function adjustAllocation(
   return next
 }
 
-/** Pastel tints for space cards. Index with `space.tint`. */
+/**
+ * Space card tints. Monochrome by design — the emoji carries the color, the
+ * greys carry the depth. The five steps only vary elevation so adjacent cards
+ * still read as distinct objects.
+ */
 export const SPACE_TINTS = [
-  { bg: '#f6efe3', fg: '#7a5a18' },
-  { bg: '#f9e8ec', fg: '#8f3a52' },
-  { bg: '#ece7f8', fg: '#54418f' },
-  { bg: '#e3eef7', fg: '#2f5a7d' },
-  { bg: '#e7f1e8', fg: '#3a6647' },
+  { bg: '#eceae6', fg: '#121214' },
+  { bg: '#f5f4f1', fg: '#121214' },
+  { bg: '#e4e2dd', fg: '#121214' },
+  { bg: '#efedea', fg: '#121214' },
+  { bg: '#e9e7e2', fg: '#121214' },
 ] as const

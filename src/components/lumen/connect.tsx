@@ -1,19 +1,58 @@
 'use client'
 
 /**
- * The front door. One promise, one action: connect a privacy-enabled wallet.
+ * The front door — onboarding as a single confident page.
  *
- * Wallets without STRK20 support are listed but disabled with an honest
- * explanation — capability is detected from the advertised Wallet API version,
- * never by probing a data method (that would trigger a consent prompt).
+ * Three situations, one screen: a privacy-enabled wallet is present (connect
+ * in one tap), only ordinary wallets are present (explain, point at Ready),
+ * or nothing is present (walk the three steps). The sample walkthrough is
+ * always one tap away, so nobody bounces off an empty state.
+ *
+ * Capability is detected from the advertised Wallet API version, never by
+ * probing a data method (that would trigger a consent prompt).
  */
 
 import { useEffect, useState } from 'react'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import { listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
 import { useLumen } from '@/lib/lumen/store'
-import { LumenMark, Lock, ShieldCheck, Sparkle } from './icons'
+import { ArrowRight, Eye, LumenMark, Lock, Plus, ShieldCheck, Wallet } from './icons'
 import { ErrorNote } from './bits'
+
+const STEPS = [
+  {
+    icon: <Wallet size={17} />,
+    title: 'Get a privacy wallet',
+    body: (
+      <>
+        Install{' '}
+        <a
+          href="https://www.ready.co/"
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-ink underline underline-offset-2"
+        >
+          Ready
+        </a>{' '}
+        — a Starknet wallet with private balances built in. Two minutes, free.
+      </>
+    ),
+  },
+  {
+    icon: <Lock size={17} />,
+    title: 'Connect it here',
+    body: <>Refresh this page and your wallet appears above. One tap, no account, no email.</>,
+  },
+  {
+    icon: <Plus size={17} />,
+    title: 'Add money once',
+    body: (
+      <>
+        One deposit activates your private account. From then on, everything you do is invisible.
+      </>
+    ),
+  },
+] as const
 
 export function ConnectScreen() {
   const { connect, status, error, clearError, enterPreview } = useLumen()
@@ -28,7 +67,7 @@ export function ConnectScreen() {
   const others = wallets.filter((w) => !supportsStrk20(w))
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-6 pb-10 pt-[max(48px,8vh)]">
+    <main className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-6 pb-10 pt-[max(44px,7vh)]">
       <div className="rise flex items-center gap-2.5">
         <span className="grid size-9 place-items-center rounded-xl bg-ink text-white">
           <LumenMark size={20} />
@@ -36,33 +75,19 @@ export function ConnectScreen() {
         <span className="text-[19px] font-semibold tracking-[-0.02em]">Lumen</span>
       </div>
 
-      <div className="rise rise-1 mt-14">
-        <h1 className="text-[40px] font-semibold leading-[1.06] tracking-[-0.035em]">
+      <div className="rise rise-1 mt-12">
+        <h1 className="text-[42px] font-semibold leading-[1.04] tracking-[-0.035em]">
           Your money,
           <br />
-          <span className="lumen-text">nobody&rsquo;s business.</span>
+          nobody&rsquo;s business.
         </h1>
-        <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink-muted">
+        <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink-muted">
           Pay, receive and save on Starknet without publishing a financial profile. Private is the
           default — not a feature you switch on.
         </p>
       </div>
 
-      <ul className="rise rise-2 mt-8 space-y-2.5 text-[14px] text-ink-soft">
-        <li className="flex items-center gap-2.5">
-          <ShieldCheck size={16} className="text-good" />
-          Payments with no public sender, recipient or amount
-        </li>
-        <li className="flex items-center gap-2.5">
-          <Sparkle size={16} className="text-good" />A silent engine keeps your history unlinkable
-        </li>
-        <li className="flex items-center gap-2.5">
-          <Lock size={16} className="text-good" />
-          Keys and balances stay in your wallet — never here
-        </li>
-      </ul>
-
-      <div className="rise rise-3 mt-10 flex-1">
+      <div className="rise rise-2 mt-9 flex-1">
         {error ? (
           <div className="mb-4">
             <ErrorNote message={error} onDismiss={clearError} />
@@ -70,54 +95,82 @@ export function ConnectScreen() {
         ) : null}
 
         {ready.length > 0 ? (
-          <div className="space-y-2.5">
-            {ready.map((wallet) => (
-              <button
-                key={wallet.name}
-                onClick={() => connect(wallet)}
-                disabled={status === 'connecting'}
-                className="card card-press flex w-full items-center gap-3.5 px-5 py-4 text-left disabled:opacity-50"
-              >
-                {wallet.icon ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={wallet.icon} alt="" className="size-9 rounded-xl" />
-                ) : (
-                  <span className="size-9 rounded-xl bg-sunk" />
-                )}
-                <span className="flex-1">
-                  <span className="block text-[16px] font-semibold">{wallet.name}</span>
-                  <span className="block text-[13px] text-ink-muted">Privacy-enabled</span>
-                </span>
-                <span className="text-[14px] font-semibold text-ink-muted">
-                  {status === 'connecting' ? 'Connecting…' : 'Connect'}
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="card px-5 py-5">
-            <p className="text-[15px] font-semibold">No privacy-enabled wallet found</p>
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">
-              Lumen needs a Starknet wallet with private balances built in. Install{' '}
-              <a
-                href="https://www.ready.co/"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-ink underline underline-offset-2"
-              >
-                Ready
-              </a>{' '}
-              and refresh this page.
+          <>
+            <p className="mb-2.5 px-1 text-[13px] font-semibold text-ink-muted">
+              Your wallet is ready
             </p>
-          </div>
+            <div className="space-y-2.5">
+              {ready.map((wallet) => (
+                <button
+                  key={wallet.name}
+                  onClick={() => connect(wallet)}
+                  disabled={status === 'connecting'}
+                  className="card card-press flex w-full items-center gap-3.5 px-5 py-4 text-left disabled:opacity-50"
+                >
+                  {wallet.icon ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={wallet.icon} alt="" className="size-10 rounded-xl" />
+                  ) : (
+                    <span className="size-10 rounded-xl bg-sunk" />
+                  )}
+                  <span className="flex-1">
+                    <span className="block text-[16px] font-semibold">{wallet.name}</span>
+                    <span className="mt-0.5 flex items-center gap-1 text-[12.5px] text-ink-muted">
+                      <ShieldCheck size={12} />
+                      Private balances built in
+                    </span>
+                  </span>
+                  <span className="grid size-9 place-items-center rounded-full bg-ink text-white">
+                    {status === 'connecting' ? (
+                      <span className="size-3.5 animate-pulse rounded-full bg-white/70" />
+                    ) : (
+                      <ArrowRight size={16} />
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-2.5 px-1 text-[13px] font-semibold text-ink-muted">
+              Three steps, once
+            </p>
+            <div className="card divide-y divide-rule">
+              {STEPS.map((step, index) => (
+                <div key={step.title} className="flex gap-4 px-5 py-4">
+                  <span className="grid size-9 flex-none place-items-center rounded-full bg-ink text-white">
+                    {step.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[14.5px] font-semibold">
+                      <span className="mr-1.5 font-mono text-[11px] text-ink-faint">
+                        0{index + 1}
+                      </span>
+                      {step.title}
+                    </p>
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-ink-muted">{step.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         <button
           onClick={enterPreview}
-          className="mt-4 w-full rounded-2xl border border-dashed border-rule-strong px-5 py-3.5 text-left text-[13.5px] text-ink-muted transition-colors hover:bg-card"
+          className="card card-press mt-4 flex w-full items-center gap-3.5 px-5 py-4 text-left"
         >
-          <span className="font-semibold text-ink">Just looking?</span> Walk through Lumen with
-          sample data — nothing to install.
+          <span className="grid size-10 flex-none place-items-center rounded-full bg-sunk text-ink">
+            <Eye size={17} />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[14.5px] font-semibold">Just looking?</span>
+            <span className="block text-[13px] text-ink-muted">
+              Walk through Lumen with sample data — nothing to install.
+            </span>
+          </span>
+          <ArrowRight size={15} className="text-ink-faint" />
         </button>
 
         {others.length > 0 ? (
@@ -142,8 +195,8 @@ export function ConnectScreen() {
       </div>
 
       <p className="rise rise-4 mt-10 text-[12.5px] leading-relaxed text-ink-faint">
-        Lumen runs on Starknet mainnet inside the STRK20 privacy pool. Your wallet holds every key
-        and approves every move.
+        Non-custodial, on Starknet mainnet inside the STRK20 privacy pool. Your wallet holds every
+        key and approves every move — Lumen never sees private state.
       </p>
     </main>
   )

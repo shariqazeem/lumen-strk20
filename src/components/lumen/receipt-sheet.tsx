@@ -61,7 +61,7 @@ export function ReceiptSheet({
   return (
     <Sheet open={open} onClose={onClose} title="Receipt">
       <div className="card overflow-hidden">
-        <div className="lumen-strip h-1.5" />
+        <div className="h-1.5 bg-ink" />
         <div className="px-6 py-6">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-muted">
