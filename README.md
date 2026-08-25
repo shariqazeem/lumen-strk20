@@ -157,10 +157,10 @@ User wallet (Ready / Xverse)
         ▼
 ┌──────────────────────────────────────────────────────────┐
 │  Aether frontend — Next.js 15, TS strict, Tailwind       │
-│  Overview · Plan · Activity · Disclose                   │
+│  Exposure · Position · Remedy · Ledger · Disclose        │
 ├──────────────────────────────────────────────────────────┤
 │  Privacy policy + strategy engine                        │
-│  pure, deterministic, seeded — 114 tests                 │
+│  adversary + planner: pure, seeded — 158 tests           │
 ├──────────────────────────────────────────────────────────┤
 │  Local action ledger (browser only)                      │
 │  the behavioural history a chain deliberately can't hold │
