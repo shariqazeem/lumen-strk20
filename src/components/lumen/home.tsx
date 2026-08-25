@@ -28,6 +28,7 @@ import {
   Dots,
   Eye,
   Globe,
+  LinkIcon,
   LumenMark,
   Plus,
   ShieldCheck,
@@ -200,7 +201,13 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[14.5px] font-semibold">
-                        {entry.type === 'SHIELD' ? 'A deposit into the pool' : 'A withdrawal from the pool'}
+                        {entry.type === 'SHIELD'
+                          ? 'A deposit into the pool'
+                          : entry.type === 'LINK'
+                            ? 'A deposit into an escrow'
+                            : entry.type === 'CLAIM'
+                              ? 'A claim from an escrow'
+                              : 'A withdrawal from the pool'}
                       </span>
                       <span className="block text-[12.5px] text-ink-muted">
                         {relativeTime(entry.timestamp)}
@@ -521,7 +528,8 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                   const person = entry.counterparty
                     ? personByAddress(people, entry.counterparty)
                     : undefined
-                  const outbound = entry.type === 'TRANSFER' || entry.type === 'UNSHIELD'
+                  const outbound =
+                    entry.type === 'TRANSFER' || entry.type === 'UNSHIELD' || entry.type === 'LINK'
                   const title =
                     entry.type === 'TRANSFER'
                       ? `Paid ${person?.name ?? (entry.counterparty ? shortAddress(entry.counterparty) : 'privately')}`
@@ -529,7 +537,13 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                         ? 'Added money'
                         : entry.type === 'UNSHIELD'
                           ? 'Cashed out'
-                          : 'Private move'
+                          : entry.type === 'LINK'
+                            ? 'Sent a claim link'
+                            : entry.type === 'CLAIM'
+                              ? entry.observer.startsWith('reclaim')
+                                ? 'Reclaimed a link'
+                                : 'Claimed money'
+                              : 'Private move'
                   const isPublic = entry.observer !== '—'
                   const clickable = entry.type === 'TRANSFER' && entry.txHash
                   return (
@@ -552,6 +566,10 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                           <Plus size={16} />
                         ) : entry.type === 'UNSHIELD' ? (
                           <Globe size={16} />
+                        ) : entry.type === 'LINK' ? (
+                          <LinkIcon size={16} />
+                        ) : entry.type === 'CLAIM' ? (
+                          <ArrowDown size={16} />
                         ) : (
                           <Sparkle size={16} />
                         )}

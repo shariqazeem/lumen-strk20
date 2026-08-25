@@ -1,0 +1,139 @@
+// @vitest-environment node
+
+/**
+ * The escrow rails carry money behind a hash — a drift between this file and
+ * `contracts/src/escrow.cairo` would mint links the contract cannot find. The
+ * commitment vector here is pinned against the SAME constant as the Cairo
+ * test `test_claim_commitment_matches_client_vector`; neither side may change
+ * without the other.
+ */
+
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+
+const ESCROW = '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+beforeAll(() => {
+  vi.stubEnv('NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS', ESCROW)
+})
+
+async function lib() {
+  return await import('../escrow')
+}
+
+describe('commitments', () => {
+  it('matches the pinned Cairo vector for secret 0x1234', async () => {
+    const { claimCommitment } = await lib()
+    expect(claimCommitment('0x1234')).toBe(
+      '0x308c7c8531f0e0d2789204d5bd59baa4b55308631b86215304789c774ac500d',
+    )
+  })
+
+  it('claim and refund domains never collide', async () => {
+    const { claimCommitment, refundCommitment } = await lib()
+    expect(claimCommitment('0x1234')).not.toBe(refundCommitment('0x1234'))
+  })
+})
+
+describe('secrets', () => {
+  it('generates felt-safe, distinct, non-zero secrets', async () => {
+    const { generateSecret } = await lib()
+    const a = generateSecret()
+    const b = generateSecret()
+    expect(a).not.toBe(b)
+    const value = BigInt(a)
+    expect(value).toBeGreaterThan(0n)
+    // 248 bits stays strictly below the felt prime (~2^251.5).
+    expect(value < 2n ** 248n).toBe(true)
+  })
+})
+
+describe('action builders', () => {
+  it('fund is withdraw-to-escrow then Deposit invoke, in that order', async () => {
+    const { buildEscrowFund, claimCommitment, refundCommitment } = await lib()
+    const actions = buildEscrowFund({
+      token: '0xt0ken',
+      amount: 149_884_201n,
+      claimSecret: '0xaaa',
+      refundSecret: '0xbbb',
+      expiry: 1_756_600_000,
+    })
+    expect(actions).toHaveLength(2)
+    expect(actions[0]).toEqual({
+      type: 'withdraw',
+      token: '0xt0ken',
+      amount: `0x${(149_884_201n).toString(16)}`,
+      recipient: ESCROW,
+    })
+    const invoke = actions[1]
+    if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+    expect(invoke.contract).toBe(ESCROW)
+    // [op, claim_commitment, refund_commitment, expiry, token, amount, secret, note]
+    expect(invoke.calldata).toEqual([
+      '0x0',
+      claimCommitment('0xaaa'),
+      refundCommitment('0xbbb'),
+      `0x${(1_756_600_000).toString(16)}`,
+      '0xt0ken',
+      `0x${(149_884_201n).toString(16)}`,
+      '0x0',
+      '0x0',
+    ])
+  })
+
+  it('claim opens a note first and passes the secret before the note ref', async () => {
+    const { buildEscrowClaim } = await lib()
+    const actions = buildEscrowClaim({
+      token: '0xt0ken',
+      recipient: '0xme',
+      secret: '0xsec',
+    })
+    expect(actions[0]).toEqual({
+      type: 'transfer',
+      token: '0xt0ken',
+      amount: 'OPEN',
+      recipient: '0xme',
+    })
+    const invoke = actions[1]
+    if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+    expect(invoke.calldata?.[0]).toBe('0x1')
+    expect(invoke.calldata?.[6]).toBe('0xsec')
+    expect(invoke.calldata?.[7]).toBe('${openNoteIds[0]}')
+  })
+
+  it('refund uses the Refund discriminant on the same shape', async () => {
+    const { buildEscrowRefund } = await lib()
+    const actions = buildEscrowRefund({ token: '0xt', recipient: '0xme', secret: '0xr' })
+    const invoke = actions[1]
+    if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+    expect(invoke.calldata?.[0]).toBe('0x2')
+  })
+})
+
+describe('link codec', () => {
+  it('round-trips a payload with unicode intact through the fragment', async () => {
+    const { encodeClaimLink, decodeClaimLink } = await lib()
+    const payload = {
+      v: 1 as const,
+      s: '0x1234abcd',
+      t: '0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb',
+      a: '52880000',
+      f: 'Shariq',
+      n: 'Coffee ☕️ — thanks!',
+    }
+    const url = encodeClaimLink('https://lumen-strk20.vercel.app', payload)
+    expect(url.startsWith('https://lumen-strk20.vercel.app/claim#')).toBe(true)
+    // Fragment must be URL-safe: no +, /, = that chat apps mangle.
+    const fragment = url.split('#')[1]
+    expect(/^[A-Za-z0-9_-]+$/.test(fragment)).toBe(true)
+    expect(decodeClaimLink(`#${fragment}`)).toEqual(payload)
+  })
+
+  it('rejects garbage, wrong versions, and non-hex secrets', async () => {
+    const { decodeClaimLink } = await lib()
+    expect(decodeClaimLink('#not-base64!!')).toBeNull()
+    expect(decodeClaimLink(`#${btoa(JSON.stringify({ v: 2, s: '0x1', t: '0x1', a: '1' }))}`)).toBeNull()
+    expect(
+      decodeClaimLink(`#${btoa(JSON.stringify({ v: 1, s: 'hello', t: '0x1', a: '1' }))}`),
+    ).toBeNull()
+  })
+})

@@ -23,7 +23,7 @@ export interface LedgerEntry {
   id: string
   /** ms epoch */
   timestamp: number
-  type: 'SHIELD' | 'SWAP' | 'REBALANCE' | 'COMPACT' | 'TRANSFER' | 'UNSHIELD'
+  type: 'SHIELD' | 'SWAP' | 'REBALANCE' | 'COMPACT' | 'TRANSFER' | 'UNSHIELD' | 'LINK' | 'CLAIM'
   asset: TokenSymbol
   /** Raw amount in the asset's smallest unit. */
   amount: bigint
@@ -47,6 +47,11 @@ const LEDGER_TYPES = new Set<LedgerEntry['type']>([
   'COMPACT',
   'TRANSFER',
   'UNSHIELD',
+  // Claim links: LINK is the sender's public escrow leg, CLAIM the
+  // recipient's arrival. Both are boundary legs the engine deliberately
+  // cannot express; the guard reads them from the raw ledger.
+  'LINK',
+  'CLAIM',
 ])
 const LEDGER_ROUTES = new Set<LedgerEntry['route']>(['AVNU', 'POOL', 'DIRECT'])
 

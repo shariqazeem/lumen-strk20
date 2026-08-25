@@ -10,7 +10,8 @@
 
 import { useMemo, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
-import { reviewPay } from '@/lib/lumen/guard'
+import { guardSeed, reviewPay, reviewShield } from '@/lib/lumen/guard'
+import { DEFAULT_REFUND_WINDOW_S } from '@/lib/strk20/escrow'
 import {
   looksLikeStarknetAddress,
   personByAddress,
@@ -31,9 +32,19 @@ import {
   SuccessMark,
   TxLink,
 } from './bits'
-import { ArrowRight, ChevronRight, Plus, Receipt as ReceiptIcon } from './icons'
+import {
+  ArrowRight,
+  Check,
+  ChevronRight,
+  Clock,
+  Copy,
+  LinkIcon,
+  Plus,
+  Receipt as ReceiptIcon,
+  Share,
+} from './icons'
 
-type Step = 'to' | 'amount' | 'done'
+type Step = 'to' | 'amount' | 'done' | 'linkAmount' | 'linkDone'
 
 interface PaySheetProps {
   open: boolean
@@ -44,8 +55,19 @@ interface PaySheetProps {
 }
 
 export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PaySheetProps) {
-  const { people, balances, prices, ledger, submitting, pay, error, clearError, lastTx } =
-    useLumen()
+  const {
+    address,
+    people,
+    balances,
+    prices,
+    ledger,
+    submitting,
+    pay,
+    sendClaimLink,
+    error,
+    clearError,
+    lastTx,
+  } = useLumen()
 
   const [step, setStep] = useState<Step>(person ? 'amount' : 'to')
   const [target, setTarget] = useState<Person | null>(person ?? null)
@@ -54,6 +76,9 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
   const [amountText, setAmountText] = useState('')
   const [note, setNote] = useState('')
   const [receipt, setReceipt] = useState<Receipt | null>(null)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkKeepExact, setLinkKeepExact] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   // Reset per open. Keyed remount is handled by the parent passing a fresh
   // sheet each time; this guards the in-place person shortcut.
@@ -88,6 +113,51 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
     })
   }, [validRecipient, amount, token, recipientAddress, ledger])
 
+  // A claim link's escrow amount is public, so it gets deposit-grade amount
+  // hygiene: round or reused amounts are rewritten before the wallet signs.
+  const linkReport = useMemo(() => {
+    if (step !== 'linkAmount' || amount <= 0n || !address) return null
+    return reviewShield({
+      amount,
+      decimals: TOKENS[token].decimals,
+      token,
+      seed: guardSeed(address, Date.now()),
+      ledger,
+      now: Date.now(),
+    })
+  }, [step, amount, token, address, ledger])
+
+  const linkAmount =
+    !linkKeepExact && linkReport?.suggestedAmount !== undefined
+      ? linkReport.suggestedAmount
+      : amount
+
+  const submitLink = async () => {
+    if (linkAmount <= 0n) return
+    try {
+      const { url } = await sendClaimLink({
+        token,
+        amount: linkAmount,
+        refundAfterS: DEFAULT_REFUND_WINDOW_S,
+        ...(note.trim() ? { note: note.trim() } : {}),
+      })
+      setLinkUrl(url)
+      setStep('linkDone')
+    } catch {
+      // The store surfaced the explanation; stay here.
+    }
+  }
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(linkUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 1600)
+    } catch {
+      // The URL stays visible to copy by hand.
+    }
+  }
+
   const submit = async () => {
     if (!validRecipient || amount <= 0n) return
     try {
@@ -110,10 +180,41 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
       open={open}
       onClose={onClose}
       locked={submitting}
-      title={step === 'done' ? 'Sent' : step === 'to' ? 'Pay' : `Pay ${target?.name ?? 'privately'}`}
+      title={
+        step === 'done'
+          ? 'Sent'
+          : step === 'to'
+            ? 'Pay'
+            : step === 'linkAmount'
+              ? 'Pay with a link'
+              : step === 'linkDone'
+                ? 'Link ready'
+                : `Pay ${target?.name ?? 'privately'}`
+      }
     >
       {step === 'to' ? (
         <div className="space-y-5">
+          <button
+            onClick={() => {
+              setTarget(null)
+              setAmountText('')
+              setLinkKeepExact(false)
+              setStep('linkAmount')
+            }}
+            className="card card-press flex w-full items-center gap-3.5 px-5 py-4 text-left"
+          >
+            <span className="grid size-10 flex-none place-items-center rounded-full bg-ink text-white">
+              <LinkIcon size={17} />
+            </span>
+            <span className="flex-1">
+              <span className="block text-[14.5px] font-semibold">Pay with a link</span>
+              <span className="block text-[13px] leading-snug text-ink-muted">
+                For someone with no wallet yet — they claim it privately, whenever they arrive.
+              </span>
+            </span>
+            <ChevronRight size={15} className="text-ink-faint" />
+          </button>
+
           {people.length > 0 ? (
             <div className="card divide-y divide-rule">
               {people.map((p) => (
@@ -251,6 +352,143 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
           <p className="mt-3 text-center text-[12px] text-ink-faint">
             No public sender, recipient or amount. Your wallet confirms first.
           </p>
+        </div>
+      ) : null}
+
+      {step === 'linkAmount' ? (
+        <div>
+          <AmountField
+            value={amountText}
+            onChange={(next) => {
+              setAmountText(next)
+              setLinkKeepExact(false)
+            }}
+            token={token}
+            onToken={setToken}
+            tokens={TOKEN_LIST.map((t) => t.symbol)}
+            prices={prices}
+            {...(balance ? { maxRaw: balance.raw } : {})}
+            autoFocus
+          />
+
+          <input
+            value={note}
+            onChange={(event) => setNote(event.target.value.slice(0, 80))}
+            placeholder="Note for the recipient (optional)"
+            className="mt-5 h-11 w-full rounded-2xl border border-rule bg-card px-4 text-[14px] outline-none focus:border-rule-strong"
+          />
+
+          {linkReport ? (
+            <div className="mt-4 space-y-3">
+              <GuardPanel report={linkReport} />
+              {linkReport.suggestedAmount !== undefined ? (
+                <div className="rise flex items-center justify-between rounded-2xl border border-rule bg-card-soft px-4 py-3">
+                  <div className="text-[13.5px]">
+                    <p className="font-semibold">
+                      Link carries{' '}
+                      <span className="tabular">
+                        {formatUnits(linkAmount, TOKENS[token].decimals, 6)} {token}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[12.5px] text-ink-muted">
+                      {linkKeepExact
+                        ? 'Exact amounts are easier to pick out of the public escrow record.'
+                        : 'Tuned — the escrowed amount is public, so it shouldn’t stand out.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setLinkKeepExact((v) => !v)}
+                    className="flex-none text-[12.5px] font-semibold text-ink-muted underline-offset-2 hover:underline"
+                  >
+                    {linkKeepExact ? 'Use tuned' : 'Keep exact'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="mt-4">
+              <ErrorNote message={error} onDismiss={clearError} />
+            </div>
+          ) : null}
+
+          {balanceKnown && amount > 0n && !enough ? (
+            <p className="mt-3 px-1 text-center text-[13px] font-semibold">
+              That&rsquo;s more than you have in {token}.
+            </p>
+          ) : null}
+
+          <button
+            onClick={submitLink}
+            disabled={linkAmount <= 0n || submitting || (balanceKnown && !enough)}
+            className="btn btn-ink mt-5 w-full"
+          >
+            {submitting ? 'Waiting for your wallet…' : 'Create claim link'}
+          </button>
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-faint">
+            <Clock size={13} />
+            Unclaimed after 7 days? You can take it back.
+          </p>
+        </div>
+      ) : null}
+
+      {step === 'linkDone' ? (
+        <div className="pt-4 text-center">
+          <SuccessMark />
+          <p className="mt-5 text-[22px] font-semibold tracking-[-0.02em]">
+            {formatUnits(linkAmount, TOKENS[token].decimals, 6)} {token} is waiting
+          </p>
+          <p className="mx-auto mt-2 max-w-[310px] text-[14px] leading-relaxed text-ink-muted">
+            Send this link however you like. Whoever holds it claims the money privately — no
+            wallet needed until the moment they do.
+          </p>
+
+          <button
+            onClick={copyLink}
+            className="mt-6 w-full break-all rounded-2xl border border-rule bg-card-soft px-4 py-3.5 text-left font-mono text-[11.5px] leading-relaxed text-ink-soft transition-colors hover:border-rule-strong"
+          >
+            {linkUrl}
+          </button>
+
+          {lastTx ? (
+            <p className="mt-3">
+              <TxLink hash={lastTx.hash} />
+            </p>
+          ) : null}
+
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <button onClick={copyLink} className="btn btn-quiet">
+              {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+              {linkCopied ? 'Copied' : 'Copy link'}
+            </button>
+            <button
+              onClick={async () => {
+                if (typeof navigator.share === 'function') {
+                  try {
+                    await navigator.share({ url: linkUrl, text: 'I sent you money on Lumen' })
+                    return
+                  } catch {
+                    // Fall through to copy.
+                  }
+                }
+                await copyLink()
+              }}
+              className="btn btn-ink"
+            >
+              <Share size={16} />
+              Share
+            </button>
+          </div>
+
+          <p className="mx-auto mt-4 max-w-[310px] text-[12px] leading-relaxed text-ink-faint">
+            The secret travels only inside this link — no server ever sees it. Your reclaim key is
+            saved on this device under Links.
+          </p>
+
+          <button onClick={onClose} className="btn btn-quiet mt-4 w-full">
+            Done
+          </button>
         </div>
       ) : null}
 

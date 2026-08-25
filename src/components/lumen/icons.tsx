@@ -188,6 +188,16 @@ export function Dots(props: IconProps) {
   )
 }
 
+export function LinkIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M10 6.5 12.2 4.3a4.2 4.2 0 0 1 6 5.9l-2.3 2.3" />
+      <path d="m14 17.5-2.2 2.2a4.2 4.2 0 0 1-6-5.9l2.3-2.3" />
+      <path d="m9.2 14.8 5.6-5.6" />
+    </svg>
+  )
+}
+
 export function Receipt(props: IconProps) {
   return (
     <svg {...base(props)}>

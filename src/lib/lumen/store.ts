@@ -24,14 +24,26 @@ import {
   type ShieldedBalance,
 } from '@/lib/strk20/wallet'
 import {
+  assertNeverUnshields,
   buildExplicitUnshield,
   buildPrivateTransfer,
   buildShield,
   explainWalletError,
 } from '@/lib/strk20/actions'
+import {
+  buildEscrowClaim,
+  buildEscrowFund,
+  buildEscrowRefund,
+  encodeClaimLink,
+  ESCROW_ADDRESS,
+  generateSecret,
+  readEscrowEntry,
+  type ClaimLinkPayload,
+} from '@/lib/strk20/escrow'
+import { addLink, loadLinks, updateLinkStatus, type SentLink } from './links'
 import { readPoolFee } from '@/lib/strk20/pool'
 import { fetchSpotPricesUsd } from '@/lib/strk20/swap'
-import { FALLBACK_POOL_FEE_STRK, TOKENS, type TokenSymbol } from '@/lib/strk20/config'
+import { FALLBACK_POOL_FEE_STRK, TOKENS, tokenByAddress, type TokenSymbol } from '@/lib/strk20/config'
 import { appendLedger, loadLedger, type LedgerEntry } from '@/lib/history'
 import { loadPeople, addPerson, pickEmoji, removePerson, type Person } from './people'
 import {
@@ -48,7 +60,7 @@ export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'er
 
 export interface LastTx {
   hash: string
-  kind: 'pay' | 'add' | 'out'
+  kind: 'pay' | 'add' | 'out' | 'link' | 'claim'
   status: 'submitted' | 'confirmed' | 'unknown'
 }
 
@@ -78,6 +90,7 @@ interface LumenState {
   people: Person[]
   spaces: Space[]
   receipts: Receipt[]
+  links: SentLink[]
 
   lastTx: LastTx | null
   submitting: boolean
@@ -102,6 +115,23 @@ interface LumenState {
   }) => Promise<Receipt>
   addMoney: (input: { token: TokenSymbol; amount: bigint }) => Promise<string>
   cashOut: (input: { token: TokenSymbol; amount: bigint; recipient: string }) => Promise<string>
+
+  /** Fund a claim link; returns the record plus the shareable URL. */
+  sendClaimLink: (input: {
+    token: TokenSymbol
+    amount: bigint
+    /** Seconds until the refund path opens. */
+    refundAfterS: number
+    note?: string
+    fromName?: string
+  }) => Promise<{ link: SentLink; url: string }>
+  /** Claim a link into this account's private balance. */
+  claimFromLink: (payload: ClaimLinkPayload) => Promise<string>
+  /** Reclaim an expired, unclaimed link back into this private balance. */
+  refundLink: (id: string) => Promise<string>
+  /** Re-check every open link against the escrow; the chain is the truth. */
+  syncLinks: () => Promise<void>
+
   clearError: () => void
 
   /** True when the session is the sample-data walkthrough, not a wallet. */
@@ -177,6 +207,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   people: [],
   spaces: [],
   receipts: [],
+  links: [],
 
   lastTx: null,
   submitting: false,
@@ -196,6 +227,7 @@ export const useLumen = create<LumenState>((set, get) => ({
         people: loadPeople(address),
         spaces: loadSpaces(address),
         receipts: loadReceipts(address),
+        links: loadLinks(address),
       })
       void get().loadMarket()
     } catch (error) {
@@ -222,6 +254,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       people: [],
       spaces: [],
       receipts: [],
+      links: [],
       lastTx: null,
       error: null,
     })
@@ -463,6 +496,155 @@ export const useLumen = create<LumenState>((set, get) => ({
     }
   },
 
+  async sendClaimLink(input) {
+    const { account, address } = requireAccount(get, set)
+    set({ submitting: true, error: null })
+    try {
+      const claimSecret = generateSecret()
+      const refundSecret = generateSecret()
+      const expiry = Math.floor(Date.now() / 1000) + Math.max(3600, input.refundAfterS)
+
+      const actions = buildEscrowFund({
+        token: TOKENS[input.token].address,
+        amount: input.amount,
+        claimSecret,
+        refundSecret,
+        expiry,
+      })
+      // The fund leg withdraws to the escrow helper — the one shape of
+      // withdraw the app is allowed to produce. Enforced, not assumed.
+      assertNeverUnshields(actions, { contracts: [ESCROW_ADDRESS] })
+
+      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+
+      const link = addLink(address, {
+        claimSecret,
+        refundSecret,
+        token: input.token,
+        amountRaw: input.amount.toString(),
+        expiry,
+        createdAt: Date.now(),
+        txHash: transaction_hash,
+        ...(input.note ? { note: input.note } : {}),
+      })
+      const url = encodeClaimLink(window.location.origin, {
+        v: 1,
+        s: claimSecret,
+        t: TOKENS[input.token].address,
+        a: input.amount.toString(),
+        ...(input.fromName ? { f: input.fromName } : {}),
+        ...(input.note ? { n: input.note } : {}),
+      })
+
+      const ledger = appendLedger(address, {
+        timestamp: Date.now(),
+        type: 'LINK',
+        asset: input.token,
+        amount: input.amount,
+        route: 'DIRECT',
+        txHash: transaction_hash,
+        observer: 'escrow · public amount',
+      })
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'link', status: 'submitted' }
+      set({ submitting: false, ledger, links: loadLinks(address), lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return { link, url }
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  async claimFromLink(payload) {
+    const { account, address } = requireAccount(get, set)
+    set({ submitting: true, error: null })
+    try {
+      const actions = buildEscrowClaim({
+        token: payload.t,
+        recipient: address,
+        secret: payload.s,
+      })
+      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+
+      const token = tokenByAddress(payload.t)
+      const ledger = token
+        ? appendLedger(address, {
+            timestamp: Date.now(),
+            type: 'CLAIM',
+            asset: token.symbol,
+            amount: BigInt(payload.a),
+            route: 'DIRECT',
+            txHash: transaction_hash,
+            observer: 'claim · public amount',
+          })
+        : get().ledger
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
+      set({ submitting: false, ledger, lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return transaction_hash
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  async refundLink(id) {
+    const { account, address } = requireAccount(get, set)
+    const link = get().links.find((l) => l.id === id)
+    if (!link) throw new Error('That link is not in this device’s records.')
+    set({ submitting: true, error: null })
+    try {
+      const actions = buildEscrowRefund({
+        token: TOKENS[link.token].address,
+        recipient: address,
+        secret: link.refundSecret,
+      })
+      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+
+      const ledger = appendLedger(address, {
+        timestamp: Date.now(),
+        type: 'CLAIM',
+        asset: link.token,
+        amount: BigInt(link.amountRaw),
+        route: 'DIRECT',
+        txHash: transaction_hash,
+        observer: 'reclaim · public amount',
+      })
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
+      set({
+        submitting: false,
+        ledger,
+        links: updateLinkStatus(address, id, 'refunded'),
+        lastTx,
+      })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return transaction_hash
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  async syncLinks() {
+    const { address, links, preview } = get()
+    if (!address || preview) return
+    for (const link of links) {
+      if (link.status !== 'open') continue
+      const entry = await readEscrowEntry(link.claimSecret)
+      if (entry?.claimed) updateLinkStatus(address, link.id, 'claimed')
+    }
+    set({ links: loadLinks(address) })
+  },
+
   clearError() {
     set({ error: null })
   },
@@ -511,7 +693,30 @@ export const useLumen = create<LumenState>((set, get) => ({
           createdAt: now - 21 * 24 * HOUR,
         },
       ],
+      links: [
+        {
+          id: 'link-1',
+          claimSecret: '0x1234',
+          refundSecret: '0x5678',
+          token: 'USDC' as const,
+          amountRaw: '52880000',
+          expiry: Math.floor(now / 1000) + 5 * 24 * 3600,
+          note: 'Coffee money ☕️',
+          createdAt: now - 5 * HOUR,
+          status: 'open' as const,
+        },
+      ],
       ledger: [
+        {
+          id: 'l-0',
+          timestamp: now - 5 * HOUR,
+          type: 'LINK' as const,
+          asset: 'USDC' as const,
+          amount: 52_880_000n,
+          route: 'DIRECT' as const,
+          txHash: '0x07f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1',
+          observer: 'escrow · public amount',
+        },
         {
           id: 'l-1',
           timestamp: now - 2 * HOUR,
@@ -581,6 +786,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       people: demo.people,
       spaces: demo.spaces,
       receipts: demo.receipts,
+      links: demo.links,
       prices: { USDC: 1, STRK: 0.41, ETH: 4120, WBTC: 108_500, strkBTC: 108_500 },
       error: null,
     })

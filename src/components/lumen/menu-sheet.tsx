@@ -13,16 +13,18 @@ import { shortAddress } from '@/lib/lumen/people'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { explorerContract, POOL_ADDRESS } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
-import { Check, ChevronRight, Copy, Globe, Lock, ShieldCheck } from './icons'
+import { Check, ChevronRight, Copy, Globe, LinkIcon, Lock, ShieldCheck } from './icons'
 
 export function MenuSheet({
   open,
   onClose,
   onCashOut,
+  onLinks,
 }: {
   open: boolean
   onClose: () => void
   onCashOut: () => void
+  onLinks: () => void
 }) {
   const { address, walletName, poolFee, poolFeeLive, disconnect } = useLumen()
   const [copied, setCopied] = useState(false)
@@ -79,6 +81,25 @@ export function MenuSheet({
           </span>
           <ChevronRight size={15} className="text-ink-faint" />
         </a>
+
+        <button
+          onClick={() => {
+            onClose()
+            onLinks()
+          }}
+          className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-card-soft"
+        >
+          <span className="grid size-9 flex-none place-items-center rounded-full bg-sunk text-ink-soft">
+            <LinkIcon size={16} />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[14.5px] font-semibold">Links you sent</span>
+            <span className="block text-[12px] text-ink-muted">
+              Copy again, check statuses, reclaim expired ones
+            </span>
+          </span>
+          <ChevronRight size={15} className="text-ink-faint" />
+        </button>
 
         <button
           onClick={() => {

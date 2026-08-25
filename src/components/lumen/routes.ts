@@ -12,3 +12,4 @@ export type SheetRoute =
   | { kind: 'new-space' }
   | { kind: 'space'; id: string }
   | { kind: 'receipt'; receipt: Receipt }
+  | { kind: 'links' }

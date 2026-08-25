@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# LumenSplitter — mainnet declare + deploy walkthrough.
+# Lumen anonymizers (LumenSplitter + LumenEscrow) — mainnet declare + deploy walkthrough.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # THIS SCRIPT DOES NOT DEPLOY ANYTHING. It prints the exact commands and exits.
@@ -45,12 +45,13 @@ FEE_RECIPIENT="${FEE_RECIPIENT:-0x0}"
 MAX_FEE_BPS="${MAX_FEE_BPS:-0}"
 
 SIERRA="target/dev/lumen_splitter_LumenSplitter.contract_class.json"
+ESCROW_SIERRA="target/dev/lumen_splitter_LumenEscrow.contract_class.json"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*"; }
 
 echo
-bold "LumenSplitter — mainnet deployment walkthrough (nothing is executed)"
+bold "Lumen anonymizers — mainnet deployment walkthrough (nothing is executed)"
 echo
 
 # ─── 1. Preconditions ────────────────────────────────────────────────────────
@@ -170,6 +171,45 @@ misconfigured: do not route value through it, deploy a corrected one.
 
 Then wire the deployed address into the dapp's helper allowlist and dry-run the
 action list with strk20PrepareInvoke(actions, true) before any real transaction.
+EOF
+
+# ─── 6. LumenEscrow — the claim-link helper ──────────────────────────────────
+
+echo
+bold "LumenEscrow — same dance, one constructor argument  ⚠ COSTS GAS"
+cat <<EOF
+
+The escrow backs claim links: value parks behind a poseidon commitment until
+the recipient (claim secret) or, after expiry, the sender (refund secret)
+pulls it into an open note. Stateful, therefore strictly pool-gated.
+
+  starkli class-hash ${ESCROW_SIERRA}
+
+  starkli declare ${RPC_FLAG} \\
+    --account ${ACCOUNT_PATH} \\
+    --keystore ${KEYSTORE_PATH} \\
+    ${ESCROW_SIERRA}
+
+Constructor argument: the pool, and nothing else.
+
+  starkli deploy ${RPC_FLAG} \\
+    --account ${ACCOUNT_PATH} \\
+    --keystore ${KEYSTORE_PATH} \\
+    <ESCROW_CLASS_HASH> \\
+    ${POOL_ADDRESS}
+
+Confirm (free, read-only) — a fresh instance owes nothing and knows nothing:
+
+  starkli call ${RPC_FLAG} <ESCROW_ADDRESS> get_outstanding 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d
+  starkli call ${RPC_FLAG} <ESCROW_ADDRESS> get_entry 0x1
+
+Both must return zeros. Then wire the address into the dapp:
+
+  # .env.local and the Vercel project env
+  NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS=<ESCROW_ADDRESS>
+
+Claim links stay hidden in the UI until that variable is set, so deploying and
+wiring are one decision.
 EOF
 
 echo
