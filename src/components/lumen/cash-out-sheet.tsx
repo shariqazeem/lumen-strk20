@@ -67,7 +67,7 @@ export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => 
     >
       {step === 'warn' ? (
         <div>
-          <div className="mx-auto grid size-14 place-items-center rounded-full bg-warn-soft text-warn">
+          <div className="mx-auto grid size-14 place-items-center rounded-full bg-ink text-white">
             <Globe size={26} />
           </div>
           <h3 className="mt-5 text-center text-[20px] font-semibold tracking-[-0.02em]">

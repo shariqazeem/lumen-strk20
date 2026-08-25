@@ -87,7 +87,7 @@ export function MenuSheet({
           }}
           className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-card-soft"
         >
-          <span className="grid size-9 flex-none place-items-center rounded-full bg-warn-soft text-warn">
+          <span className="grid size-9 flex-none place-items-center rounded-full bg-ink text-white">
             <Globe size={16} />
           </span>
           <span className="flex-1">
