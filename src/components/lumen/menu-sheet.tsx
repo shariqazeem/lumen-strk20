@@ -13,18 +13,20 @@ import { shortAddress } from '@/lib/lumen/people'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { explorerContract, POOL_ADDRESS } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
-import { Check, ChevronRight, Copy, Globe, LinkIcon, Lock, ShieldCheck } from './icons'
+import { Check, ChevronRight, Copy, Globe, LinkIcon, Lock, Receipt, ShieldCheck } from './icons'
 
 export function MenuSheet({
   open,
   onClose,
   onCashOut,
   onLinks,
+  onMyPage,
 }: {
   open: boolean
   onClose: () => void
   onCashOut: () => void
   onLinks: () => void
+  onMyPage: () => void
 }) {
   const { address, walletName, poolFee, poolFeeLive, disconnect } = useLumen()
   const [copied, setCopied] = useState(false)
@@ -81,6 +83,25 @@ export function MenuSheet({
           </span>
           <ChevronRight size={15} className="text-ink-faint" />
         </a>
+
+        <button
+          onClick={() => {
+            onClose()
+            onMyPage()
+          }}
+          className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-card-soft"
+        >
+          <span className="grid size-9 flex-none place-items-center rounded-full bg-sunk text-ink-soft">
+            <Receipt size={16} />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[14.5px] font-semibold">Get paid — your page</span>
+            <span className="block text-[12px] text-ink-muted">
+              One link for bios and invoices; payments arrive privately
+            </span>
+          </span>
+          <ChevronRight size={15} className="text-ink-faint" />
+        </button>
 
         <button
           onClick={() => {

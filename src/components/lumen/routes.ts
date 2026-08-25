@@ -13,3 +13,4 @@ export type SheetRoute =
   | { kind: 'space'; id: string }
   | { kind: 'receipt'; receipt: Receipt }
   | { kind: 'links' }
+  | { kind: 'my-page' }

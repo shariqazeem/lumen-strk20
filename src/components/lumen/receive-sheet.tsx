@@ -55,7 +55,15 @@ function QrDots({ value }: { value: string }) {
   )
 }
 
-export function ReceiveSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ReceiveSheet({
+  open,
+  onClose,
+  onMyPage,
+}: {
+  open: boolean
+  onClose: () => void
+  onMyPage: () => void
+}) {
   const { address, walletName } = useLumen()
   const [copied, setCopied] = useState(false)
 
@@ -87,6 +95,16 @@ export function ReceiveSheet({ open, onClose }: { open: boolean; onClose: () => 
           <button onClick={copy} className="btn btn-ink mt-5 w-full">
             {copied ? <Check size={17} /> : <Copy size={17} />}
             {copied ? 'Copied' : 'Copy address'}
+          </button>
+
+          <button
+            onClick={() => {
+              onClose()
+              onMyPage()
+            }}
+            className="btn btn-quiet mt-2.5 w-full"
+          >
+            Share a page instead — name, presets, one link
           </button>
 
           <div className="mt-6 space-y-2 rounded-2xl bg-card-soft px-4 py-4 text-left text-[13px] leading-relaxed text-ink-muted">

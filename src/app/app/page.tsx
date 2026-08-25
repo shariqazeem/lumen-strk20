@@ -24,6 +24,7 @@ import { PersonSheet } from '@/components/lumen/person-sheet'
 import { MenuSheet } from '@/components/lumen/menu-sheet'
 import { NewSpaceSheet, SpaceSheet } from '@/components/lumen/space-sheets'
 import { LinksSheet } from '@/components/lumen/links-sheet'
+import { MyPageSheet } from '@/components/lumen/my-page-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
@@ -71,7 +72,12 @@ export default function AppPage() {
         onReceipt={(created) => open({ kind: 'receipt', receipt: created })}
         onNewPerson={() => open({ kind: 'new-person' })}
       />
-      <ReceiveSheet open={route?.kind === 'receive'} onClose={close} />
+      <ReceiveSheet
+        open={route?.kind === 'receive'}
+        onClose={close}
+        onMyPage={() => open({ kind: 'my-page' })}
+      />
+      <MyPageSheet open={route?.kind === 'my-page'} onClose={close} />
       <AddMoneySheet open={route?.kind === 'add'} onClose={close} />
       <CashOutSheet open={route?.kind === 'out'} onClose={close} />
       <ReceiptSheet open={route?.kind === 'receipt'} onClose={close} receipt={receipt} />
@@ -84,6 +90,7 @@ export default function AppPage() {
         onClose={close}
         onCashOut={() => open({ kind: 'out' })}
         onLinks={() => open({ kind: 'links' })}
+        onMyPage={() => open({ kind: 'my-page' })}
       />
     </>
   )
