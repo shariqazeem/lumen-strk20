@@ -100,7 +100,7 @@ Same engine, same pool data. Only the behaviour differs.
 
 ---
 
-> The full reasoning — what a pool hides, what stays public, each heuristic and
+> The idea in full: [docs/IDEA.md](docs/IDEA.md). The technical reasoning — what a pool hides, what stays public, each heuristic and
 > its remedy, and an explicit list of what Aether does **not** claim — is in
 > [docs/ATTACK-MODEL.md](docs/ATTACK-MODEL.md).
 
