@@ -298,6 +298,33 @@ function ExposureFeed() {
 /* feature artifacts                                                   */
 /* ------------------------------------------------------------------ */
 
+function ClaimArtifact() {
+  return (
+    <div className="card px-6 py-6">
+      <div className="mx-auto w-fit rounded-2xl border border-rule bg-card-soft px-3 py-2 font-mono text-[10px] text-ink-muted">
+        lumen…/claim<span className="text-ink-faint">#s3cr3t-only-in-the-link</span>
+      </div>
+      <div className="mx-auto mt-3 h-5 w-px bg-rule-strong" />
+      <div className="card mx-auto mt-3 w-[230px] overflow-hidden">
+        <div className="h-1 bg-ink" />
+        <div className="px-4 py-4 text-center">
+          <p className="text-[9.5px] font-semibold text-ink-muted">Shariq sent you</p>
+          <p className="tabular mt-1 text-[22px] font-semibold tracking-[-0.02em]">52.88 USDC</p>
+          <p className="mt-1 text-[9px] text-ink-muted">&ldquo;Coffee money ☕️&rdquo;</p>
+          <span className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-sunk px-2 py-0.5 text-[8.5px] font-semibold">
+            <ShieldCheck size={9} />
+            Claims privately — no trace of you
+          </span>
+          <span className="btn btn-ink mt-3 !h-9 w-full !text-[11px]">Claim privately</span>
+        </div>
+      </div>
+      <p className="mt-4 text-center text-[11px] text-ink-faint">
+        No wallet? The page walks them through two minutes of setup — then the money is theirs.
+      </p>
+    </div>
+  )
+}
+
 function BoundaryArtifact() {
   return (
     <div className="card px-6 py-6">
@@ -418,7 +445,8 @@ export default function Landing() {
             </h1>
             <p className="rise rise-2 mt-7 max-w-[44ch] text-[17px] leading-relaxed text-ink-muted">
               Every payment on a public chain becomes a permanent record anyone can read. Lumen is
-              money that doesn&rsquo;t do that — pay, receive and save with privacy as the default,
+              money that doesn&rsquo;t do that — pay anyone with a link, even someone with no
+              wallet; get paid through your page; save and convert — with privacy as the default,
               not a feature.
             </p>
             <div className="rise rise-3 mt-9 flex flex-wrap items-center gap-3">
@@ -545,7 +573,7 @@ export default function Landing() {
         <section className="border-t border-rule py-28">
           <Reveal>
             <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
-              Three things no wallet does.
+              What no wallet does.
             </h2>
           </Reveal>
 
@@ -553,6 +581,23 @@ export default function Landing() {
             <Reveal className="grid items-center gap-10 lg:grid-cols-2">
               <div>
                 <p className="font-mono text-[12px] text-ink-faint">01</p>
+                <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
+                  Pay anyone on Earth. Wallet optional.
+                </h3>
+                <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
+                  A claim link parks money behind a secret that travels only inside the link —
+                  no server ever sees it. Whoever you send it to claims privately whenever they
+                  arrive, with a brand-new wallet if they like, and lands already private.
+                  Unclaimed after a week? Take it back. The one wall every crypto payment hits —
+                  &ldquo;first, install all of this&rdquo; — is gone.
+                </p>
+              </div>
+              <ClaimArtifact />
+            </Reveal>
+
+            <Reveal className="grid items-center gap-10 lg:grid-cols-2">
+              <div className="lg:order-2">
+                <p className="font-mono text-[12px] text-ink-faint">02</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
                   Every relationship gets its own boundary.
                 </h3>
@@ -567,8 +612,8 @@ export default function Landing() {
             </Reveal>
 
             <Reveal className="grid items-center gap-10 lg:grid-cols-2">
-              <div className="lg:order-2">
-                <p className="font-mono text-[12px] text-ink-faint">02</p>
+              <div>
+                <p className="font-mono text-[12px] text-ink-faint">03</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
                   Prove a payment. Publish nothing.
                 </h3>
@@ -579,14 +624,14 @@ export default function Landing() {
                   Private money you can still do business with.
                 </p>
               </div>
-              <div className="mx-auto lg:order-1">
+              <div className="mx-auto">
                 <FloatingReceipt />
               </div>
             </Reveal>
 
             <Reveal className="grid items-center gap-10 lg:grid-cols-2">
-              <div>
-                <p className="font-mono text-[12px] text-ink-faint">03</p>
+              <div className="lg:order-2">
+                <p className="font-mono text-[12px] text-ink-faint">04</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
                   A silent engine watches the leaks.
                 </h3>

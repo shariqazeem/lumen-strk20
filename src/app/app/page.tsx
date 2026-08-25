@@ -25,6 +25,7 @@ import { MenuSheet } from '@/components/lumen/menu-sheet'
 import { NewSpaceSheet, SpaceSheet } from '@/components/lumen/space-sheets'
 import { LinksSheet } from '@/components/lumen/links-sheet'
 import { MyPageSheet } from '@/components/lumen/my-page-sheet'
+import { ConvertSheet } from '@/components/lumen/convert-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
@@ -78,6 +79,7 @@ export default function AppPage() {
         onMyPage={() => open({ kind: 'my-page' })}
       />
       <MyPageSheet open={route?.kind === 'my-page'} onClose={close} />
+      <ConvertSheet open={route?.kind === 'convert'} onClose={close} />
       <AddMoneySheet open={route?.kind === 'add'} onClose={close} />
       <CashOutSheet open={route?.kind === 'out'} onClose={close} />
       <ReceiptSheet open={route?.kind === 'receipt'} onClose={close} receipt={receipt} />
@@ -91,6 +93,7 @@ export default function AppPage() {
         onCashOut={() => open({ kind: 'out' })}
         onLinks={() => open({ kind: 'links' })}
         onMyPage={() => open({ kind: 'my-page' })}
+        onConvert={() => open({ kind: 'convert' })}
       />
     </>
   )

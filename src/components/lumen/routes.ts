@@ -14,3 +14,4 @@ export type SheetRoute =
   | { kind: 'receipt'; receipt: Receipt }
   | { kind: 'links' }
   | { kind: 'my-page' }
+  | { kind: 'convert' }

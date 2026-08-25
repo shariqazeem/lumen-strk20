@@ -310,13 +310,23 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
 
                   <div className="mt-4 flex items-center justify-between">
                     <p className="text-[12px] text-glass-faint">Only you can see this.</p>
-                    <button
-                      onClick={() => revealBalances()}
-                      disabled={balancesLoading}
-                      className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline disabled:opacity-50"
-                    >
-                      {balancesLoading ? 'Refreshing…' : 'Refresh'}
-                    </button>
+                    <span className="flex items-center gap-3">
+                      {nonZero.length > 0 ? (
+                        <button
+                          onClick={() => open({ kind: 'convert' })}
+                          className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline"
+                        >
+                          Convert
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => revealBalances()}
+                        disabled={balancesLoading}
+                        className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline disabled:opacity-50"
+                      >
+                        {balancesLoading ? 'Refreshing…' : 'Refresh'}
+                      </button>
+                    </span>
                   </div>
                 </div>
               ) : (

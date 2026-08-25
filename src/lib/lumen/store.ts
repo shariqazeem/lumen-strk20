@@ -42,7 +42,7 @@ import {
 } from '@/lib/strk20/escrow'
 import { addLink, loadLinks, updateLinkStatus, type SentLink } from './links'
 import { readPoolFee } from '@/lib/strk20/pool'
-import { fetchSpotPricesUsd } from '@/lib/strk20/swap'
+import { executeAvnuPrivateSwap, fetchSpotPricesUsd, type Quote } from '@/lib/strk20/swap'
 import { FALLBACK_POOL_FEE_STRK, TOKENS, tokenByAddress, type TokenSymbol } from '@/lib/strk20/config'
 import { appendLedger, loadLedger, type LedgerEntry } from '@/lib/history'
 import { loadPeople, addPerson, pickEmoji, removePerson, type Person } from './people'
@@ -60,7 +60,7 @@ export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'er
 
 export interface LastTx {
   hash: string
-  kind: 'pay' | 'add' | 'out' | 'link' | 'claim'
+  kind: 'pay' | 'add' | 'out' | 'link' | 'claim' | 'convert'
   status: 'submitted' | 'confirmed' | 'unknown'
 }
 
@@ -131,6 +131,13 @@ interface LumenState {
   refundLink: (id: string) => Promise<string>
   /** Re-check every open link against the escrow; the chain is the truth. */
   syncLinks: () => Promise<void>
+
+  /**
+   * Execute a quoted AVNU private swap: value converts inside the pool and
+   * lands in a fresh private note. Quoting itself is stateless and lives in
+   * the sheet; this is the signing half.
+   */
+  convert: (input: { quote: Quote; sellToken: TokenSymbol; sellAmount: bigint }) => Promise<string>
 
   clearError: () => void
 
@@ -628,6 +635,37 @@ export const useLumen = create<LumenState>((set, get) => ({
         set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
       )
       return transaction_hash
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  async convert(input) {
+    const { account, address } = requireAccount(get, set)
+    set({ submitting: true, error: null })
+    try {
+      const { transactionHash } = await executeAvnuPrivateSwap({
+        account,
+        quote: input.quote,
+      })
+
+      const ledger = appendLedger(address, {
+        timestamp: Date.now(),
+        type: 'SWAP',
+        asset: input.sellToken,
+        amount: input.sellAmount,
+        route: 'AVNU',
+        txHash: transactionHash,
+        observer: 'executor → AMM',
+      })
+
+      const lastTx: LastTx = { hash: transactionHash, kind: 'convert', status: 'submitted' }
+      set({ submitting: false, ledger, lastTx })
+      void watchTx(transactionHash, (status) =>
+        set((s) => (s.lastTx?.hash === transactionHash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return transactionHash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
       throw error

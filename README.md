@@ -2,11 +2,14 @@
 
 **Private money, by default.**
 
-Lumen is a consumer money app for Starknet. Pay people, get paid, and set
-money aside — without any of it becoming a public financial profile. Balances,
-recipients, amounts and history never appear on-chain; every relationship gets
-its own privacy boundary; and a silent engine checks each move against the
-statistical attacks that actually undo private money.
+Lumen is the private money network for Starknet. Pay anyone on Earth with a
+**claim link** — they need no wallet until the moment they claim, and they
+arrive already private. Get paid through your **pay page** — one link for a
+bio or an invoice, collecting payments no observer can attribute. Convert
+between tokens without leaving the pool. Set money aside, prove single
+payments with receipts, and let a silent engine check every move against the
+statistical attacks that actually undo private money. Balances, recipients,
+amounts and history never appear on-chain.
 
 Built on the live [STRK20](https://strk20-by-example.org) privacy pool,
 Starknet **mainnet**. Non-custodial: the user's privacy-enabled wallet holds
@@ -33,8 +36,15 @@ plenty of transactions collapse to a handful of candidates. The leaks are not
 in the cryptography. They are in behaviour — and behaviour is the app layer's
 job.
 
-Lumen's answer is to make the private path the only easy path, and to make
-good behaviour automatic:
+Lumen's answer is to make the private path the only easy path, to make good
+behaviour automatic — and to make the network recruit itself:
+
+0. **Links are the product.** A claim link carries a secret in its URL
+   fragment (fragments never reach a server); the `LumenEscrow` anonymizer
+   holds the value until the recipient's brand-new wallet claims it into an
+   open note. A pay page travels the same way — the page *is* the link, no
+   backend anywhere. Every link recruits its recipient; every page recruits
+   its payers.
 
 1. **Relationship boundaries.** Each person you pay sees only what you send
    them. Nothing connects one relationship to another — and the app enforces
@@ -57,8 +67,19 @@ good behaviour automatic:
 
 ## What the user sees
 
-- **Home** — one dark-glass card holding the private balance (revealed only
-  through an explicit wallet consent), three verbs: **Pay · Receive · Add**.
+- **Home** — one black-glass card holding the private balance (revealed only
+  through an explicit wallet consent), three verbs: **Pay · Receive · Add**,
+  and the signature switch: **"Your view / What the world sees"** — one tap
+  redacts the app to exactly what a chain observer can ever know.
+- **Pay with a link** — for someone with no wallet: the guard tunes the
+  public escrow amount, the link carries the claim secret, `/claim` walks the
+  recipient from "what is this" to a private balance. Unclaimed after the
+  window? Take it back.
+- **Get paid** — a standing pay page (`/pay/you`, presets priced live) or a
+  one-off request that locks an exact amount. Payments to either are private
+  transfers.
+- **Convert** — AVNU private swaps: value changes token inside the pool;
+  observers see an executor talk to an AMM, never you.
 - **Spaces** — Rent, Travel, Rainy day: a private partition of the one
   shielded balance, kept on-device. Moving between spaces is instant and free
   because nothing touches the chain — a boundary the chain could see would
@@ -130,10 +151,20 @@ Everything chain-touching goes through the user's wallet via the Wallet API
   to anything but a same-transaction helper is refused mechanically. The only
   code path that can produce a public withdrawal is the explicit cash-out
   flow.
-- AVNU private-swap rails (`src/lib/strk20/swap.ts`) and the
-  `LumenSplitter` Cairo helper (`contracts/`, `privacy_invoke` splitting one
-  withdrawal into up to 16 open notes atomically) are wired for the next
-  step: in-pool conversion and one-transaction note compaction.
+- **`LumenEscrow`** (`contracts/src/escrow.cairo`) — the claim-link
+  anonymizer: `privacy_invoke` with Deposit / Claim / Refund, dual
+  domain-separated poseidon commitments (a refund secret is unusable on the
+  claim path), expiry-gated refunds, per-token solvency accounting (an
+  unbacked entry cannot exist), events. The commitment math is pinned by the
+  *same* test vector in both the snforge suite and vitest — client and
+  contract can never drift on the hash that carries the money.
+- **`LumenSplitter`** (`contracts/src/splitter.cairo`) — `privacy_invoke`
+  splitting one withdrawal into up to 16 non-round open notes atomically.
+- **AVNU private swaps** live in the product (Convert): the wallet proves,
+  AVNU's relayer submits, the output lands in a fresh note.
+- Claim links stay hidden in the UI until `NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS`
+  points at a deployed instance — `contracts/deploy.sh` prints the exact
+  declare/deploy walkthrough for both helpers.
 
 ## Run it
 
@@ -148,7 +179,8 @@ Open `http://localhost:3000`. The app needs a privacy-enabled Starknet wallet
 full product with labeled sample data and no wallet.
 
 ```bash
-npm run typecheck && npm run lint && npm test   # 158 tests, engine + rails
+npm run typecheck && npm run lint && npm test   # 172 tests: engine, rails, codecs
+(cd contracts && scarb test)               # 50 tests: both anonymizers
 npm run build
 ```
 
@@ -156,13 +188,17 @@ npm run build
 
 ```
 src/
-  app/                  landing (/) and the money app (/app)
-  components/lumen/     the product surface — home, sheets, guard panel, receipt
-  lib/lumen/            store, guard, people, spaces, receipts
-  lib/strk20/           wallet, action builders, pool reads, AVNU swaps
+  app/                  landing (/), the app (/app), claim pages (/claim),
+                        pay pages (/pay/[name])
+  components/lumen/     the product surface — home, sheets, guard panel,
+                        receipt, links, pay page owner sheet, convert
+  lib/lumen/            store, guard, people, spaces, receipts, links, paypage
+  lib/strk20/           wallet, action builders, escrow rails, pool reads,
+                        AVNU swaps
   lib/engine/           seeded splitter, timing scheduler, privacy scoring
   lib/deanon/           the attack heuristics the guard runs in reverse
-contracts/              LumenSplitter (Cairo) — multi-note splits via privacy_invoke
+contracts/              LumenEscrow + LumenSplitter (Cairo anonymizers),
+                        50-test snforge suite, deploy walkthrough
 docs/                   the pivot brief and attack model
 ```
 

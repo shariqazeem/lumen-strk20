@@ -16,6 +16,16 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://lumen-strk20.vercel.app'),
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icon-192.png', sizes: '192x192' }],
+    apple: '/icon-180.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Lumen',
+  },
   title: {
     default: 'Lumen — private money, by default',
     template: '%s · Lumen',
