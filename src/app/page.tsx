@@ -1,585 +1,455 @@
 'use client'
 
-import { useState } from 'react'
+/**
+ * The Lumen landing — one promise told calmly.
+ *
+ * The page sells the product by *being* the product: the hero phone is the
+ * real home surface (same design system, demo data), the receipt is the real
+ * receipt card, the guard pill is the real guard pill. No screenshots.
+ */
+
 import Link from 'next/link'
-import { CalloutScene, OpeningScene } from '@/components/landing/scenes'
-import { AttackerView } from '@/components/landing/attacker-view'
+import { useReveal } from '@/lib/hooks/use-motion'
 import {
-  AetherMark,
-  Button,
-  Container,
-  Hex,
-  Reveal,
-  SectionIndex,
-  Segmented,
-  StateBadge,
-} from '@/components/ui/primitives'
-import { POOL_ADDRESS, explorerContract } from '@/lib/strk20/config'
+  ArrowDown,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Globe,
+  LumenMark,
+  People,
+  Plus,
+  Receipt,
+  ShieldCheck,
+  Sparkle,
+} from '@/components/lumen/icons'
+import type { ReactNode } from 'react'
 
-export default function LandingPage() {
+function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const { ref, shown } = useReveal<HTMLDivElement>({ threshold: 0.18 })
   return (
-    <div className="relative">
-      <SiteNav />
-      <OpeningScene />
-      <CalloutScene />
-      <ProtocolTicker />
-      <Statement />
-      <EngineSection />
-      <AttackerView />
-      <ProcessSection />
-      <DisclosureSection />
-      <ClosingCta />
-      <SiteFooter />
+    <div ref={ref} className={`reveal ${shown ? 'shown' : ''} ${className}`}>
+      {children}
     </div>
   )
 }
 
 /* ------------------------------------------------------------------ */
-/*  Nav                                                                */
+/* hero phone — the real home surface with demo data                   */
 /* ------------------------------------------------------------------ */
 
-function SiteNav() {
+function PhoneMock() {
   return (
-    <header className="glass sticky top-0 z-50 border-b border-rule">
-      <Container>
-        <nav className="flex h-13 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <AetherMark size={24} />
-            <span className="text-[15px] font-semibold tracking-tight">Aether</span>
-          </Link>
-
-          <div className="hidden items-center md:flex">
-            {[
-              ['Engine', '#engine'],
-              ['Attacker view', '#attacker'],
-              ['Process', '#process'],
-            ].map(([label, href]) => (
-              <a
-                key={href}
-                href={href}
-                className="rounded-full px-3 py-1.5 text-[13.5px] font-medium text-ink-muted transition-colors hover:text-ink"
-              >
-                {label}
-              </a>
-            ))}
+    <div className="w-[330px] rounded-[44px] border border-rule bg-canvas p-2.5 shadow-[0_40px_100px_-20px_rgba(18,18,20,0.35)]">
+      <div className="overflow-hidden rounded-[36px] bg-canvas px-4 pb-6 pt-4">
+        {/* header */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5">
+            <span className="grid size-6 place-items-center rounded-lg bg-ink text-white">
+              <LumenMark size={13} />
+            </span>
+            <span className="text-[13px] font-semibold">Lumen</span>
           </div>
+          <span className="size-6 rounded-full bg-card shadow-[0_1px_2px_rgba(18,18,20,0.08)]" />
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Button href="https://github.com/shariqazeem/aether-strk20" variant="ghost" size="sm">
-              GitHub
-            </Button>
-            <Button href="/app" size="sm">
-              Open App
-            </Button>
+        {/* glass card */}
+        <div className="glass mt-3 px-5 pb-5 pt-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10.5px] font-medium text-glass-muted">Your money</p>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-semibold text-glass-ink">
+              <ShieldCheck size={9} />
+              Private
+            </span>
           </div>
-        </nav>
-      </Container>
-    </header>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Protocol ticker                                                    */
-/* ------------------------------------------------------------------ */
-
-const TICKER_ITEMS = [
-  'pool 0x040337b1…ffe812a',
-  'fee 6 STRK · read live',
-  'notes mature ~10 blocks',
-  'relayer submits every private tx',
-  'chain SN_MAIN',
-  'starknet.js 10.4.0 · wallet api ≥ 0.10.3',
-  'anonymity is a sequence property',
-]
-
-function ProtocolTicker() {
-  const row = TICKER_ITEMS.map((item) => (
-    <span key={item} className="flex shrink-0 items-center gap-10 pr-10">
-      <span>{item}</span>
-      <span className="text-paper/25">·</span>
-    </span>
-  ))
-
-  return (
-    <div className="ticker border-y border-ink/90 bg-ink py-2.5 font-mono text-[11px] tracking-wider text-paper/60">
-      <div className="ticker-track">
-        <div className="flex shrink-0">{row}</div>
-        <div className="flex shrink-0" aria-hidden="true">
-          {row}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Statement                                                          */
-/* ------------------------------------------------------------------ */
-
-function Statement() {
-  return (
-    <section className="py-20 sm:py-28">
-      <Container>
-        <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
-          <Reveal>
-            <p className="display-lg text-balance">
-              Privacy is a sequence,
-              <br />
-              <span className="text-ink-faint">not a transaction.</span>
-            </p>
-          </Reveal>
-          <div className="space-y-4 text-[15px] leading-relaxed text-ink-muted sm:text-[15.5px]">
-            <Reveal delay={90}>
-              <p className="text-pretty">
-                Shield 1,000 USDC every Monday at 09:00 and every single transaction is
-                cryptographically private. You still have no privacy — the pattern is the
-                fingerprint: same amount, same cadence, same hour.
-              </p>
-            </Reveal>
-            <Reveal delay={160}>
-              <p className="text-pretty">
-                Most tooling treats the pool as a waiting room. Value goes in, waits, comes out —
-                and the moment it touches a public protocol, the link re-forms.{' '}
-                <span className="font-medium text-ink">
-                  Aether never leaves. It optimises the sequence itself.
-                </span>
-              </p>
-            </Reveal>
+          <p className="tabular mt-2 text-[34px] font-semibold leading-none tracking-[-0.03em]">
+            $2,841<span className="align-top text-[17px] opacity-60">.36</span>
+          </p>
+          <div className="mt-3 flex gap-1">
+            <span className="tabular rounded-full bg-white/8 px-2 py-0.5 text-[9.5px] text-glass-muted">
+              2,412.7 USDC
+            </span>
+            <span className="tabular rounded-full bg-white/8 px-2 py-0.5 text-[9.5px] text-glass-muted">
+              1,203.8 STRK
+            </span>
           </div>
+          <p className="mt-3 text-[9.5px] text-glass-faint">Only you can see this.</p>
         </div>
-      </Container>
-    </section>
-  )
-}
 
-/* ------------------------------------------------------------------ */
-/*  01 · Engine — one instrument panel, five rows                      */
-/* ------------------------------------------------------------------ */
-
-type ModeKey = 'PRIVACY_FIRST' | 'STEALTH_DCA' | 'WHALE_DISTRIBUTION' | 'YIELD_MAX' | 'BALANCED'
-
-const MODES: Record<ModeKey, { weight: number; text: string }> = {
-  PRIVACY_FIRST: {
-    weight: 0.95,
-    text: 'Highest-entropy splits, widest windows. Sits idle rather than act in a thin anonymity set.',
-  },
-  STEALTH_DCA: {
-    weight: 0.78,
-    text: 'Accumulates a target asset in small buys with no inferable schedule.',
-  },
-  WHALE_DISTRIBUTION: {
-    weight: 0.85,
-    text: 'Breaks a large position into decorrelated tranches; compacts notes before fragmentation bites.',
-  },
-  YIELD_MAX: {
-    weight: 0.3,
-    text: 'Prefers the best return — but still refuses any action below your privacy floor.',
-  },
-  BALANCED: {
-    weight: 0.55,
-    text: 'Weights privacy delta and expected return evenly. The default.',
-  },
-}
-
-function EngineSection() {
-  return (
-    <section id="engine" className="scroll-mt-14 py-20 sm:py-28">
-      <Container>
-        <SectionIndex
-          index="01"
-          label="Engine"
-          title="Deterministic. Seeded. Testable."
-          lede="No Math.random, no ambient clock — every plan is reproducible, which is what lets the hard constraints be enforced by tests instead of promised in prose."
-        />
-
-        <Reveal delay={120}>
-          <div className="panel mt-10">
-            <EngineRow
-              name="Effective privacy score"
-              tag="5 terms · public weights"
-              body="Computed client-side from live pool data and your own history. The formula ships in the README because a score you can't audit is a slogan."
-              visual={<ScoreVisual />}
-            />
-            <EngineRow
-              name="Amount splitter"
-              tag="no round numbers"
-              body="Splits sum exactly, avoid round human sizes, and never repeat an amount within 48 hours — the two easiest fingerprints to read off a chain."
-              visual={<SplitVisual />}
-            />
-            <EngineRow
-              name="Timing windows"
-              tag="inter-arrival entropy"
-              body="Execution windows are de-periodised against your own history and background pool traffic. Clockwork cadence scores low and gets replanned."
-              visual={<TimingVisual />}
-            />
-            <EngineRow
-              name="Strategy modes"
-              tag="weights only"
-              body="A mode re-weights return against privacy delta. No mode can unshield, reuse an amount, or cross the floor."
-              visual={<ModesVisual />}
-            />
-            <EngineRow
-              name="Exit guarantee"
-              tag="enforced pre-signature"
-              body="A withdraw is only ever permitted to a helper contract inside the same atomic transaction. Anything else throws before you're asked to sign."
-              visual={<GuaranteeVisual />}
-              last
-            />
-          </div>
-        </Reveal>
-      </Container>
-    </section>
-  )
-}
-
-function EngineRow({
-  name,
-  tag,
-  body,
-  visual,
-  last = false,
-}: {
-  name: string
-  tag: string
-  body: string
-  visual: React.ReactNode
-  last?: boolean
-}) {
-  return (
-    <div
-      className={`grid gap-5 p-5 sm:p-6 md:grid-cols-[210px_1fr_290px] md:items-center md:gap-8 ${
-        last ? '' : 'border-b border-rule'
-      }`}
-    >
-      <div>
-        <h3 className="text-[15px] font-semibold tracking-tight">{name}</h3>
-        <p className="mono-label mt-1.5 normal-case tracking-wide">{tag}</p>
-      </div>
-      <p className="max-w-xl text-[13.5px] leading-relaxed text-ink-muted text-pretty">{body}</p>
-      <div className="md:justify-self-end md:w-[290px]">{visual}</div>
-    </div>
-  )
-}
-
-function ScoreVisual() {
-  const dims = [
-    ['A', 0.3, 82],
-    ['H_amt', 0.25, 91],
-    ['H_time', 0.2, 76],
-    ['100−U', 0.15, 86],
-    ['100−R', 0.1, 94],
-  ] as const
-
-  return (
-    <div className="space-y-1.5">
-      {dims.map(([label, weight, value]) => (
-        <div key={label} className="flex items-center gap-2.5">
-          <span className="w-12 shrink-0 font-mono text-[10px] text-ink-muted">{label}</span>
-          <div className="h-[3px] flex-1 rounded-full bg-paper-deep">
-            <div className="h-full rounded-full bg-ink" style={{ width: `${value}%` }} />
-          </div>
-          <span className="w-9 shrink-0 text-right font-mono text-[10px] text-ink-faint">
-            ×{weight.toFixed(2)}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function SplitVisual() {
-  return (
-    <div className="space-y-1.5 font-mono text-[11px]">
-      <div className="flex items-center justify-between rounded-md bg-paper-sunk px-2.5 py-1.5">
-        <span className="tabular text-ink-faint line-through">1,000.00</span>
-        <span className="text-[10px] font-semibold text-ember">fingerprint</span>
-      </div>
-      {[
-        ['1,412.77', 72],
-        ['987.14', 50],
-        ['1,782.53', 90],
-      ].map(([amount, width]) => (
-        <div key={amount} className="flex items-center gap-2.5">
-          <span className="tabular w-16 shrink-0">{amount}</span>
-          <div className="h-[3px] flex-1 rounded-full bg-paper-deep">
-            <div className="h-full rounded-full bg-ink" style={{ width: `${width}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function TimingVisual() {
-  const regular = [8, 23, 38, 53, 68, 83]
-  const irregular = [5, 16, 44, 52, 77, 90]
-
-  return (
-    <div className="space-y-2.5">
-      <div>
-        <div className="flex justify-between font-mono text-[9.5px] tracking-wider text-ink-faint uppercase">
-          <span className="line-through">cadence</span>
-          <span className="text-ember">detectable</span>
-        </div>
-        <svg viewBox="0 0 100 8" className="mt-1 h-3 w-full" aria-hidden="true">
-          {regular.map((x) => (
-            <rect key={x} x={x} y="0.5" width="1.4" height="7" rx="0.7" fill="var(--color-ink-faint)" />
-          ))}
-        </svg>
-      </div>
-      <div>
-        <div className="flex justify-between font-mono text-[9.5px] tracking-wider text-ink-faint uppercase">
-          <span>aether</span>
-          <span className="text-ink-soft">high entropy</span>
-        </div>
-        <svg viewBox="0 0 100 8" className="mt-1 h-3 w-full" aria-hidden="true">
-          {irregular.map((x) => (
-            <rect key={x} x={x} y="0.5" width="1.4" height="7" rx="0.7" fill="var(--color-ink)" />
-          ))}
-        </svg>
-      </div>
-    </div>
-  )
-}
-
-function ModesVisual() {
-  const [mode, setMode] = useState<ModeKey>('BALANCED')
-  const active = MODES[mode]
-
-  return (
-    <div>
-      <Segmented
-        ariaLabel="Strategy mode"
-        value={mode}
-        onChange={setMode}
-        options={[
-          { value: 'PRIVACY_FIRST', label: 'Privacy' },
-          { value: 'STEALTH_DCA', label: 'DCA' },
-          { value: 'WHALE_DISTRIBUTION', label: 'Whale' },
-          { value: 'YIELD_MAX', label: 'Yield' },
-          { value: 'BALANCED', label: 'Even' },
-        ]}
-      />
-      <p className="mt-2.5 min-h-[3.25rem] text-[12px] leading-snug text-ink-muted text-pretty">
-        {active.text}
-      </p>
-      <div className="mt-1.5">
-        <div className="flex justify-between font-mono text-[9.5px] tracking-wider text-ink-faint uppercase">
-          <span>return</span>
-          <span>privacy</span>
-        </div>
-        <div className="relative mt-1 h-[3px] rounded-full bg-paper-deep">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-ink transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]"
-            style={{ width: `${active.weight * 100}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function GuaranteeVisual() {
-  return (
-    <pre className="overflow-x-auto rounded-xl bg-ink p-3.5 font-mono text-[10.5px] leading-relaxed text-paper/85">
-      {`assertNeverUnshields(actions)
-// withdraw to a non-helper
-// address → throws`}
-    </pre>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  03 · Process                                                       */
-/* ------------------------------------------------------------------ */
-
-function ProcessSection() {
-  const steps = [
-    {
-      label: 'Shield',
-      badge: <StateBadge state="public">public · once</StateBadge>,
-      body: 'One deposit into the pool — the only moment your address appears. Done well ahead of anything it funds, so nothing on-chain connects the two.',
-    },
-    {
-      label: 'Plan',
-      badge: <StateBadge state="neutral">client-side</StateBadge>,
-      body: 'The engine sizes and times every action against your history and live pool traffic, and refuses anything below your privacy floor.',
-    },
-    {
-      label: 'Execute',
-      badge: <StateBadge state="private">private</StateBadge>,
-      body: 'Your wallet proves and submits through a relayer. Results settle into fresh notes without value ever leaving the shielded environment.',
-    },
-  ]
-
-  return (
-    <section id="process" className="scroll-mt-14 py-20 sm:py-28">
-      <Container>
-        <SectionIndex
-          index="03"
-          label="Process"
-          title="Three steps. One is public, by design."
-          lede="Aether never holds viewing keys and never generates proofs — your wallet does both. The app's job is deciding what is worth signing."
-        />
-
-        <Reveal delay={120}>
-          <div className="panel mt-10 grid md:grid-cols-3 md:divide-x md:divide-rule">
-            {steps.map((step, index) => (
-              <div
-                key={step.label}
-                className={`p-6 sm:p-7 ${index < steps.length - 1 ? 'border-b border-rule md:border-b-0' : ''}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="mono-label">0{index + 1} · {step.label}</span>
-                  {step.badge}
-                </div>
-                <p className="mt-4 text-[13.5px] leading-relaxed text-ink-muted text-pretty">
-                  {step.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </Container>
-    </section>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  04 · Disclosure — receipts, not cards                              */
-/* ------------------------------------------------------------------ */
-
-function DisclosureSection() {
-  const statements = [
-    {
-      claim: 'private balance of USDC ≥ 10,000',
-      reveals: 'a single boolean — not the balance',
-      id: 'stmt 0x8f2a…c41',
-    },
-    {
-      claim: 'strategy returned +8.4% since June',
-      reveals: 'the return — not the positions',
-      id: 'stmt 0x3d19…7be',
-    },
-    {
-      claim: 'no interaction with address set S',
-      reveals: 'non-membership — nothing else',
-      id: 'stmt 0xb460…22f',
-    },
-  ]
-
-  return (
-    <section className="py-20 sm:py-28">
-      <Container>
-        <SectionIndex
-          index="04"
-          label="Disclosure"
-          title="Prove the one thing. Keep the key."
-          lede="Counterparties usually need a single fact, not your history. Hand over the fact as a statement — the viewing key stays in your wallet."
-        />
-
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {statements.map((statement, index) => (
-            <Reveal key={statement.id} delay={index * 70}>
-              <div className="rounded-2xl border border-rule bg-paper-raised p-5 font-mono">
-                <p className="text-[9.5px] tracking-[0.14em] text-ink-faint uppercase">Statement</p>
-                <p className="mt-2 min-h-[2.6rem] text-[12.5px] leading-snug font-medium text-ink">
-                  {statement.claim}
-                </p>
-                <div className="mt-4 border-t border-dashed border-rule-strong pt-3">
-                  <p className="text-[9.5px] tracking-[0.14em] text-ink-faint uppercase">Reveals</p>
-                  <p className="mt-1 text-[11.5px] leading-snug text-ink-muted">
-                    {statement.reveals}
-                  </p>
-                  <p className="mt-3 text-[10px] text-ink-faint">{statement.id} · verified ✓</p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </Container>
-    </section>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  CTA + footer                                                       */
-/* ------------------------------------------------------------------ */
-
-function ClosingCta() {
-  return (
-    <section className="border-t border-rule py-24 sm:py-32">
-      <Container>
-        <div className="max-w-3xl">
-          <Reveal blur>
-            <h2 className="display-lg text-balance">
-              Your capital shouldn&rsquo;t{' '}
-              <span className="text-ink-faint">announce itself.</span>
-            </h2>
-          </Reveal>
-          <Reveal delay={110}>
-            <div className="mt-8 flex flex-wrap items-center gap-2.5">
-              <Button href="/app" size="lg">
-                Open App
-              </Button>
-              <Button
-                href="https://github.com/shariqazeem/aether-strk20"
-                variant="secondary"
-                size="lg"
-              >
-                Read the source
-              </Button>
+        {/* actions */}
+        <div className="mt-2.5 grid grid-cols-3 gap-2">
+          {[
+            { label: 'Pay', icon: <ArrowUpRight size={13} /> },
+            { label: 'Receive', icon: <ArrowDown size={13} /> },
+            { label: 'Add', icon: <Plus size={13} /> },
+          ].map((a) => (
+            <div key={a.label} className="card flex flex-col items-center gap-1 py-2.5">
+              <span className="grid size-7 place-items-center rounded-full bg-ink text-white">
+                {a.icon}
+              </span>
+              <span className="text-[10px] font-semibold">{a.label}</span>
             </div>
-          </Reveal>
-          <Reveal delay={180}>
-            <p className="mt-8 font-mono text-[11px] tracking-wide text-ink-faint">
-              pool <Hex value={POOL_ADDRESS} href={explorerContract(POOL_ADDRESS)} chars={6} /> ·
-              MIT · STRK20 Private Sprint
-            </p>
-          </Reveal>
+          ))}
         </div>
-      </Container>
-    </section>
+
+        {/* activity */}
+        <p className="mt-4 px-1 text-[11px] font-semibold">Activity</p>
+        <div className="card mt-1.5 divide-y divide-rule">
+          {[
+            { title: 'Paid Amara', sub: '2h ago · nothing public', amount: '−212.47 USDC', pub: false },
+            { title: 'Paid landlord', sub: 'Yesterday · nothing public', amount: '−938.12 USDC', pub: false },
+            { title: 'Added money', sub: 'Mon · deposit · public', amount: '+987.31 USDC', pub: true },
+          ].map((row) => (
+            <div key={row.title} className="flex items-center gap-2.5 px-3 py-2.5">
+              <span
+                className={`grid size-6 flex-none place-items-center rounded-full ${
+                  row.pub ? 'bg-warn-soft text-warn' : 'bg-sunk text-ink-soft'
+                }`}
+              >
+                {row.pub ? <Plus size={11} /> : <ArrowUpRight size={11} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[10.5px] font-semibold">{row.title}</span>
+                <span className={`block text-[9px] ${row.pub ? 'text-warn' : 'text-ink-muted'}`}>
+                  {row.sub}
+                </span>
+              </span>
+              <span className="tabular text-[10.5px] font-semibold">{row.amount}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
-function SiteFooter() {
+/* ------------------------------------------------------------------ */
+/* floating props                                                      */
+/* ------------------------------------------------------------------ */
+
+function FloatingReceipt() {
   return (
-    <footer className="border-t border-rule py-8">
-      <Container>
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <AetherMark size={20} />
-            <span className="text-[13px] font-semibold tracking-tight">Aether</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-ink-muted">
-            <a
-              href="https://strk20-by-example.org/what-is-strk20"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="transition-colors hover:text-ink"
-            >
-              STRK20 docs
-            </a>
-            <a
-              href="https://github.com/shariqazeem/aether-strk20"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="transition-colors hover:text-ink"
-            >
-              Source
-            </a>
-            <Link href="/app" className="transition-colors hover:text-ink">
-              Open App
-            </Link>
-          </div>
-
-          <p className="text-[11.5px] text-ink-faint">
-            Deposits and withdrawals are public by design.
+    <div className="card w-[210px] overflow-hidden">
+      <div className="lumen-strip h-1" />
+      <div className="px-4 py-3.5">
+        <p className="flex items-center gap-1 text-[9px] font-semibold text-ink-muted">
+          <LumenMark size={10} />
+          Private payment
+        </p>
+        <p className="tabular mt-2 text-center text-[19px] font-semibold tracking-[-0.02em]">
+          938.12 USDC
+        </p>
+        <div className="mt-2.5 space-y-1 border-t border-dashed border-rule-strong pt-2 text-[8.5px]">
+          <p className="flex justify-between">
+            <span className="text-ink-muted">To</span>
+            <span className="font-semibold">Landlord</span>
+          </p>
+          <p className="flex justify-between">
+            <span className="text-ink-muted">Settlement</span>
+            <span className="font-mono">0x04d2…9e1a</span>
           </p>
         </div>
-      </Container>
-    </footer>
+      </div>
+    </div>
+  )
+}
+
+function FloatingGuard() {
+  return (
+    <div className="card w-[240px] px-3.5 py-3">
+      <span className="inline-flex items-center gap-1 rounded-full bg-good-soft px-2 py-0.5 text-[9.5px] font-semibold text-good">
+        <Sparkle size={10} />
+        Tuned for privacy
+      </span>
+      <ul className="mt-2.5 space-y-1.5">
+        {[
+          'No public record',
+          'Amount blends in — adjusted',
+          'No schedule published',
+        ].map((line) => (
+          <li key={line} className="flex items-center gap-1.5 text-[9.5px] font-medium text-ink-soft">
+            <span className="grid size-3.5 place-items-center rounded-full bg-good-soft text-good">
+              <Check size={8} strokeWidth={3} />
+            </span>
+            {line}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* page                                                                */
+/* ------------------------------------------------------------------ */
+
+const FEATURES = [
+  {
+    icon: <People size={20} />,
+    title: 'Every relationship, its own boundary',
+    body: 'Your landlord, your friends, your clients — each sees only what you send them. Nothing connects one relationship to another, and none of them can see your balance, your history, or each other.',
+  },
+  {
+    icon: <Receipt size={20} />,
+    title: 'Prove a payment. Nothing else.',
+    body: 'Every payment mints a receipt you can hand to exactly one person: this amount, this moment, settled on-chain. It discloses that single fact — never your balance, never your other life.',
+  },
+  {
+    icon: <Sparkle size={20} />,
+    title: 'A silent engine watches the leaks',
+    body: 'Round amounts, mirrored entries and exits, rhythms that become signatures — the patterns that undo private money. Lumen checks every move against them and quietly fixes what it can. You never see a score. You just stay private.',
+  },
+] as const
+
+const TRUTHS = {
+  private: [
+    'Who you pay, and how much',
+    'Your balance and everything in it',
+    'Your spaces, people and history',
+    'Receiving money',
+  ],
+  public: [
+    'Adding money (a deposit, checked for hygiene)',
+    'Cashing out (warned, tuned, timed)',
+    'That the pool itself processed something',
+  ],
+} as const
+
+export default function Landing() {
+  return (
+    <div className="relative overflow-hidden">
+      {/* faint aurora at the very top of the page */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] opacity-60"
+        style={{
+          background:
+            'radial-gradient(60% 100% at 30% 0%, rgba(255, 217, 168, 0.35), transparent 60%), radial-gradient(50% 90% at 70% 0%, rgba(216, 203, 255, 0.32), transparent 60%), radial-gradient(40% 80% at 50% 0%, rgba(255, 201, 214, 0.22), transparent 55%)',
+        }}
+      />
+
+      <div className="relative mx-auto max-w-[1080px] px-6">
+        {/* nav */}
+        <nav className="flex items-center justify-between py-6">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-9 place-items-center rounded-xl bg-ink text-white">
+              <LumenMark size={20} />
+            </span>
+            <span className="text-[19px] font-semibold tracking-[-0.02em]">Lumen</span>
+          </div>
+          <Link href="/app" className="btn btn-ink btn-small">
+            Open Lumen
+          </Link>
+        </nav>
+
+        {/* hero */}
+        <header className="grid items-center gap-14 pb-24 pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:pt-20">
+          <div>
+            <p className="rise inline-flex items-center gap-2 rounded-full border border-rule bg-card px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-soft">
+              <span className="size-1.5 rounded-full bg-good" />
+              Live on Starknet mainnet · STRK20
+            </p>
+            <h1 className="rise rise-1 mt-6 text-[52px] font-semibold leading-[1.02] tracking-[-0.038em] sm:text-[64px]">
+              Your money,
+              <br />
+              <span className="lumen-text">nobody&rsquo;s business.</span>
+            </h1>
+            <p className="rise rise-2 mt-6 max-w-[44ch] text-[17px] leading-relaxed text-ink-muted">
+              Every payment you make on a public chain becomes a permanent record anyone can read.
+              Lumen is money that doesn&rsquo;t do that — pay, receive and save with privacy as the
+              default, not a feature.
+            </p>
+            <div className="rise rise-3 mt-8 flex flex-wrap items-center gap-3">
+              <Link href="/app" className="btn btn-ink">
+                Open Lumen
+                <ArrowRight size={17} />
+              </Link>
+              <a href="#how" className="btn btn-quiet">
+                How it works
+              </a>
+            </div>
+            <p className="rise rise-4 mt-5 text-[13px] text-ink-faint">
+              Non-custodial. Your wallet holds every key. No account, no server, no tracking.
+            </p>
+          </div>
+
+          <div className="relative mx-auto">
+            <div className="rise rise-2">
+              <PhoneMock />
+            </div>
+            <div className="rise rise-4 absolute -left-28 top-44 hidden -rotate-6 lg:block">
+              <FloatingReceipt />
+            </div>
+            <div className="rise rise-5 absolute -right-20 bottom-24 hidden rotate-3 lg:block">
+              <FloatingGuard />
+            </div>
+          </div>
+        </header>
+
+        {/* the problem */}
+        <Reveal>
+          <section className="border-t border-rule py-20 text-center">
+            <p className="mx-auto max-w-[26ch] text-[30px] font-semibold leading-snug tracking-[-0.025em] sm:text-[36px]">
+              Ordinary money movement should not publish a{' '}
+              <span className="text-ink-muted line-through decoration-warn/60 decoration-2">
+                financial profile
+              </span>
+              .
+            </p>
+            <p className="mx-auto mt-5 max-w-[52ch] text-[15.5px] leading-relaxed text-ink-muted">
+              Salaries, rent, friends, savings — on a transparent chain they form one connected
+              graph with your name on it. Cryptographic pools hide the transaction, but research
+              keeps showing the rest leaks anyway: amounts, timing, and habits re-identify users
+              even inside shielded systems. The fix has to live in the app layer. This is it.
+            </p>
+          </section>
+        </Reveal>
+
+        {/* features */}
+        <section className="grid gap-5 border-t border-rule py-20 md:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <Reveal key={feature.title}>
+              <div className="card h-full px-7 py-8">
+                <span className="grid size-11 place-items-center rounded-2xl bg-ink text-white">
+                  {feature.icon}
+                </span>
+                <h3 className="mt-5 text-[19px] font-semibold leading-snug tracking-[-0.02em]">
+                  {feature.title}
+                </h3>
+                <p className="mt-3 text-[14px] leading-relaxed text-ink-muted">{feature.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </section>
+
+        {/* how it works */}
+        <Reveal>
+          <section id="how" className="border-t border-rule py-20">
+            <h2 className="text-center text-[30px] font-semibold tracking-[-0.025em]">
+              Three moves. One of them is public.
+            </h2>
+            <div className="mt-12 grid gap-5 md:grid-cols-3">
+              {[
+                {
+                  n: '01',
+                  icon: <Plus size={18} />,
+                  title: 'Add money once',
+                  body: 'One deposit into the STRK20 privacy pool. It’s the public step — so Lumen tunes the amount and keeps it separate from everything after.',
+                },
+                {
+                  n: '02',
+                  icon: <ShieldCheck size={18} />,
+                  title: 'Live privately',
+                  body: 'Pay people, get paid, set money aside. No sender, recipient or amount ever appears on-chain. Receipts prove single payments when you choose.',
+                },
+                {
+                  n: '03',
+                  icon: <Globe size={18} />,
+                  title: 'Cash out rarely',
+                  body: 'Leaving is opt-out, warned and checked — the engine breaks amount and timing links before the public sees anything.',
+                },
+              ].map((step) => (
+                <div key={step.n} className="rounded-3xl border border-rule bg-card-soft px-7 py-8">
+                  <div className="flex items-center justify-between">
+                    <span className="grid size-10 place-items-center rounded-full bg-card text-ink shadow-[0_1px_2px_rgba(18,18,20,0.06)]">
+                      {step.icon}
+                    </span>
+                    <span className="font-mono text-[12px] text-ink-faint">{step.n}</span>
+                  </div>
+                  <h3 className="mt-5 text-[17px] font-semibold tracking-[-0.015em]">{step.title}</h3>
+                  <p className="mt-2.5 text-[14px] leading-relaxed text-ink-muted">{step.body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </Reveal>
+
+        {/* honesty */}
+        <Reveal>
+          <section className="border-t border-rule py-20">
+            <h2 className="text-center text-[30px] font-semibold tracking-[-0.025em]">
+              Honest about the boundary
+            </h2>
+            <p className="mx-auto mt-3 max-w-[46ch] text-center text-[15px] text-ink-muted">
+              Privacy tools that overclaim get people hurt. Here is exactly where the line sits.
+            </p>
+            <div className="mx-auto mt-10 grid max-w-[760px] gap-5 sm:grid-cols-2">
+              <div className="glass px-7 py-7">
+                <p className="flex items-center gap-2 text-[13px] font-semibold text-glass-ink">
+                  <ShieldCheck size={15} />
+                  Never public
+                </p>
+                <ul className="mt-4 space-y-2.5">
+                  {TRUTHS.private.map((line) => (
+                    <li key={line} className="flex items-start gap-2 text-[14px] text-glass-muted">
+                      <Check size={14} className="mt-0.5 flex-none text-glass-ink" />
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="card px-7 py-7">
+                <p className="flex items-center gap-2 text-[13px] font-semibold text-warn">
+                  <Globe size={15} />
+                  Public, by nature
+                </p>
+                <ul className="mt-4 space-y-2.5">
+                  {TRUTHS.public.map((line) => (
+                    <li key={line} className="flex items-start gap-2 text-[14px] text-ink-muted">
+                      <span className="mt-[7px] size-1.5 flex-none rounded-full bg-warn/50" />
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
+                  Both boundary steps run through the silent engine first, so what is public
+                  cannot be matched to what is not.
+                </p>
+              </div>
+            </div>
+          </section>
+        </Reveal>
+
+        {/* closing */}
+        <Reveal>
+          <section className="border-t border-rule py-24 text-center">
+            <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-ink text-white">
+              <LumenMark size={24} />
+            </span>
+            <h2 className="mt-6 text-[36px] font-semibold tracking-[-0.03em]">
+              Make privacy your default.
+            </h2>
+            <p className="mx-auto mt-3 max-w-[40ch] text-[15.5px] text-ink-muted">
+              Open Lumen with a privacy-enabled Starknet wallet and move money like it&rsquo;s
+              yours alone. Because it is.
+            </p>
+            <Link href="/app" className="btn btn-ink mt-8">
+              Open Lumen
+              <ArrowRight size={17} />
+            </Link>
+          </section>
+        </Reveal>
+
+        {/* footer */}
+        <footer className="flex flex-col items-center justify-between gap-4 border-t border-rule py-10 text-[13px] text-ink-faint sm:flex-row">
+          <p className="flex items-center gap-2">
+            <LumenMark size={15} />
+            Lumen — private money, by default
+          </p>
+          <p>
+            Built on{' '}
+            <a
+              href="https://strk20-by-example.org"
+              target="_blank"
+              rel="noreferrer"
+              className="underline decoration-rule-strong underline-offset-2 hover:text-ink"
+            >
+              STRK20
+            </a>{' '}
+            · Starknet mainnet · Private Sprint 2026
+          </p>
+        </footer>
+      </div>
+    </div>
   )
 }

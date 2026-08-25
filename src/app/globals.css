@@ -1,46 +1,72 @@
 @import 'tailwindcss';
 
 /*
-  Aether — "the only colour is exposure."
+  Lumen — private money, by default.
 
-  The interface is warm grayscale. Ink on paper, hairlines, tabular numerals.
-  There is exactly one accent — ember — and it appears only where the target is
-  seen: a public deposit, a linkable amount, an adversary finding. Privacy is
-  calm and colourless; being observed lights up. The design language and the
-  product thesis are the same statement.
+  Design language: porcelain light mode, Apple-grade. The whole interface is
+  calm white and warm grey; the single dark object on screen is your private
+  balance — a piece of dark glass with light leaking softly across its edge.
+  Privacy is the dark card; everything public-facing must earn its color.
 
-  No blue. No purple. No gradient web3 sheen.
+  One signature: the lumen glow, a soft light-spectrum gradient (gold → rose →
+  lavender → sky). It appears only where value is private — the balance card,
+  the receipt seal, the brand mark. Never on chrome, never on buttons.
+
+  No crypto jargon leaks into class names any more than into copy.
 */
 
 @theme {
-  /* Paper — warm off-whites */
-  --color-paper: #f7f6f4;
-  --color-paper-raised: #fffefc;
-  --color-paper-sunk: #efedea;
-  --color-paper-deep: #e3e0db;
+  /* Porcelain — the canvas and raised surfaces */
+  --color-canvas: #f3f2f0;
+  --color-card: #ffffff;
+  --color-card-soft: #faf9f7;
+  --color-sunk: #eae8e4;
 
-  /* Ink — warm near-blacks. This is the "private/safe" voice. */
-  --color-ink: #1a1917;
-  --color-ink-soft: #38352f;
-  --color-ink-muted: #6b665d;
-  --color-ink-faint: #a5a097;
+  /* Ink */
+  --color-ink: #121214;
+  --color-ink-soft: #3c3c41;
+  --color-ink-muted: #77767c;
+  --color-ink-faint: #b1b0b6;
 
   /* Hairlines */
-  --color-rule: rgba(26, 25, 23, 0.10);
-  --color-rule-strong: rgba(26, 25, 23, 0.20);
+  --color-rule: rgba(18, 18, 20, 0.08);
+  --color-rule-strong: rgba(18, 18, 20, 0.16);
 
-  /* Ember — the sole accent. Exposure, threat, the public leg, the adversary. */
-  --color-ember: #c1420d;
-  --color-ember-soft: #f8e6dc;
-  --color-ember-mid: #e39169;
-  --color-ember-deep: #8f2f08;
+  /* The dark glass — the private balance object */
+  --color-glass: #101014;
+  --color-glass-raised: #1b1b21;
+  --color-glass-ink: #f5f4f8;
+  --color-glass-muted: rgba(245, 244, 248, 0.55);
+  --color-glass-faint: rgba(245, 244, 248, 0.32);
 
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Text', ui-sans-serif, system-ui, sans-serif;
+  /* The lumen spectrum — private value only */
+  --color-glow-gold: #ffd9a8;
+  --color-glow-rose: #ffc9d6;
+  --color-glow-violet: #d8cbff;
+  --color-glow-sky: #bfe0ff;
+
+  /* Semantics — used sparingly */
+  --color-good: #2e7d4f;
+  --color-good-soft: #e4f2e9;
+  --color-warn: #b3540e;
+  --color-warn-soft: #faeadd;
+  --color-public: #b3540e;
+
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --radius-card: 16px;
+  --radius-card: 24px;
+  --radius-sheet: 28px;
+  --radius-pill: 999px;
 
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  --shadow-card: 0 1px 2px rgba(18, 18, 20, 0.04), 0 8px 24px rgba(18, 18, 20, 0.05);
+  --shadow-card-hover: 0 2px 4px rgba(18, 18, 20, 0.05), 0 16px 40px rgba(18, 18, 20, 0.09);
+  --shadow-sheet: 0 -8px 60px rgba(18, 18, 20, 0.18);
+  --shadow-glass: 0 24px 60px -12px rgba(18, 18, 20, 0.45);
 }
 
 @layer base {
@@ -52,240 +78,386 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    background: var(--color-paper);
+    background: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-feature-settings: 'cv05', 'cv11', 'ss01';
     overflow-x: hidden;
   }
 
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
-
   ::selection {
     background: var(--color-ink);
-    color: var(--color-paper);
+    color: #fff;
   }
 
   :focus-visible {
     outline: 2px solid var(--color-ink);
     outline-offset: 2px;
-    border-radius: 4px;
-  }
-}
-
-@layer utilities {
-  /* Display — big, tight, confident. Single family, heavy weight. */
-  .display-xl {
-    font-size: clamp(3.1rem, 6.4vw, 5.9rem);
-    line-height: 1.0;
-    letter-spacing: -0.045em;
-    font-weight: 640;
+    border-radius: 6px;
   }
 
-  .display-lg {
-    font-size: clamp(2.1rem, 4.2vw, 3.4rem);
-    line-height: 1.04;
-    letter-spacing: -0.035em;
-    font-weight: 640;
+  input,
+  button {
+    font-family: inherit;
   }
 
-  .display-md {
-    font-size: clamp(1.5rem, 2.6vw, 2.05rem);
-    line-height: 1.12;
-    letter-spacing: -0.028em;
-    font-weight: 620;
-  }
-
-  /* Instrument label — small mono caps. Second voice. */
-  .mono-label {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+  input::placeholder {
     color: var(--color-ink-faint);
   }
 
-  .list-header {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-ink-muted);
+  /* Money is always tabular. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
+}
+
+@layer components {
+  /* ------------------------------------------------------------------ */
+  /* surfaces                                                            */
+  /* ------------------------------------------------------------------ */
 
   .card {
-    background: var(--color-paper-raised);
+    background: var(--color-card);
     border: 1px solid var(--color-rule);
     border-radius: var(--radius-card);
-    box-shadow:
-      0 1px 2px rgba(26, 25, 23, 0.03),
-      0 4px 16px rgba(26, 25, 23, 0.04);
+    box-shadow: var(--shadow-card);
   }
 
-  .card-flat {
-    background: var(--color-paper-raised);
-    border: 1px solid var(--color-rule);
-    border-radius: var(--radius-card);
+  .card-press {
+    transition:
+      transform 0.35s var(--ease-out-quart),
+      box-shadow 0.35s var(--ease-out-quart);
   }
 
-  /* A bordered instrument panel. Sections live inside these. */
-  .panel {
-    background: var(--color-paper-raised);
-    border: 1px solid var(--color-rule);
-    border-radius: 18px;
-    overflow: hidden;
+  .card-press:active {
+    transform: scale(0.977);
   }
 
-  /* Ember panel — used only when the content is about exposure. */
-  .panel-ember {
-    border-color: var(--color-ember-mid);
-    box-shadow: 0 0 0 1px rgba(193, 66, 13, 0.06), 0 8px 30px -14px rgba(193, 66, 13, 0.28);
+  @media (hover: hover) {
+    .card-press:hover {
+      box-shadow: var(--shadow-card-hover);
+    }
   }
 
+  /* The dark glass object. Light leaks along its top edge. */
   .glass {
-    background: rgba(247, 246, 244, 0.8);
-    backdrop-filter: saturate(140%) blur(20px);
-    -webkit-backdrop-filter: saturate(140%) blur(20px);
-  }
-
-  /* The one place ember earns a gradient: the adversary's glow. */
-  .ember-wash {
+    position: relative;
     background:
-      radial-gradient(46% 54% at 70% 40%, rgba(193, 66, 13, 0.1), transparent 70%),
-      radial-gradient(34% 40% at 26% 66%, rgba(193, 66, 13, 0.05), transparent 72%);
-    filter: blur(30px);
-  }
-
-  /* Ticker */
-  .ticker {
+      radial-gradient(120% 90% at 85% -20%, rgba(255, 217, 168, 0.16), transparent 55%),
+      radial-gradient(120% 90% at 15% -25%, rgba(216, 203, 255, 0.15), transparent 55%),
+      radial-gradient(140% 120% at 50% 130%, rgba(191, 224, 255, 0.07), transparent 60%),
+      linear-gradient(175deg, var(--color-glass-raised), var(--color-glass) 55%);
+    color: var(--color-glass-ink);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-glass);
     overflow: hidden;
   }
 
-  .ticker-track {
+  .glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      160deg,
+      rgba(255, 217, 168, 0.5),
+      rgba(255, 201, 214, 0.28) 22%,
+      rgba(255, 255, 255, 0.1) 45%,
+      rgba(255, 255, 255, 0.04) 70%,
+      rgba(191, 224, 255, 0.18)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* The lumen glow, as a thin standalone strip (receipt seal, brand rule). */
+  .lumen-strip {
+    background: linear-gradient(
+      90deg,
+      var(--color-glow-gold),
+      var(--color-glow-rose) 34%,
+      var(--color-glow-violet) 67%,
+      var(--color-glow-sky)
+    );
+  }
+
+  .lumen-text {
+    background: linear-gradient(
+      100deg,
+      #b0770a,
+      #c04e6d 35%,
+      #6d51c9 68%,
+      #2f6ca8
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* controls                                                            */
+  /* ------------------------------------------------------------------ */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--radius-pill);
+    font-size: 16px;
+    font-weight: 550;
+    letter-spacing: -0.01em;
+    height: 52px;
+    padding: 0 26px;
+    transition:
+      transform 0.3s var(--ease-out-quart),
+      opacity 0.3s var(--ease-out-quart),
+      background-color 0.3s var(--ease-out-quart);
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .btn:active {
+    transform: scale(0.965);
+  }
+
+  .btn:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .btn-ink {
+    background: var(--color-ink);
+    color: #fff;
+  }
+
+  @media (hover: hover) {
+    .btn-ink:hover {
+      background: #2a2a30;
+    }
+  }
+
+  .btn-quiet {
+    background: var(--color-card);
+    color: var(--color-ink);
+    border: 1px solid var(--color-rule);
+    box-shadow: 0 1px 2px rgba(18, 18, 20, 0.04);
+  }
+
+  @media (hover: hover) {
+    .btn-quiet:hover {
+      background: var(--color-card-soft);
+    }
+  }
+
+  .btn-small {
+    height: 40px;
+    padding: 0 18px;
+    font-size: 14px;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* sheets                                                              */
+  /* ------------------------------------------------------------------ */
+
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(18, 18, 20, 0.32);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: backdrop-in 0.4s var(--ease-out-quart) both;
+    z-index: 60;
+  }
+
+  .sheet {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100dvh - 48px);
+    background: var(--color-card);
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    box-shadow: var(--shadow-sheet);
+    animation: sheet-in 0.5s var(--ease-sheet) both;
+    z-index: 70;
     display: flex;
-    width: max-content;
-    animation: ticker 44s linear infinite;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  .ticker:hover .ticker-track {
-    animation-play-state: paused;
-  }
-
-  @keyframes ticker {
-    to {
-      transform: translateX(-50%);
+  @media (min-width: 640px) {
+    .sheet {
+      bottom: 40px;
+      border-radius: var(--radius-sheet);
+      max-height: calc(100dvh - 96px);
     }
   }
 
-  @keyframes pulse-dot {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.35;
-    }
+  .sheet-leaving {
+    animation: sheet-out 0.32s var(--ease-sheet) both;
   }
 
-  .pulse-dot {
-    animation: pulse-dot 2s ease-in-out infinite;
+  .backdrop-leaving {
+    animation: backdrop-out 0.32s var(--ease-out-quart) both;
   }
 
-  /* A scanning sweep, for the adversary "at work" state. */
-  @keyframes scan {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(220%);
-    }
+  .grabber {
+    width: 40px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--color-rule-strong);
+    margin: 10px auto 0;
+    flex: none;
   }
 
-  .scan-sweep {
-    animation: scan 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  /* ------------------------------------------------------------------ */
+  /* motion                                                              */
+  /* ------------------------------------------------------------------ */
+
+  .rise {
+    animation: rise 0.7s var(--ease-out-quart) both;
   }
+
+  .rise-1 { animation-delay: 0.05s; }
+  .rise-2 { animation-delay: 0.12s; }
+  .rise-3 { animation-delay: 0.19s; }
+  .rise-4 { animation-delay: 0.26s; }
+  .rise-5 { animation-delay: 0.33s; }
 
   .reveal {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(20px);
     transition:
-      opacity 0.5s var(--ease-out-quart),
-      transform 0.5s var(--ease-out-quart);
-    transition-delay: var(--reveal-delay, 0ms);
+      opacity 0.8s var(--ease-out-quart),
+      transform 0.8s var(--ease-out-quart);
   }
 
-  .reveal[data-shown='true'] {
+  .reveal.shown {
     opacity: 1;
     transform: none;
   }
 
-  .reveal-blur {
-    opacity: 0;
-    transform: translateY(10px);
-    transition:
-      opacity 0.6s var(--ease-out-quart),
-      transform 0.6s var(--ease-out-quart);
-    transition-delay: var(--reveal-delay, 0ms);
+  .unblur {
+    animation: unblur 0.9s var(--ease-out-quart) both;
   }
 
-  .reveal-blur[data-shown='true'] {
-    opacity: 1;
-    transform: none;
+  .pop {
+    animation: pop 0.55s var(--ease-sheet) both;
   }
 
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  .ticker {
+    display: inline-block;
+    animation: rise 0.5s var(--ease-out-quart) both;
   }
 
-  .shimmer {
-    background: linear-gradient(
-      100deg,
-      var(--color-paper-sunk) 30%,
-      var(--color-paper-deep) 50%,
-      var(--color-paper-sunk) 70%
-    );
-    background-size: 220% 100%;
-    animation: shimmer 1.6s ease-in-out infinite;
-  }
-
-  @keyframes shimmer {
-    to {
-      background-position: -220% 0;
+  @media (prefers-reduced-motion: reduce) {
+    .rise,
+    .unblur,
+    .pop,
+    .ticker,
+    .sheet,
+    .sheet-backdrop {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
+    }
+    .reveal {
+      transition-duration: 0.01ms;
     }
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
   }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+@keyframes unblur {
+  from {
+    opacity: 0;
+    filter: blur(14px);
   }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
 
-  .ticker-track,
-  .scan-sweep {
-    animation: none !important;
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
   }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
-  .reveal,
-  .reveal-blur {
-    opacity: 1 !important;
-    transform: none !important;
+@keyframes sheet-in {
+  from {
+    transform: translate(-50%, 104%);
   }
+  to {
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes sheet-out {
+  from {
+    transform: translate(-50%, 0);
+  }
+  to {
+    transform: translate(-50%, 110%);
+  }
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--color-sunk) 40%,
+    #f6f5f3 50%,
+    var(--color-sunk) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }

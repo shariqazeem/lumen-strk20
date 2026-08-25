@@ -129,7 +129,7 @@ const DAY = 24 * HOUR
  *
  * `naive` is a textbook-linkable user: a round 1,000 in, effectively the same
  * amount out twenty minutes later, on a weekly clock. `managed` is the same
- * capital handled by Aether — non-round splits, no matching exit, irregular
+ * capital handled by Lumen — non-round splits, no matching exit, irregular
  * spacing. Both run through the identical adversary; only the behaviour differs.
  */
 export function demoScenarios(now: number): {

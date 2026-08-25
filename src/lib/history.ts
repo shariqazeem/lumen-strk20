@@ -7,7 +7,7 @@
  * exit correlation — need to know what this wallet has already done. The chain
  * deliberately cannot provide that: private actions publish commitments, not
  * amounts or per-user attribution, and that opacity is the product working.
- * So Aether keeps its own ledger of the actions it executed, locally, keyed by
+ * So Lumen keeps its own ledger of the actions it executed, locally, keyed by
  * account, in localStorage. It never leaves the device.
  *
  * Amounts are bigint in memory and decimal strings on disk (JSON has no
@@ -23,12 +23,14 @@ export interface LedgerEntry {
   id: string
   /** ms epoch */
   timestamp: number
-  type: 'SHIELD' | 'SWAP' | 'REBALANCE' | 'COMPACT' | 'TRANSFER'
+  type: 'SHIELD' | 'SWAP' | 'REBALANCE' | 'COMPACT' | 'TRANSFER' | 'UNSHIELD'
   asset: TokenSymbol
   /** Raw amount in the asset's smallest unit. */
   amount: bigint
   route: 'AVNU' | 'POOL' | 'DIRECT'
   txHash?: string
+  /** Normalized address of the other side, when the entry has one (TRANSFER / UNSHIELD). */
+  counterparty?: string
   /** What a chain observer saw for this entry, e.g. 'deposit · public', 'executor → AMM', '—' */
   observer: string
 }
@@ -36,7 +38,7 @@ export interface LedgerEntry {
 /** Hard cap on stored entries; oldest fall off the end. */
 export const LEDGER_CAP = 500
 
-const KEY_PREFIX = 'aether:ledger:v1:'
+const KEY_PREFIX = 'lumen:ledger:v1:'
 
 const LEDGER_TYPES = new Set<LedgerEntry['type']>([
   'SHIELD',
@@ -44,6 +46,7 @@ const LEDGER_TYPES = new Set<LedgerEntry['type']>([
   'REBALANCE',
   'COMPACT',
   'TRANSFER',
+  'UNSHIELD',
 ])
 const LEDGER_ROUTES = new Set<LedgerEntry['route']>(['AVNU', 'POOL', 'DIRECT'])
 
@@ -116,6 +119,7 @@ function reviveEntry(raw: unknown): LedgerEntry | null {
     amount,
     route: r.route as LedgerEntry['route'],
     ...(typeof r.txHash === 'string' ? { txHash: r.txHash } : {}),
+    ...(typeof r.counterparty === 'string' ? { counterparty: r.counterparty } : {}),
     observer: r.observer,
   }
 }
@@ -197,10 +201,11 @@ export function clearLedger(address: string): void {
  *   - TRANSFER → REBALANCE: a private note-to-note transfer is exactly what
  *     the engine models as an in-pool rebalance — value moves between notes
  *     and nothing leaves the shielded environment.
- *   - SHIELD → dropped (no entry). A shield is the public entry leg, not an
- *     in-pool action; inventing an in-pool ActionType for it would feed the
- *     behavioural terms an event class the engine's types deliberately cannot
- *     express.
+ *   - SHIELD / UNSHIELD → dropped (no entry). They are the public boundary
+ *     legs, not in-pool actions; inventing an in-pool ActionType for them
+ *     would feed the behavioural terms an event class the engine's types
+ *     deliberately cannot express. The guard reads them from the raw ledger
+ *     instead, where boundary crossings are exactly the signal it wants.
  */
 const ENGINE_TYPE: Partial<Record<LedgerEntry['type'], ActionType>> = {
   SWAP: 'SWAP',
@@ -246,9 +251,9 @@ const SYNTHETIC_NOTE_AGE_MS = 3_600_000
  * Approximate the engine's note set from shielded balances.
  *
  * The Wallet API exposes balances, not note enumeration — the wallet owns
- * note discovery and Aether never sees individual commitments. So note-level
+ * note discovery and Lumen never sees individual commitments. So note-level
  * granularity is approximated as one synthetic note per nonzero balance;
- * notes Aether itself creates are tracked in the ledger, which is where the
+ * notes Lumen itself creates are tracked in the ledger, which is where the
  * behavioural terms get their real signal. Zero balances produce no note.
  */
 export function syntheticNotesFromBalances(

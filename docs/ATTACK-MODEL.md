@@ -1,6 +1,6 @@
 # The attack model
 
-Aether exists because of a gap that is easy to state and hard to close:
+Lumen exists because of a gap that is easy to state and hard to close:
 
 > A privacy pool gives you an anonymity **set**. Your behaviour **spends** it.
 
@@ -20,7 +20,7 @@ the link without touching any cryptography.
 
 The third layer isn't a protocol primitive. It's a set of opinionated decisions
 about how a user should behave over time — which is an application, not a
-contract. That is the space Aether occupies, and it's the reason Aether builds
+contract. That is the space Lumen occupies, and it's the reason Lumen builds
 *on top of* STRK20 rather than competing with it.
 
 ---
@@ -58,7 +58,7 @@ other user happened to pick that number.
 **Why it works:** the amount is public on both legs, and the space of amounts
 is enormous. An exact-ish match is a fingerprint.
 
-**Remedy:** never let an exit amount resemble an entry amount. Aether splits
+**Remedy:** never let an exit amount resemble an entry amount. Lumen splits
 into non-round parts that sum correctly but individually match nothing.
 
 ### 3.2 Round numbers
@@ -94,7 +94,7 @@ score and forces a replan.
 Being in a denomination tier with four other users means the set doesn't hide
 you. A set of one is certainty.
 
-**Remedy:** measured live from pool activity. Aether will refuse to act into a
+**Remedy:** measured live from pool activity. Lumen will refuse to act into a
 thin set rather than pretend the action was private.
 
 ### 3.6 Behavioural uniqueness
@@ -129,21 +129,21 @@ silently invert the product's advice, so it is asserted in tests.
 
 ---
 
-## 5. What Aether does *not* claim
+## 5. What Lumen does *not* claim
 
 Honesty is load-bearing here; a privacy tool that oversells is worse than none.
 
-- **The deposit is public and stays public.** Aether says so in the interface,
+- **The deposit is public and stays public.** Lumen says so in the interface,
   in ember, every time. The mitigation is separation in time, not concealment.
-- **Aether cannot fix a pool that is empty.** If the anonymity set is thin, no
+- **Lumen cannot fix a pool that is empty.** If the anonymity set is thin, no
   behaviour saves you, and the honest output is a refusal.
 - **Statement proofs are not implemented.** Wallet API 0.10.3 exposes no
-  statement-proof method. Aether builds the exact canonical statement and waits
+  statement-proof method. Lumen builds the exact canonical statement and waits
   for wallets to ship the proving side. An ECDSA signature is not a ZK proof and
   is not offered as one.
 - **The local ledger is local.** The behavioural terms need history, and the
   chain deliberately cannot supply it. Clearing browser storage resets them.
-- **`AetherSplitter` is an unaudited draft**, and open-note amounts are
+- **`LumenSplitter` is an unaudited draft**, and open-note amounts are
   plaintext by design — see [`contracts/README.md`](../contracts/README.md) for
   exactly when it helps and when plain transfers are strictly better.
 

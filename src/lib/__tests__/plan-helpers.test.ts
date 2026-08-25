@@ -82,7 +82,7 @@ describe('classifyIntentRoute — the mainnet routing table', () => {
   it('refuses everything without an executable mainnet path', () => {
     // Vesu's anonymizer class is not declared on mainnet.
     expect(classifyIntentRoute(intent('LEND', 'VESU'))).toBe('UNAVAILABLE')
-    // Ekubo swaps have no wired executor instance in Aether.
+    // Ekubo swaps have no wired executor instance in Lumen.
     expect(classifyIntentRoute(intent('SWAP', 'EKUBO'))).toBe('UNAVAILABLE')
     // Mismatched combinations never execute implicitly.
     expect(classifyIntentRoute(intent('SWAP', 'POOL'))).toBe('UNAVAILABLE')

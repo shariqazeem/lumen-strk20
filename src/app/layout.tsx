@@ -15,31 +15,31 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://aether-strk20.vercel.app'),
+  metadataBase: new URL('https://lumen-strk20.vercel.app'),
   title: {
-    default: 'Aether — shielded isn\u2019t private',
-    template: '%s · Aether',
+    default: 'Lumen — private money, by default',
+    template: '%s · Lumen',
   },
   description:
-    'A privacy pool gives you an anonymity set; your behaviour spends it. Aether runs the real deanonymization attacks against your public footprint on Starknet mainnet, then closes every leak it finds inside the STRK20 pool.',
-  keywords: ['Starknet', 'STRK20', 'privacy', 'DeFi', 'zero knowledge', 'private portfolio'],
+    'Lumen is the private money app for Starknet. Pay, receive and save without publishing a financial profile — every relationship gets its own privacy boundary, and a silent engine keeps your history unlinkable.',
+  keywords: ['Starknet', 'STRK20', 'private payments', 'privacy', 'money app'],
   authors: [{ name: 'Shariq Shaukat' }],
   openGraph: {
-    title: 'Aether — shielded isn\u2019t private',
+    title: 'Lumen — private money, by default',
     description:
-      'Run the real deanonymization attacks against any Starknet address, then close every leak inside the STRK20 pool. No wallet needed to see how linkable you are.',
+      'Pay, receive and save on Starknet without publishing a financial profile. Private is the only easy path.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Aether — shielded isn\u2019t private',
+    title: 'Lumen — private money, by default',
     description:
-      'The pool gives you an anonymity set. Your behaviour spends it. Point the adversary at any address.',
+      'Ordinary money movement should not create a public financial profile. Lumen makes the private path the only easy path.',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#f7f6f4',
+  themeColor: '#f3f2f0',
   width: 'device-width',
   initialScale: 1,
 }

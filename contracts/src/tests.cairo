@@ -1,4 +1,4 @@
-//! Test suite for `AetherSplitter`.
+//! Test suite for `LumenSplitter`.
 //!
 //! The pool is simulated the way it actually behaves: it funds the helper first
 //! (its Withdraw leg), then calls `privacy_invoke` as the caller. Every test that
@@ -12,7 +12,7 @@ use snforge_std::{
 use starknet::ContractAddress;
 use crate::mock_erc20::{IMockErc20Dispatcher, IMockErc20DispatcherTrait};
 use crate::splitter::{
-    BPS_DENOMINATOR, IAetherSplitterDispatcher, IAetherSplitterDispatcherTrait, MAX_SPLITS,
+    BPS_DENOMINATOR, ILumenSplitterDispatcher, ILumenSplitterDispatcherTrait, MAX_SPLITS,
     SplitMode, compute_bps_amounts, errors,
 };
 
@@ -52,20 +52,20 @@ fn deploy_token() -> IMockErc20Dispatcher {
     IMockErc20Dispatcher { contract_address: address }
 }
 
-fn deploy_splitter(fee_recipient: ContractAddress, max_fee_bps: u16) -> IAetherSplitterDispatcher {
-    let contract = declare("AetherSplitter").unwrap().contract_class();
+fn deploy_splitter(fee_recipient: ContractAddress, max_fee_bps: u16) -> ILumenSplitterDispatcher {
+    let contract = declare("LumenSplitter").unwrap().contract_class();
     let mut calldata: Array<felt252> = array![];
     calldata.append(pool().into());
     calldata.append(fee_recipient.into());
     calldata.append(max_fee_bps.into());
     let (address, _) = contract.deploy(@calldata).unwrap();
-    IAetherSplitterDispatcher { contract_address: address }
+    ILumenSplitterDispatcher { contract_address: address }
 }
 
 /// A splitter funded exactly the way the pool's Withdraw leg funds it.
 fn setup(
     funding: u128, fee_recipient: ContractAddress, max_fee_bps: u16,
-) -> (IAetherSplitterDispatcher, IMockErc20Dispatcher) {
+) -> (ILumenSplitterDispatcher, IMockErc20Dispatcher) {
     let token = deploy_token();
     let splitter = deploy_splitter(fee_recipient, max_fee_bps);
     if funding != 0 {
@@ -74,7 +74,7 @@ fn setup(
     (splitter, token)
 }
 
-fn setup_default() -> (IAetherSplitterDispatcher, IMockErc20Dispatcher) {
+fn setup_default() -> (ILumenSplitterDispatcher, IMockErc20Dispatcher) {
     setup(TOTAL_IN, no_fee_recipient(), 0)
 }
 
@@ -386,7 +386,7 @@ fn test_non_pool_caller_rejected() {
 #[test]
 fn test_constructor_rejects_zero_pool() {
     // An unpinned helper would be drivable by anyone, so the constructor refuses.
-    let contract = declare("AetherSplitter").unwrap().contract_class();
+    let contract = declare("LumenSplitter").unwrap().contract_class();
     let calldata: Array<felt252> = array![0, 0, 0];
     match contract.deploy(@calldata) {
         Result::Ok(_) => panic!("deploying with a zero pool address must fail"),

@@ -10,14 +10,14 @@
  * fresh private note. The action list for that swap is assembled by the AVNU
  * SDK and then built, proved and submitted by the user's WALLET
  * (`createStrk20WalletProver` → `strk20PrepareInvoke`), and the wallet itself
- * refuses privacy-leaking action sets. Aether's own `assertNeverUnshields`
- * therefore guards the action lists Aether builds directly (transfers,
+ * refuses privacy-leaking action sets. Lumen's own `assertNeverUnshields`
+ * therefore guards the action lists Lumen builds directly (transfers,
  * compactions), not the AVNU-built ones — those are covered by the wallet's
  * own refusal, which is the stronger guarantee because it sits behind the
  * signature prompt.
  *
  * No `paymasterApiKey` is ever passed from this module: that fee mode needs a
- * server-held secret, and Aether is a browser dapp. The pool fee is instead
+ * server-held secret, and Lumen is a browser dapp. The pool fee is instead
  * charged from private balance in the sell token (`feeMode.poolFeeToken`).
  */
 
@@ -56,7 +56,7 @@ export interface SwapQuoteResult {
 /**
  * Fetch the best AVNU quote for a shielded swap.
  *
- * Explicitly pinned to the mainnet API (`BASE_URL`) because Aether targets
+ * Explicitly pinned to the mainnet API (`BASE_URL`) because Lumen targets
  * mainnet only. AVNU returns quotes best-first; we take the first and refuse
  * loudly when there is none, rather than letting an empty array surface later
  * as an undefined-quote crash at signing time.
@@ -109,13 +109,13 @@ export async function executeAvnuPrivateSwap(
 ): Promise<{ transactionHash: string }> {
   const { account, quote, slippage = DEFAULT_SWAP_SLIPPAGE } = params
 
-  // Aether pins its own pool constant rather than silently trusting the SDK's,
+  // Lumen pins its own pool constant rather than silently trusting the SDK's,
   // and cross-checks the two at runtime: if an SDK update ever repoints
   // PRIVACY_POOL_ADDRESS, the mismatch must be visible, not absorbed.
   if (!sameAddress(POOL_ADDRESS, PRIVACY_POOL_ADDRESS)) {
     console.warn(
-      `Aether pool address ${POOL_ADDRESS} differs from the AVNU SDK's ` +
-        `PRIVACY_POOL_ADDRESS ${PRIVACY_POOL_ADDRESS}; proceeding with Aether's. ` +
+      `Lumen pool address ${POOL_ADDRESS} differs from the AVNU SDK's ` +
+        `PRIVACY_POOL_ADDRESS ${PRIVACY_POOL_ADDRESS}; proceeding with Lumen's. ` +
         `Verify the SDK version before shipping.`,
     )
   }

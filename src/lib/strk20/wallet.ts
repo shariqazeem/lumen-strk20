@@ -3,7 +3,7 @@
 /**
  * Wallet connection and STRK20 capability detection.
  *
- * Aether talks to the pool exclusively through the user's privacy-enabled
+ * Lumen talks to the pool exclusively through the user's privacy-enabled
  * wallet. The wallet owns viewing keys, note discovery, proof generation and
  * submission; this module never asks for a key and never sees private state.
  */
@@ -50,7 +50,7 @@ function atLeast(version: string, minimum: string): boolean {
  *
  * Deliberately a version query, never a probe of `strk20Balances` — that is a
  * balance-reading method, so probing it makes the wallet prompt the user for
- * consent to data Aether has no reason to see.
+ * consent to data Lumen has no reason to see.
  */
 export function supportsStrk20(wallet: WalletWithStarknetFeatures): boolean {
   const feature = wallet.features['starknet:walletApi'] as

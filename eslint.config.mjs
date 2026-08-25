@@ -18,6 +18,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Untracked research scratch (cloned starter kits, probes). Not shipped.
+      ".research/**",
     ],
   },
 ];

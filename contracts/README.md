@@ -1,4 +1,4 @@
-# AetherSplitter — a STRK20 anonymizer contract
+# LumenSplitter — a STRK20 anonymizer contract
 
 A Cairo **helper (anonymizer) contract** for the STRK20 privacy pool on Starknet
 mainnet. It exposes the `privacy_invoke` entry point the pool calls during
@@ -14,7 +14,7 @@ transaction.**
 
 ## Why it exists
 
-Aether's thesis is that **behaviour, not cryptography, deanonymizes privacy-pool
+Lumen's thesis is that **behaviour, not cryptography, deanonymizes privacy-pool
 users**. A pool with perfect cryptography still leaks if its users move round
 numbers at predictable times. The engine's two strongest remedies are:
 
@@ -25,7 +25,7 @@ numbers at predictable times. The engine's two strongest remedies are:
 Splitting one balance into several unequal notes is the primitive both remedies
 need. Doing it as N separate pool transactions costs a pool fee each (currently
 6 STRK per operation) and leaves a timing trail that re-links the very notes the
-split was meant to decorrelate. `AetherSplitter` performs the whole split inside
+split was meant to decorrelate. `LumenSplitter` performs the whole split inside
 **one** pool transaction: one fee, one timestamp, one proof.
 
 ### Does the pool actually support several output notes per transaction?
@@ -54,8 +54,8 @@ helper in the same transaction.
 | Situation | Best route |
 | --- | --- |
 | Input amount known when the transaction is proven, and you want the **amounts hidden** | Prefer N `transfer` actions in one pool transaction: they create **encrypted** notes. Cheaper and strictly more private than this helper. |
-| Input amount only known **at execution time** (a delivered balance, a variable inbound payment) | `AetherSplitter` in `Bps` mode. A client cannot split what it cannot predict at proof time. |
-| You want the split **enforced and auditable on-chain** — sum reconciliation, non-zero legs, distinct notes, capped fee | `AetherSplitter` in `Exact` mode. |
+| Input amount only known **at execution time** (a delivered balance, a variable inbound payment) | `LumenSplitter` in `Bps` mode. A client cannot split what it cannot predict at proof time. |
+| You want the split **enforced and auditable on-chain** — sum reconciliation, non-zero legs, distinct notes, capped fee | `LumenSplitter` in `Exact` mode. |
 
 Be honest about the trade-off: **open-note amounts are plaintext by design.**
 The owner of each note stays hidden, but an observer of the transaction sees the
@@ -173,7 +173,7 @@ this package.
 
 **`Exact` (mode 0)** — `parts` are absolute amounts. Asserts
 `sum(parts) == in_amount - fee_amount` exactly, and that the helper actually
-holds at least `in_amount`. This is the normal Aether path: the planner computes
+holds at least `in_amount`. This is the normal Lumen path: the planner computes
 non-round legs off-chain with a reproducible seed and the contract enforces
 reconciliation.
 
@@ -185,7 +185,7 @@ minimum-delivered floor (`0` opts out). Each leg is floored in u256, and the
 rounding for the planner.
 
 Proportions are always supplied by the caller. The contract **never invents
-randomness**: Cairo has no good entropy source, and Aether's split plans must be
+randomness**: Cairo has no good entropy source, and Lumen's split plans must be
 reproducible by the planner that emitted them.
 
 ## Guarantees asserted on-chain
@@ -227,7 +227,7 @@ loses value is a critical bug, so the last gate reads the output, not the input.
 - **Exact allowance.** The pool is approved for precisely the sum being
   promised, so no allowance lingers after the transaction.
 - **Fees are opt-in and capped.** Deploy with `fee_recipient = 0` and
-  `max_fee_bps = 0` to disable them entirely — that is the intended Aether
+  `max_fee_bps = 0` to disable them entirely — that is the intended Lumen
   configuration.
 - **Open-note amounts are public.** See the trade-off table above.
 - Run the `cairo-security` skill and get a human review before deploying.
@@ -241,20 +241,20 @@ Toolchain: **scarb 2.15.1** (cairo 2.15.0), **snforge 0.56.0**, **starkli 0.4.2*
 ```bash
 cd contracts
 scarb fmt --check     # formatting
-scarb build           # -> target/dev/aether_splitter_AetherSplitter.contract_class.json
+scarb build           # -> target/dev/lumen_splitter_LumenSplitter.contract_class.json
 snforge test          # 29 tests
 ```
 
 Build output, the file `starkli` declares:
 
 ```text
-contracts/target/dev/aether_splitter_AetherSplitter.contract_class.json
+contracts/target/dev/lumen_splitter_LumenSplitter.contract_class.json
 ```
 
 Its class hash can be computed locally, without touching a network or a key:
 
 ```bash
-starkli class-hash target/dev/aether_splitter_AetherSplitter.contract_class.json
+starkli class-hash target/dev/lumen_splitter_LumenSplitter.contract_class.json
 ```
 
 Deployment is `contracts/deploy.sh`. It is **documented and non-executing by
@@ -269,7 +269,7 @@ contracts/
 ├─ Scarb.toml          edition 2024_07, starknet 2.15.0, snforge_std 0.56.0
 ├─ src/
 │  ├─ lib.cairo        module root
-│  ├─ splitter.cairo   AetherSplitter — the contract
+│  ├─ splitter.cairo   LumenSplitter — the contract
 │  ├─ mock_erc20.cairo minimal ERC-20, tests only, never deployed
 │  └─ tests.cairo      29 tests
 ├─ deploy.sh           documented, non-executing starkli walkthrough

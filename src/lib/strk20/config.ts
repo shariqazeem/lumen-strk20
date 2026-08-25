@@ -1,18 +1,18 @@
 /**
  * Live STRK20 protocol configuration — Starknet mainnet.
  *
- * Every address here is a real mainnet deployment. Nothing in Aether points at
+ * Every address here is a real mainnet deployment. Nothing in Lumen points at
  * a mock, a devnet, or a simulated balance.
  */
 
 import { constants } from 'starknet'
 
-/** Aether targets mainnet only. */
+/** Lumen targets mainnet only. */
 export const CHAIN_ID = constants.StarknetChainId.SN_MAIN
 
 /**
  * The live STRK20 privacy pool.
- * Every private note Aether ever holds lives inside this contract.
+ * Every private note Lumen ever holds lives inside this contract.
  */
 export const POOL_ADDRESS =
   '0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a'
@@ -103,14 +103,14 @@ export interface TokenConfig {
 }
 
 /**
- * Mainnet tokens Aether offers.
+ * Mainnet tokens Lumen offers.
  *
  * Every address below was confirmed on-chain by calling `name`, `symbol` and
  * `decimals` against two independent RPC providers.
  *
  * The pool itself has no token allowlist — its ABI has no such function, and
  * 35 different ERC-20s have been shielded through it. This list is therefore a
- * product choice about what Aether routes, not a protocol limit.
+ * product choice about what Lumen routes, not a protocol limit.
  */
 export const TOKENS: Record<TokenSymbol, TokenConfig> = {
   STRK: {

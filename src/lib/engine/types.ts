@@ -1,5 +1,5 @@
 /**
- * Shared vocabulary for the Aether privacy & strategy engine.
+ * Shared vocabulary for the Lumen privacy & strategy engine.
  *
  * Everything here is plain data. The engine is a pure function of these
  * structures: no clocks, no randomness, no network. That is deliberate — the

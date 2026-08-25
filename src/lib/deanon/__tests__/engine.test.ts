@@ -51,7 +51,7 @@ describe('demo scenarios', () => {
     expect(report.band).toBe('exposed')
   })
 
-  it('scores the Aether-managed footprint as shielded', () => {
+  it('scores the Lumen-managed footprint as shielded', () => {
     const { managed } = demoScenarios(NOW)
     const report = runDeanonymization(managed, CTX)
 

@@ -1,5 +1,5 @@
 /**
- * Aether privacy & strategy engine.
+ * Lumen privacy & strategy engine.
  *
  * Pure TypeScript, no I/O, no clock, no `Math.random()`. Feed it notes,
  * history and pool activity; get back a scored, justified, reproducible plan

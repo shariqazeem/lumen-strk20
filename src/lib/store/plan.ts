@@ -290,7 +290,7 @@ export const usePlan = create<PlanState>((set, get) => ({
       } else {
         // Note-to-note churn: a private transfer to self. No contract call,
         // no event, no public leg. The tripwire runs before signing on every
-        // action list Aether builds itself.
+        // action list Lumen builds itself.
         const actions = buildPrivateTransfer(
           TOKENS[intent.sourceAsset].address,
           intent.inputAmount,

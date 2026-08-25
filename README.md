@@ -1,315 +1,171 @@
-# Aether
+# Lumen
 
-**Shielded isn't private.**
+**Private money, by default.**
 
-A privacy pool gives you an anonymity *set*. Your behaviour spends it.
+Lumen is a consumer money app for Starknet. Pay people, get paid, and set
+money aside — without any of it becoming a public financial profile. Balances,
+recipients, amounts and history never appear on-chain; every relationship gets
+its own privacy boundary; and a silent engine checks each move against the
+statistical attacks that actually undo private money.
 
-Aether runs the real deanonymization attacks — amount correlation, timing
-windows, round numbers, cadence, thin anonymity sets — against your actual
-public footprint on Starknet mainnet, scores how linkable you are, and then
-closes each leak it finds through the live [STRK20](https://strk20-by-example.org)
-pool. Attack, remedy, execute, re-attack.
+Built on the live [STRK20](https://strk20-by-example.org) privacy pool,
+Starknet **mainnet**. Non-custodial: the user's privacy-enabled wallet holds
+every key, discovers every note, and approves every move — Lumen never sees
+private state and never asks for a viewing key.
 
-Built for the STRK20 Private Sprint. Live at
-**[aether-strk20.vercel.app](https://aether-strk20.vercel.app)** — the exposure
-analysis needs no wallet, so you can point it at any address right now.
-
----
-
-## The problem Aether exists to solve
-
-The privacy stack has three layers. **Cryptographic hiding** — commitments,
-nullifiers, proofs — is solved, and chains build it themselves; STRK20 *is*
-that layer. **Protocol metadata** — relayers, stealth accounts, gas privacy —
-is being solved, also by chains. The third layer is **statistical privacy: the
-sequence of what you do**, and nobody owns it, because it isn't a protocol
-primitive. It is opinionated, user-side discipline. It is an application.
-
-That third layer is where deanonymization actually happens. Deposits and
-withdrawals are public — only the *link* between them is hidden. Attacks
-re-forge that link without touching the cryptography: a withdrawal that matches
-a deposit to within a fraction of a percent, an exit twenty minutes after an
-entry, a round 1,000, the same hour every week, a denomination tier with four
-other users in it. This is the documented failure mode of every pool that has
-been studied, and no amount of proving strength fixes it.
-
-Most privacy tooling also treats the shielded pool as a stop on the way
-somewhere else. Value goes in, waits, and comes out — and the moment it touches
-a public protocol, the link is re-formed.
-
-```
-Traditional flow (high leakage)
-  [Wallet A] ──▶ [Shield] ──▶ [Unshield] ──▶ [Ekubo / Vesu] ──▶ identity relinked ✗
-```
-
-The subtler failure is that privacy is not a property of a single transaction.
-It is a property of a *sequence*. A user who shields 1,000 USDC every Monday at
-09:00 has perfect per-transaction privacy and no privacy at all, because the
-pattern itself is the fingerprint.
-
-Aether closes the loop and then optimises the sequence:
-
-```
-Aether execution engine
-                ┌───────────────────────────────────────────────┐
-                │          STRK20 shielded environment          │
-  [Wallet A] ─▶ │  [note] ─▶ privacy_invoke ─▶ [AVNU / Vesu]     │
-                │      ▲                            │           │
-                │      └────────── [new note] ◀─────┘           │
-                └───────────────────────────────────────────────┘
-                         capital never exits
-```
+**Live at [lumen-strk20.vercel.app](https://lumen-strk20.vercel.app).**
+No wallet installed? Open [`/app?preview`](https://lumen-strk20.vercel.app/app?preview)
+for a sample-data walkthrough — clearly labeled, and chain actions stay
+disabled until a real wallet connects.
 
 ---
 
-## What it does
+## The idea
 
-**The adversary runs first.** Seven heuristics — amount correlation, exit-minus-fee
-reconstruction, round numbers, timing windows, thin anonymity sets, repeated
-amounts, cadence — run against a target's observable footprint and report how
-linkable it is, with the evidence attached. It needs no wallet: paste any
-Starknet address at [/app](https://aether-strk20.vercel.app/app) and it runs.
+Ordinary money movement should not publish a financial profile.
 
-The contrast is asserted in tests, not claimed:
+On a transparent chain, salaries, rent, friends and savings form one connected
+graph with your name on it. Cryptographic pools hide individual transactions —
+but 2026 research on shielded UTXO systems (the "Anonymity Gap" line of work)
+keeps measuring the same result: provenance, value constraints, timing and
+habit shrink the *effective* anonymity set by 40–59% on real deployments, and
+plenty of transactions collapse to a handful of candidates. The leaks are not
+in the cryptography. They are in behaviour — and behaviour is the app layer's
+job.
 
-| Footprint | Linkability | Band | Findings |
-|---|---|---|---|
-| Naive — round 1,000 in, same amount out 20 min later, weekly | **100** | exposed | 16 |
-| Aether-managed — non-round splits, no matching exit, irregular spacing | **0** | shielded | 0 |
+Lumen's answer is to make the private path the only easy path, and to make
+good behaviour automatic:
 
-Same engine, same pool data. Only the behaviour differs.
+1. **Relationship boundaries.** Each person you pay sees only what you send
+   them. Nothing connects one relationship to another — and the app enforces
+   the *behavioural* half of that promise too, warning when a distinctive
+   amount or a rigid cadence would bridge two boundaries.
 
-**Everything else follows from that.**
+2. **Private receipts.** A payment can be *proven* without being *published*.
+   Every payment mints a receipt carrying exactly one fact — this amount, this
+   moment, this settlement transaction — that the payer can hand to exactly
+   one counterparty. The settlement is publicly verifiable yet names no
+   sender, recipient or amount.
 
+3. **The silent engine.** For every action, Lumen answers internally: does
+   this create a public record? does the amount re-link me (round, reused,
+   mirroring a deposit)? does the timing stitch two events together? Where the
+   action is Lumen's own (a deposit, a cash-out) the engine *rewrites* it — a
+   tuned non-round amount, a suggested waiting window. Where the amount is a
+   contract with another person, it warns instead. The user never sees a
+   score. They just stay private.
 
-- **Multi-asset private portfolio** — shielded balances across the pool's
-  supported assets, never a public balance.
-- **Five strategy modes** — privacy-first, stealth DCA, whale distribution,
-  yield-max, balanced. Modes change only the weighting between expected return
-  and privacy delta; they never relax the hard constraints.
-- **A privacy-aware execution planner** that decides *what* to do, *how much* to
-  split it into, and *when* — optimising return, cost and anonymity together.
-- **A live Effective Privacy Score** with a full six-dimension breakdown,
-  computed from real pool data rather than asserted.
-- **Attacker view** — the same account rendered as a public observer sees it,
-  so the claim is inspectable rather than promised.
-- **Selective disclosure** — prove a statement (`private balance ≥ X`,
-  `this strategy returned Y%`) without surrendering a viewing key.
-- **Never unshields by default.** Capital stays in private notes for its entire
-  lifecycle. Unshielding requires an explicit, separate user request.
+## What the user sees
 
----
+- **Home** — one dark-glass card holding the private balance (revealed only
+  through an explicit wallet consent), three verbs: **Pay · Receive · Add**.
+- **Spaces** — Rent, Travel, Rainy day: a private partition of the one
+  shielded balance, kept on-device. Moving between spaces is instant and free
+  because nothing touches the chain — a boundary the chain could see would
+  itself leak.
+- **People** — the address book of relationship identities.
+- **Activity** — every entry tells the truth twice: what you did, and what
+  the public chain saw (almost always: *nothing*).
+- **Cash out** — deliberately one level deeper in the menu, warned, and
+  guard-checked: the exit is where private money historically gets traced.
 
-> The idea in full: [docs/IDEA.md](docs/IDEA.md). The technical reasoning — what a pool hides, what stays public, each heuristic and
-> its remedy, and an explicit list of what Aether does **not** claim — is in
-> [docs/ATTACK-MODEL.md](docs/ATTACK-MODEL.md).
+No seed phrases, no "notes", no "nullifiers", no jargon anywhere on the
+surface.
 
-## The Effective Privacy Score
+## Honest privacy model
 
-The score is a deterministic, client-side function of observable state. The
-formula is public because a privacy score you cannot audit is marketing:
+| Never public                              | Public, by nature                        |
+| ----------------------------------------- | ---------------------------------------- |
+| Who you pay, and how much                 | Adding money (an ERC-20 deposit)         |
+| Your balance and everything in it         | Cashing out (a withdrawal)               |
+| Spaces, people, notes-to-self, history    | That the pool processed *something*      |
+| Receiving money                           |                                          |
 
-```
-S_eff = 0.30·A_set + 0.25·H_amount + 0.20·H_time
-      + 0.15·(100 − U_behaviour) + 0.10·(100 − R_exit)
-```
+Both boundary crossings run through the guard first, so what is public cannot
+be matched against what is not. Private transfers are submitted by a relayer;
+the transaction sender on-chain is the relayer for all users.
 
-| Term | Meaning | Source |
-|---|---|---|
-| `A_set` | anonymity set size, log-scaled over the denomination tier | live pool activity |
-| `H_amount` | entropy of amount splits, penalising round human numbers | your action history |
-| `H_time` | inter-arrival timing entropy vs. background pool traffic | your action history |
-| `U_behaviour` | behavioural uniqueness — repeated asset/route/size triples, fixed hour-of-day | your action history |
-| `R_exit` | exit correlation — amounts out that match amounts in | your action history |
+Product data (people, spaces, receipts, the action ledger) lives in
+`localStorage` on the user's device, keyed per account. There is no server and
+no analytics.
 
-The last two are *inverted* in the formula: they are stored as raw risk, where
-higher is worse.
+## The guard, concretely
 
-### Hard constraints
+`src/lib/lumen/guard.ts` — pure, deterministic, unit-tested underneath by the
+engine it draws from:
 
-These are enforced in code, not by convention, and no strategy mode can
-override them:
+- **Pay** (`reviewPay`): route privacy (a private transfer has no public
+  leg), cross-relationship amount reuse inside a 48 h window, cadence
+  detection (coefficient of variation over inter-payment gaps).
+- **Add money** (`reviewShield`): deposits are public forever, so round or
+  recently-used amounts are *rewritten* into pool-typical, non-round, fresh
+  ones (`nudgeAmount`, ≤ ~2 % drift, deterministic per account per day, with a
+  one-tap "keep exact" escape hatch).
+- **Cash out** (`reviewCashOut`): exit↔entry amount correlation against every
+  deposit in the window (the classic mixer heuristic), roundness, and timing —
+  if the user was active minutes ago, the engine proposes an irregular
+  execution window drawn from a de-periodised exponential schedule.
 
-1. **Never unshield unless explicitly requested.** The planner has no path that
-   produces a withdrawal to a user-controlled public address.
-2. **Never reuse an exact previous amount within 48 hours.**
-3. **Refuse any action** that would drop `S_eff` below the user's floor. Refused
-   actions are surfaced with their reason, not silently dropped.
-4. **Compact notes** before fragmentation degrades the anonymity set.
+The engine underneath (`src/lib/engine/`, `src/lib/deanon/`) is a seeded,
+reproducible implementation of the attacks themselves — amount correlation,
+round-number salience, timing windows, cadence periodicity, anonymity-set
+thinning, exit matching. Same inputs, same review, always: a decision the user
+can audit.
 
-> On withdrawals: private DeFi legitimately emits `withdraw` actions that move
-> value to a helper contract, which returns it to the pool inside the *same
-> atomic transaction*. That is not an unshield. `assertNeverUnshields()` runs
-> immediately before signing and permits a withdrawal only to a helper
-> participating in that transaction — anything else throws.
+## STRK20 integration
 
----
+Everything chain-touching goes through the user's wallet via the Wallet API
+(`WalletAccountV6`, API ≥ 0.10.3):
 
-## Architecture
+- `strk20InvokeTransaction` with `deposit` / `transfer` / `withdraw` action
+  lists (`src/lib/strk20/actions.ts`)
+- `strk20Balances` for shielded balances — called only as an explicit,
+  consent-prompting "reveal", never to feature-detect
+- Capability detection by advertised Wallet API version
+- Live pool fee from `get_fee_amount` (mainnet returns 6 STRK today, not the
+  documented 4 — read, never hardcoded)
+- Pool: [`0x040337…812a`](https://voyager.online/contract/0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a)
+  on mainnet; note maturity (~10 blocks) surfaced in the add-money flow
+- `assertNeverUnshields` guards every action list Lumen builds: a `withdraw`
+  to anything but a same-transaction helper is refused mechanically. The only
+  code path that can produce a public withdrawal is the explicit cash-out
+  flow.
+- AVNU private-swap rails (`src/lib/strk20/swap.ts`) and the
+  `LumenSplitter` Cairo helper (`contracts/`, `privacy_invoke` splitting one
+  withdrawal into up to 16 open notes atomically) are wired for the next
+  step: in-pool conversion and one-transaction note compaction.
 
-Aether integrates through the **Starknet Wallet API**. The dapp never holds
-viewing keys, never generates proofs, and never sees private state; the wallet
-owns all of it.
-
-```
-User wallet (Ready / Xverse)
-        │  WalletAccountV6
-        ▼
-┌──────────────────────────────────────────────────────────┐
-│  Aether frontend — Next.js 15, TS strict, Tailwind       │
-│  Exposure · Position · Remedy · Ledger · Disclose        │
-├──────────────────────────────────────────────────────────┤
-│  Privacy policy + strategy engine                        │
-│  adversary + planner: pure, seeded — 158 tests           │
-├──────────────────────────────────────────────────────────┤
-│  Local action ledger (browser only)                      │
-│  the behavioural history a chain deliberately can't hold │
-├──────────────────────────────────────────────────────────┤
-│  Execution — STRK20_ACTION builders · AVNU private swaps │
-│  assertNeverUnshields() before every signature           │
-└──────────────────────────────────────────────────────────┘
-        │  strk20InvokeTransaction / executePrivateSwap
-        ▼
-  Live STRK20 pool · AVNU executor · relayer
-```
-
-The engine is pure TypeScript with no `Math.random()` and no ambient clock —
-seed and `now` are parameters, so a plan is reproducible and the hard
-constraints are testable. Plans are seeded per address per day: regenerate all
-you like, the recommendation holds still for a day.
-
-**The local ledger** records every action Aether executes, beside what a chain
-observer saw of it. It exists only in your browser: the behavioural terms of
-the privacy score need a history, and the chain refusing to hold that history
-is precisely the product working. Clearing it resets those terms.
-
-**Selective disclosure** builds canonical statement JSON (balance threshold,
-strategy return, non-interaction with an address set) and is explicit about
-the boundary: Wallet API 0.10.3 exposes no statement-proof method, so Aether
-prepares the statement today and requests the proof when wallets ship support.
-No signature theatre in the meantime.
-
-### Live mainnet addresses
-
-Every address below was confirmed on-chain by calling `name` / `symbol` /
-`decimals` (or `getClassAt`) against two independent RPC providers, rather than
-copied from documentation. Three of the values that documentation would have
-given are wrong, so this mattered:
-
-| | | |
-|---|---|---|
-| STRK20 pool | [`0x040337b1…ffe812a`](https://voyager.online/contract/0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a) | live, `get_version() = "2.0"`, not paused |
-| Ekubo anonymizer | `0x2a4ac595…d8d19ebd7` | **declared**, ABI exposes `privacy_invoke` |
-| Vesu anonymizer | `0x3751128d…2a8e24aae` | **not declared on mainnet** |
-| USDC (native) | `0x033068f6…ee93b35fb` | 6 dp |
-| strkBTC | `0x0787150e…e945b3135` | 8 dp |
-| STRK | `0x04718f5a…87c938d` | 18 dp |
-| ETH | `0x049d3657…9e004dc7` | 18 dp |
-
-Three corrections worth recording, because each would have failed silently:
-
-- **USDC.** The obvious address (`0x053c9125…68a8`) is bridged **USDC.e**, not
-  native USDC. Inside the pool the gap is decisive — roughly 19,600 shielded
-  events for native against 80 for bridged. Routing to the bridged token would
-  put value somewhere with essentially no anonymity set.
-- **Pool fee.** Documentation says 4 STRK; `get_fee_amount()` returns **6**.
-  Pre-filling a MAX amount from the documented figure fails *after* the user
-  has signed.
-- **Vesu anonymizer.** Its published class hash is not declared on mainnet
-  (`getClassAt` returns "class hash not found" on both providers). The hash is
-  real but comes from a release-candidate tag. **The private-lending route is
-  therefore unavailable**, and the planner does not offer it. Ekubo and the
-  AVNU private-swap route are both live.
-
-The pool address is independently corroborated: it is the value shipped as
-`PRIVACY_POOL_ADDRESS` in `@avnu/avnu-sdk@4.2.0`.
-
-The pool has **no token allowlist** — its ABI contains no such function, and 35
-different ERC-20s have been shielded through it. Aether's token list is a
-product choice, not a protocol limit.
-
-### Anonymizer contract
-
-`contracts/` holds **AetherSplitter**, a Cairo `privacy_invoke` helper written
-for this repo. It takes one input amount and credits it back as **N non-round
-output notes in a single atomic pool transaction** — the on-chain half of the
-amount-entropy remedy the engine recommends. Splitting across N transactions
-instead costs a 6 STRK pool fee each and leaves a timing trail between the legs
-that re-links the notes the split was meant to decorrelate.
-
-The pool supports it: `${openNoteIds[N]}` is a zero-based index over the open
-notes in one transaction, and `privacy_invoke` returns a `Span<OpenNoteDeposit>`
-— a list, one entry per note. Split proportions are always supplied by the
-caller (the planner's entropy stays reproducible; the contract invents no
-randomness), and the contract asserts on-chain that the outputs sum to exactly
-the input minus any declared fee. Only the pinned pool address may call it.
-
-Draft, unaudited, and **not deployed** — declaring a class on mainnet spends gas
-and is the repo owner's call. `contracts/deploy.sh` prints the exact starkli
-commands without executing them or touching key material. Build with
-`scarb build`, test with `snforge test` (29 tests). Details, the full calldata
-layout, and the honest trade-off against plain in-pool transfers are in
-[`contracts/README.md`](contracts/README.md).
-
-### Pinned stack
-
-STRK20 support landed in `starknet@10.4.0`. A bare `npm install starknet`
-resolves to the `latest` line, which lacks `WalletAccountV6`,
-`strk20InvokeTransaction` and `STRK20_ACTION` entirely. These versions are
-pinned exactly and deliberately:
-
-```
-starknet                                    10.4.0
-@starknet-io/get-starknet-discovery          6.0.3
-@starknet-io/get-starknet-wallet-standard    6.0.3
-@starknet-io/types-js                       0.10.3
-@avnu/avnu-sdk                               4.2.0
-```
-
----
-
-## Running it
+## Run it
 
 ```bash
 npm install
-cp .env.example .env.local   # then paste your own Alchemy key
+cp .env.example .env.local   # add a Starknet mainnet RPC URL (Alchemy free tier works)
 npm run dev
 ```
 
-You need a privacy-enabled Starknet wallet (Ready; Xverse in progress) that
-advertises Wallet API `>= 0.10.3`.
+Open `http://localhost:3000`. The app needs a privacy-enabled Starknet wallet
+(e.g. [Ready](https://www.ready.co/)) on mainnet; `/app?preview` walks the
+full product with labeled sample data and no wallet.
 
 ```bash
-npm test        # engine unit tests
-npm run typecheck
+npm run typecheck && npm run lint && npm test   # 158 tests, engine + rails
 npm run build
 ```
 
-**The RPC key is read from `NEXT_PUBLIC_STARKNET_RPC_URL` and is never
-committed.** `.env.local` is gitignored.
+## Repository map
 
----
+```
+src/
+  app/                  landing (/) and the money app (/app)
+  components/lumen/     the product surface — home, sheets, guard panel, receipt
+  lib/lumen/            store, guard, people, spaces, receipts
+  lib/strk20/           wallet, action builders, pool reads, AVNU swaps
+  lib/engine/           seeded splitter, timing scheduler, privacy scoring
+  lib/deanon/           the attack heuristics the guard runs in reverse
+contracts/              LumenSplitter (Cairo) — multi-note splits via privacy_invoke
+docs/                   the pivot brief and attack model
+```
 
-## Reproducing the three mainnet transactions
+## License
 
-Recorded in [`strk20.json`](./strk20.json) as they land.
-
-1. **Shield** — deposit into the live pool, creating private notes.
-2. **Private swap** — an AVNU private-mode swap; the output returns as a
-   private note. On Voyager the caller is the executor contract, not the user.
-3. **Private DeFi** — a Vesu anonymizer lend or a note-to-note rebalance.
-
-Each is a separate transaction by design. Bundling the shield with the action it
-funds would re-create the public link the whole product exists to break.
-
----
-
-## Status
-
-Under active development for the STRK20 Private Sprint (18–31 Aug 2026).
-Transaction hashes, contracts and the demo link populate `strk20.json` as they
-come to exist.
-
-## Licence
-
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](LICENSE).

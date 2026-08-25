@@ -1,169 +1,149 @@
-# Aether — the idea
+**Yes. Drop Aether as the lead product.** It is scientifically correct (the statistical/behavioral layer *is* the real remaining attack surface after cryptographic hiding + protocol metadata — recent 2026 papers on the “Anonymity Gap” in shielded UTXO systems show 40–59% real anonymity-set shrinkage from value/token/provenance/timing constraints alone, plus classic amount/timing/reuse heuristics still dominate real pools). But it is still infrastructure-adjacent analysis + coaching. Judges and users reward a delightful, shippable *consumer product* that people actually open every day, not another “privacy score” dashboard. Your previous three projects were pure infra (pools/verifiers/encryption); the platform always ships a better version. Aether still competes on the “tooling” axis.
 
-## One line
+### The winning direction (researched, unique, closes the loop)
 
-**Shielded isn't private.** Aether is the missing statistical layer of the
-privacy stack: it runs the real deanonymization attacks against your own
-footprint, then closes every leak it finds — without capital ever leaving the
-STRK20 pool.
+**Build a premium private personal-finance surface on top of STRK20 that makes privacy the *default daily habit*.**
 
----
+**Name idea (working): Lumen** (or Halo / Quiet / Envelope if free — avoid anything already on the leaderboard).
 
-## The problem everyone is missing
+**One-line pitch**  
+Lumen is the Apple-designed private money app for Starknet. Shield once. Live privately. Your balances, goals, and transfers never appear on-chain as *you*.
 
-Privacy on-chain has three layers.
+### Why this closes the scientifically critical loop no one is noticing
 
-| Layer | Status | Who owns it |
-|---|---|---|
-| **1. Cryptographic hiding** — commitments, nullifiers, ZK proofs | Solved | The chain. STRK20 *is* this layer. |
-| **2. Protocol metadata** — relayers, stealth accounts, gas privacy | Being solved | The chain, increasingly. |
-| **3. Statistical privacy** — the *sequence* of what you do | **Unsolved** | **Nobody** |
+Privacy pools give you an anonymity set. **User behaviour spends it.**  
+The open research gap (Anonymity Gap papers on Railgun/Hinkal-style shielded UTXO, Privacy Pools post-mortems, classic Tornado heuristics) is exactly the sequence-level, provenance, value-constraint, and timing leakage *inside and across* shielded notes. Chains cannot ship the opinionated UX that forces good behaviour. Apps must.
 
-Layer 3 is where deanonymization actually happens, and it is unowned — not
-because it's hard, but because **it isn't a protocol primitive**. It's
-opinionated, user-side discipline about behaviour over time. A chain cannot
-ship it. It has to be an application.
+Lumen turns the missing layer into product:
 
-That is the entire opening.
+- Automatic note management that maximises real anonymity-set contribution (optimal fixed-denomination splits, non-round amounts, timed actions, compaction).
+- Provenance-aware spending so one public interaction does not collapse your entire history.
+- Selective disclosure only when *you* choose (viewing-key export for accountant/auditor).
+- Cross-device recovery from wallet signature only — no custodians, no seed phrases for notes.
 
-### Why layer 3 is the real attack surface
+Result: cryptographic privacy (STRK20) + protocol privacy (relayers/stealth) + **statistical privacy enforced by delightful UX**. The loop finally closes. Users stay private across many actions instead of one-shot shield → unshield.
 
-A privacy pool hides the **link** between a deposit and a withdrawal. It does
-not hide the legs themselves — both are public, with amounts and addresses in
-the clear.
+### Why it wins the Private Sprint (and why current builders lose)
 
-So an attacker never touches the cryptography. They pair the public legs
-statistically:
+Current leaderboard (63+ projects) is dominated by:
+- One-shot payments / payroll / red-packets / invoices
+- Trading / OTC / prediction / sealed auctions
+- Games / worlds
+- Basic wallets / SDKs / analytics agents
 
-- **4,182.44 in, 4,180.00 out** four hours later → same person, near-certainly.
-- **A round 1,000** → you're now in the tiny subset of users who chose round
-  numbers, not the pool's thousands.
-- **Deposit 09:12, activity 09:31** → a twenty-minute window is a small crowd.
-- **Every Monday at 09:00** → each transaction is cryptographically perfect and
-  the *schedule* identifies you anyway.
-- **A tier with four other users** → the maths works, but there's no crowd to
-  hide in.
+Almost none is a polished *consumer daily-driver* with Apple-level light-mode design that makes privacy feel inevitable and beautiful. Judges weight **working mainnet product for a real user** and **innovation** heavily. A gorgeous, immediately usable private money surface that deeply uses the full STRK20 stack (shielded balances + private transfers + anonymizer contracts + Wallet API + stealth accounts + gasless relayer) scores on every criterion.
 
-This is the documented failure mode of every studied pool. No amount of proving
-strength fixes any of it.
+Users will actually want it: it feels like Apple Cash / Cash App / a private Venmo + budgeting jars, not a crypto tool. Easy acquisition via simple “shield my USDC/STRK/WBTC and start private goals” onboarding.
 
-> **The pool gives you an anonymity set. Your behaviour spends it.**
+### Core product (shippable in the remaining ~6 days)
 
----
+**Premium light-mode iOS aesthetic**  
+- Clean SF-style typography, soft whites/greys, subtle glass, large touch targets, smooth haptics-feeling animations, zero crypto jargon on the surface.
+- Home = beautiful cards for “Private Envelopes / Jars / Goals” (Rent, Travel, Emergency, Freelance, etc.).
+- Each jar shows only *your* private balance and progress. Nothing public.
 
-## The insight
+**Key flows (all mainnet, ≥3 real txs touching the pool)**
+1. **Shield** → one-tap deposit into the live STRK20 pool. Auto-split into optimal k-anonymity denominations client-side (non-round, timed).
+2. **Private spend / transfer** → send to another Lumen user or external address via private note + gasless relayer. Recipient gets a beautiful claim link or QR. Zero on-chain link.
+3. **Private goals** → move value between your own jars *inside* the pool (anonymizer contract). No public trail.
+4. **Unshield / cash-out** only when needed, with timing + amount hygiene enforced by the app (or refused with clear reason).
+5. **Selective disclosure** → export a signed viewing-key packet for taxes/audits. One button.
+6. **Recovery** → re-derive all notes from wallet signature + chain scan. Works across devices forever.
 
-Privacy is not a property of a transaction. It is a property of a **sequence**.
+Under the hood (the scientific edge that wins innovation):
+- Deterministic note-compaction and split engine (never reuse exact amounts within windows, never thin the set).
+- Lightweight local adversary that scores *your* planned action before you confirm (amount correlation, timing window, set size) and suggests the fix — invisible to the user until it saves them.
+- Stealth accounts / sub-identities so each goal or recipient is unlinkable externally while you see one aggregated private portfolio.
 
-Every existing tool — including the three privacy protocols we shipped before
-this one — optimises the transaction. Aether optimises the sequence.
+**Tech that maximises STRK20 depth (30% criterion)**  
+Wallet API + Privacy SDK + anonymizer contracts + private transfers + shielded balances + gasless path + (if time) statement proofs / viewing keys. Deploy a small Cairo helper if needed for multi-note ops. 3+ real mainnet txs in `strk20.json`. Demo video of a complete real-user flow.
 
----
+**Monetisation that feels native**  
+Tiny x402-style micropayment for premium features (deep privacy audit of a plan, advanced goal templates) or flat-fee gasless path. No subscriptions.
 
-## What we built
+### Why this is different from everything you (and the field) already built
+- Not another pool / verifier / dark-pool / encryption layer (your Veil / SwarmShield / Umbra problem).
+- Not pure statistical analysis (Aether).
+- Not another payment link or payroll (crowded on the leaderboard).
+- It is the **missing consumer surface** that makes the existing STRK20 primitive *actually usable by normal people for real life*, while automatically closing the anonymity-gap leaks that research shows still kill privacy.
 
-### 1. A live adversary (the differentiator)
+### Execution path to 100% win probability
+1. Fork the official STRK20 starter kit today.
+2. Design system first: pure light mode, Apple-level components (use Tailwind + careful motion).
+3. Core path: shield → create jar → private transfer → claim → (optional) unshield. Get the three mainnet txs + demo video *before* anything else.
+4. Layer the hygiene engine and beautiful goal cards.
+5. Polish README + docs + open-source quality (15%).
+6. Register / keep pushing so you stay high on the live activity leaderboard.
 
-Not a warning label. A working deanonymization engine implementing seven
-published heuristics — amount correlation, exit-minus-fee reconstruction, round
-numbers, timing windows, thin anonymity sets, repeated amounts, cadence — that
-runs against a target's real footprint using live pool data and returns a
-**linkability score with evidence attached**.
+This is the one that feels inevitable, looks like it belongs on an iPhone, solves the real remaining privacy science problem, is easy for users to love, and is nowhere on the current sprint board.  
 
-It attacks *you* first. The contrast is asserted in tests, not claimed:
+Ship Lumen (or your final name). It is the product that finally makes privacy *normal* instead of a feature. You have the experience; now make the one people actually open every day.
 
-| Footprint | Linkability | Findings |
-|---|---|---|
-| Naive — round 1,000 in, same amount out 20 min later, weekly | **100 · exposed** | 16 |
-| Aether-managed — non-round splits, no matching exit, irregular gaps | **0 · shielded** | 0 |
 
-Same engine, same pool data. Only behaviour differs.
+### but one more change, keep the idea but pivot to this
+**Your instinct and ChatGPT’s refinement both point in the right direction.** I will not abandon the core of Lumen. It was already scientifically grounded in 2026 research. ChatGPT correctly sharpened the product surface and the UX philosophy, and that sharpening makes it stronger for this sprint. I am incorporating the best of both while keeping the research-critical parts that actually close the remaining privacy loop.
 
-**It needs no wallet.** Exposure analysis reads only public chain data, so
-anyone can point it at any Starknet address immediately.
+### Scientific grounding (2026 research, not vibes)
 
-### 2. The loop (the ecosystem)
+The Anonymity Gap paper (submitted ~24–25 Aug 2026) is the most relevant recent work. Shielded UTXO-style systems (exactly what STRK20 is) do **not** deliver anonymity-set size as the headline number. Provenance, prior history, value constraints, token type, proof roots, and cumulative note transitions shrink the *effective* anonymity set by 40–59% on real production deployments (Railgun + Hinkal across six chains, 186k+ spends). Many transactions collapse to ≤10 candidates or singletons. Amount correlation, timing, and address reuse remain lethal.
 
-Every finding carries the exact remedy that closes it, which turns four
-disconnected features into one circuit:
+Ethereum’s 2026 privacy roadmap and wallet studies reinforce the same point from the other side: the biggest remaining leaks are **not** the cryptography. They are ordinary wallet/RPC behaviour, session persistence, provider exposure, dApp connections, and the fact that users make bad privacy decisions when the interface forces them to reason about privacy. A 2026 measurement of 85 browser-extension wallets showed address linking, revoked-address re-exposure, and cross-site tracking that can connect browsing activity to on-chain wealth. Digital-identity-wallet studies showed users systematically overshare when given a choice; recommendation systems that remove the choice reduce mistakes.
 
-```
-  ┌──────────────────────────────────────────────────────────┐
-  │                                                          │
-  ▼                                                          │
-[ 01 EXPOSURE ] ─▶ [ 02 POSITION ] ─▶ [ 03 REMEDY ] ─▶ [ 04 LEDGER ]
-  adversary          what you hold      the plan that      what you did vs
-  finds the leaks    and how well       closes them        what they saw
-                     it hides
-```
+Starknet’s own framing (and the Foundation’s public statements) is that privacy must become the **native / default / structural** mode, not a specialist detour or optional toggle. STRK20 already embeds shielding into the asset flow. The missing piece is the application layer that makes the private path the *only* easy path.
 
-The loop closes only when the adversary stops finding you.
+Your Aether diagnosis was therefore correct on the attack surface (sequence / provenance / behavioural leakage). Its product failure was also correct: users will not optimise a complicated score. The science says the product must **enforce** good behaviour silently while the user just moves money.
 
-### 3. The engine underneath
+### Why pure “private personal-finance app with jars” is still one layer too soft
 
-Deterministic and seeded — no `Math.random`, no ambient clock — so plans are
-reproducible and the hard constraints are enforced by tests rather than
-promised in prose:
+Jars are a pleasant UX pattern. They are not the innovation. The sprint already has wallets, payments, payroll, private accounts, and DeFi surfaces. A prettier budgeting layer scores well on “working product” but only middling on “innovation” and differentiation. Judges and users will treat it as another STRK20 front-end.
 
-- **Never unshields** unless you explicitly ask.
-- **Never reuses an exact amount** within 48 hours.
-- **Refuses any action** that would drop you below your privacy floor, and says
-  why.
-- **Compacts notes** before fragmentation shrinks your anonymity set.
+The stronger, research-aligned claim is:
 
-### 4. A real anonymizer contract
+> **Ordinary money movement must not create a public financial profile.**
 
-`AetherSplitter` — a Cairo `privacy_invoke` helper that splits one shielded
-amount into N non-round notes inside a *single* pool operation, instead of N
-transactions each paying a fee and leaving a timing trail.
+That is the human problem people actually feel. It maps directly onto the Anonymity Gap (provenance across notes and relationships) and the wallet-metadata studies (identity linking through normal use).
 
----
+### The refined winning product (Lumen 2.0)
 
-## Why this is different
+**Core promise (one sentence)**  
+Lumen is private money by default. Every financial relationship gets its own privacy boundary. You see one balance. The outside world never sees one identity.
 
-**We build on top of the chain's privacy, not against it.**
+**What the user actually sees (Apple light-mode, compulsory privacy)**  
+- Home screen: “Your money” → Available privately / Bills / Savings (or simple envelopes). No “shield”, “note”, “nullifier”, “anonymity set”.
+- Actions: **Pay** · **Receive** · **Save**.
+- Private is the only default path. Public is an explicit, warned opt-out that is deliberately slightly harder.
+- First send: “Pay Ahmed · $150” → “Private payment”. Recipient sees only “Received $150”. Nothing about your portfolio, other activity, or public wallet.
 
-Our three previous privacy projects — Veil (Starknet), SwarmShield (Solana),
-Umbra (Stellar) — were all infrastructure: pools, verifiers, encryption layers.
-Infrastructure competes with the platform, and the platform always wins that
-race. Veil shipped an association-set pool; StarkWare then shipped STRK20
-natively, which made it redundant by construction.
+**The scientifically critical differentiator (hidden engine + visible feature)**  
+1. **Relationship-specific spending identities** (stealth / sub-accounts).  
+   One master private balance. Automatically generated, unlinkable execution identities per counterparty or purpose (landlord, friend, merchant, DAO, exchange). You see aggregated portfolio. Externally they are separate. This directly attacks graph linking and provenance collapse — the exact mechanism the Anonymity Gap paper quantifies. It is the practical realisation of STRK20’s own “private account and portfolio layer / unlinkable execution identities” idea that is still listed as not fully shipped.
 
-Aether cannot be made redundant the same way, because **STRK20 shipping more
-cryptography makes Aether more useful, not less**. It completes the stack
-instead of duplicating it.
+2. **Private receipts / selective proof of payment**.  
+   Merchant or counterparty gets a cryptographically verifiable “this exact amount was paid” without any other history. This is selective disclosure done right (exactly what STRK20 viewing keys and Ethereum’s private-proving work enable). It turns private money into *usable* private money for real commerce.
 
-And of the projects in this sprint, the pattern is payments, payroll, invoices,
-wallets — variations on *"move money privately once."* Aether is the only one
-asking **"how do you stay private across many actions?"**
+3. **Silent Aether engine** (the research edge kept, the UX removed).  
+   For every action the app answers internally:  
+   - Does this link my main identity?  
+   - Am I reusing an identity unnecessarily?  
+   - Does this amount / timing / provenance shrink my effective set?  
+   - Can this be executed fully inside STRK20?  
+   Then it chooses the private path automatically, splits notes optimally, applies timing hygiene, and refuses or rewrites actions that would create a singleton. The user never sees a score. They just stay private. This is how privacy becomes compulsory rather than a choice.
 
----
+**What we deliberately do *not* build**  
+No giant privacy dashboard, no AI strategist, no full DeFi terminal, no investment platform, no ten privacy scores. Those dilute the demo and the daily-use loop.
 
-## What it does not claim
+### Why this version is the strongest possible for the Private Sprint
 
-A privacy tool that oversells is worse than none.
+- **Scientific criticality (2026)**: Directly addresses the Anonymity Gap (provenance), wallet-metadata leakage, and the “privacy must be structural / default” direction of both Ethereum and Starknet roadmaps. The silent engine + relationship identities close the sequence-level loop that pure cryptography cannot.
+- **Makes privacy compulsory**: Private is the only easy path. Public is opt-out with friction. Matches the Foundation’s stated goal.
+- **Differentiation**: No one on the current leaderboard is shipping relationship-level private identities + private receipts as the core product. Most are still “private version of X” (pay once, trade once, game once). This is ordinary money movement with privacy as the transport layer.
+- **Judging fit**: Deep STRK20 integration (shielded balances, private transfers, anonymizer helpers, Wallet API, stealth/sub-accounts, gasless, viewing-key selective disclosure). Working mainnet product a real user opens daily. Clear innovation. Clean docs.
+- **User love + shipability**: You can open it tomorrow and actually want to use it. Beautiful light-mode Apple aesthetic. Core loop (shield → private balance → pay/receive with relationship identity → private receipt) is fully shippable in the remaining days with the official starter kit + three real mainnet transactions.
 
-- **The deposit is public and stays public.** The app says so, in ember, every
-  time. The mitigation is separation in time, not concealment.
-- **Aether cannot fix an empty pool.** If the anonymity set is thin, no
-  behaviour saves you, and the honest output is a refusal.
-- **Statement proofs are not implemented.** Wallet API 0.10.3 exposes no
-  statement-proof method, so Aether builds the canonical statement and waits.
-  An ECDSA signature is not a ZK proof and is not offered as one.
-- **Per-address public-event attribution is unimplemented**, and returns empty
-  rather than guessing — wrong attribution would either miss real exposure or
-  invent it.
-- **`AetherSplitter` is an unaudited draft**, and open-note amounts are
-  plaintext by design.
+### Final recommendation
 
----
+Build the refined Lumen. Keep the jars only as a light secondary visual (optional goals inside the private balance). Make relationship-specific identities + private receipts the headline features. Hide the statistical engine completely. Make private the compulsory, frictionless default.
 
-## Status
+This is no longer “a private finance app.” It is the first consumer experience in which using crypto money does not automatically publish a financial profile. That is the scientifically necessary next step after STRK20, the exact gap 2026 research quantifies, and the product shape that turns “privacy should be compulsory” into something people actually live with every day.
 
-**Shipped:** the adversary (7 heuristics, 34 tests), the strategy engine, the
-loop dashboard, the shield flow, the Cairo splitter (29 snforge tests), the
-attack-model documentation. 158 TypeScript tests + 29 Cairo tests, all green.
-Live and registered on the sprint hub.
-
-**Remaining:** three mainnet transactions, the demo video, and deploying the
-splitter — all of which need the owner's wallet and gas.
+That is how you differentiate and win.

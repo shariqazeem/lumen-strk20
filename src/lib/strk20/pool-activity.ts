@@ -34,7 +34,7 @@ export function emptyActivity(): PoolActivity {
 /**
  * Bucket a raw amount into a log-scaled denomination tier.
  *
- * Only usable for amounts Aether already knows locally — the user's own notes
+ * Only usable for amounts Lumen already knows locally — the user's own notes
  * and planned splits. It cannot be applied to other users' pool activity,
  * because those amounts are never published; see `readPoolActivity`.
  */

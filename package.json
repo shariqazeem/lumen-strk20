@@ -1,8 +1,8 @@
 {
-  "name": "aether-strk20",
+  "name": "lumen-strk20",
   "version": "0.1.0",
   "private": true,
-  "description": "Continuous private portfolio & strategy engine running entirely inside the STRK20 privacy pool.",
+  "description": "Lumen — the private money app for Starknet. Pay, receive and save inside the STRK20 privacy pool without publishing a financial profile.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,6 +18,7 @@
     "@starknet-io/get-starknet-wallet-standard": "6.0.3",
     "@starknet-io/types-js": "0.10.3",
     "next": "15.5.19",
+    "qrcode-generator": "^1.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "starknet": "10.4.0",

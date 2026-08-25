@@ -1,5 +1,5 @@
 /**
- * The Aether strategy engine.
+ * The Lumen strategy engine.
  *
  * `generatePlan` turns state (notes, history, pool activity, a strategy mode)
  * into an ordered list of signable intents, each with an exact amount, an
@@ -359,11 +359,11 @@ function projectedNote(
   tag: string,
 ): PrivateNote {
   return {
-    commitment: `aether:projected:${tag}`,
+    commitment: `lumen:projected:${tag}`,
     asset,
     amount,
     leafIndex: nextLeafIndex(base),
-    nullifier: `aether:projected-nullifier:${tag}`,
+    nullifier: `lumen:projected-nullifier:${tag}`,
     timestamp,
   }
 }
@@ -483,17 +483,17 @@ export function assertNoUnshield(intents: readonly ActionIntent[]): void {
   for (const intent of intents) {
     if (!PLANNER_ACTION_TYPES.includes(intent.type)) {
       throw new Error(
-        `Aether planner emitted action type "${intent.type}" on intent ${intent.id}; the planner has no unshield path.`,
+        `Lumen planner emitted action type "${intent.type}" on intent ${intent.id}; the planner has no unshield path.`,
       )
     }
     if (!IN_POOL_ROUTES.includes(intent.route)) {
       throw new Error(
-        `Aether planner emitted route "${intent.route}" on intent ${intent.id}; every route must settle back into a private note.`,
+        `Lumen planner emitted route "${intent.route}" on intent ${intent.id}; every route must settle back into a private note.`,
       )
     }
     if (UNSHIELD_PATTERN.test(intent.rationale)) {
       throw new Error(
-        `Aether planner justified intent ${intent.id} with an exit: ${intent.rationale}`,
+        `Lumen planner justified intent ${intent.id} with an exit: ${intent.rationale}`,
       )
     }
   }
@@ -565,7 +565,7 @@ export function generatePlan(input: PlannerInput): PlanResult {
   let sequence = 0
 
   const nextId = (type: ActionType): string =>
-    `aether-${input.seed}-${String(sequence++).padStart(2, '0')}-${type.toLowerCase()}`
+    `lumen-${input.seed}-${String(sequence++).padStart(2, '0')}-${type.toLowerCase()}`
 
   /**
    * Amounts that must not be re-used: history inside the 48h window, plus the

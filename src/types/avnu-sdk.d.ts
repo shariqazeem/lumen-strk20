@@ -7,7 +7,7 @@
  * `node_modules/@avnu/avnu-sdk/dist/index.js` — the zod schemas, the mock
  * factories and the function bodies — not out of documentation.
  *
- * Scope is deliberately narrow: only the surface Aether uses. Where the source
+ * Scope is deliberately narrow: only the surface Lumen uses. Where the source
  * is ambiguous a field is typed `unknown` rather than guessed.
  */
 
@@ -20,7 +20,7 @@ declare module '@avnu/avnu-sdk' {
 
   /**
    * The mainnet STRK20 privacy pool as the SDK knows it. Verified identical to
-   * Aether's own `POOL_ADDRESS`; `swap.ts` re-checks that at runtime.
+   * Lumen's own `POOL_ADDRESS`; `swap.ts` re-checks that at runtime.
    */
   export const PRIVACY_POOL_ADDRESS: string
 
@@ -57,7 +57,7 @@ declare module '@avnu/avnu-sdk' {
   /**
    * One AVNU quote, per `QuoteSchema` in the dist. The schema carries more
    * fields (fee, routes, gasFees, priceImpact, USD figures…); only the ones
-   * Aether reads are declared. `sellAmount`/`buyAmount` arrive as hex strings
+   * Lumen reads are declared. `sellAmount`/`buyAmount` arrive as hex strings
    * and are transformed to bigint by the SDK's zod layer.
    */
   export interface Quote {

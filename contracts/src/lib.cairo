@@ -1,6 +1,6 @@
-//! Aether anonymizer contracts for the STRK20 privacy pool on Starknet.
+//! Lumen anonymizer contracts for the STRK20 privacy pool on Starknet.
 //!
-//! - `splitter` — `AetherSplitter`, the `privacy_invoke` helper that splits one
+//! - `splitter` — `LumenSplitter`, the `privacy_invoke` helper that splits one
 //!   input amount into N non-round open notes in a single atomic transaction.
 //! - `mock_erc20` — a minimal ERC-20 used by the test suite only. Never deployed.
 //!

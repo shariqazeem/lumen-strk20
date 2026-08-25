@@ -1,5 +1,5 @@
 /**
- * The Aether effective-privacy score.
+ * The Lumen effective-privacy score.
  *
  * The published formula, unchanged from the README:
  *

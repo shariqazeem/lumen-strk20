@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# AetherSplitter — mainnet declare + deploy walkthrough.
+# LumenSplitter — mainnet declare + deploy walkthrough.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # THIS SCRIPT DOES NOT DEPLOY ANYTHING. It prints the exact commands and exits.
@@ -23,8 +23,8 @@
 #
 # Usage:
 #
-#   export STARKNET_ACCOUNT=~/.starkli-wallets/aether/account.json
-#   export STARKNET_KEYSTORE=~/.starkli-wallets/aether/keystore.json
+#   export STARKNET_ACCOUNT=~/.starkli-wallets/lumen/account.json
+#   export STARKNET_KEYSTORE=~/.starkli-wallets/lumen/keystore.json
 #   export STARKNET_RPC=https://your-mainnet-rpc          # optional
 #   export FEE_RECIPIENT=0x0                              # optional, 0 = fees off
 #   export MAX_FEE_BPS=0                                  # optional, 0 = fees off
@@ -39,18 +39,18 @@ cd "$(dirname "$0")"
 # Source: src/lib/strk20/config.ts (POOL_ADDRESS).
 POOL_ADDRESS="0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a"
 
-# Fees are opt-in. The intended Aether configuration is both of these at zero,
+# Fees are opt-in. The intended Lumen configuration is both of these at zero,
 # which disables the fee leg entirely (a non-zero fee then reverts).
 FEE_RECIPIENT="${FEE_RECIPIENT:-0x0}"
 MAX_FEE_BPS="${MAX_FEE_BPS:-0}"
 
-SIERRA="target/dev/aether_splitter_AetherSplitter.contract_class.json"
+SIERRA="target/dev/lumen_splitter_LumenSplitter.contract_class.json"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*"; }
 
 echo
-bold "AetherSplitter — mainnet deployment walkthrough (nothing is executed)"
+bold "LumenSplitter — mainnet deployment walkthrough (nothing is executed)"
 echo
 
 # ─── 1. Preconditions ────────────────────────────────────────────────────────

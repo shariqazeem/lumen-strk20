@@ -56,7 +56,7 @@ describe('ledgerKey', () => {
   it('normalizes padded, unpadded and mixed-case spellings to one key', () => {
     expect(ledgerKey('0x0abc')).toBe(ledgerKey('0xabc'))
     expect(ledgerKey('0x00ABC')).toBe(ledgerKey('0xabc'))
-    expect(ledgerKey('0xabc')).toBe('aether:ledger:v1:abc')
+    expect(ledgerKey('0xabc')).toBe('lumen:ledger:v1:abc')
   })
 
   it('keeps distinct accounts distinct', () => {
@@ -140,7 +140,9 @@ describe('loadLedger — corruption tolerance', () => {
       observer: '—',
     }
     const badAmount = { ...good, id: 'b', amount: 'xyz' }
-    const badType = { ...good, id: 'c', type: 'UNSHIELD' }
+    // UNSHIELD became a legal type when Lumen added explicit cash-outs, so the
+    // invalid-type example must be something no version ever accepted.
+    const badType = { ...good, id: 'c', type: 'TELEPORT' }
     const badAsset = { ...good, id: 'd', asset: 'DOGE' }
     g.localStorage?.setItem(
       ledgerKey(ADDRESS),

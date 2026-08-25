@@ -1,9 +1,9 @@
-//! AetherSplitter — a STRK20 anonymizer (helper) contract that turns one input
+//! LumenSplitter — a STRK20 anonymizer (helper) contract that turns one input
 //! amount into N non-round output notes inside a single atomic pool transaction.
 //!
 //! ## Why it exists
 //!
-//! Aether's thesis is that behaviour, not cryptography, deanonymizes privacy-pool
+//! Lumen's thesis is that behaviour, not cryptography, deanonymizes privacy-pool
 //! users. The two strongest behavioural remedies are **amount entropy** (never emit
 //! a round or repeated amount) and **note-count management**. Splitting one balance
 //! into several unequal notes is the primitive both remedies need.
@@ -70,7 +70,7 @@ pub struct OpenNoteDeposit {
 pub enum SplitMode {
     /// `parts` are absolute token amounts. They must sum to exactly
     /// `in_amount - fee_amount`. Use this when the planner already knows the input
-    /// amount (the normal Aether case: the input is the pool's own Withdraw leg)
+    /// amount (the normal Lumen case: the input is the pool's own Withdraw leg)
     /// and wants byte-exact control over every emitted amount.
     Exact,
     /// `parts` are basis points summing to exactly 10_000. The amounts are derived
@@ -85,7 +85,7 @@ pub enum SplitMode {
 /// Every extra leg costs a `CreateOpenNote` action, a slot in the proof, and a
 /// token pull. Sixteen is well past the point where added amount entropy stops
 /// buying anonymity and starts costing note-count hygiene — the fragmentation
-/// Aether's engine otherwise spends effort undoing.
+/// Lumen's engine otherwise spends effort undoing.
 pub const MAX_SPLITS: u32 = 16;
 
 /// Basis-point denominator: 10_000 bps = 100%.
@@ -122,7 +122,7 @@ pub trait IErc20<TState> {
 }
 
 #[starknet::interface]
-pub trait IAetherSplitter<T> {
+pub trait ILumenSplitter<T> {
     /// Called by the privacy pool via the protocol's `INVOKE_SELECTOR`.
     ///
     /// Calldata is deserialized straight into these parameters, so the order is
@@ -232,12 +232,12 @@ pub fn assert_distinct_note_ids(note_ids: Span<felt252>) {
 }
 
 #[starknet::contract]
-pub mod AetherSplitter {
+pub mod LumenSplitter {
     use core::num::traits::Zero;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use super::{
-        BPS_DENOMINATOR, IAetherSplitter, IErc20Dispatcher, IErc20DispatcherTrait, MAX_SPLITS,
+        BPS_DENOMINATOR, ILumenSplitter, IErc20Dispatcher, IErc20DispatcherTrait, MAX_SPLITS,
         OpenNoteDeposit, SplitMode, assert_distinct_note_ids, compute_bps_amounts, errors,
     };
 
@@ -285,7 +285,7 @@ pub mod AetherSplitter {
     }
 
     #[abi(embed_v0)]
-    pub impl AetherSplitterImpl of IAetherSplitter<ContractState> {
+    pub impl LumenSplitterImpl of ILumenSplitter<ContractState> {
         fn privacy_invoke(
             ref self: ContractState,
             mode: SplitMode,

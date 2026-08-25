@@ -1,9 +1,9 @@
 /**
  * STRK20 action builders.
  *
- * Every private operation Aether performs is expressed as a `STRK20_ACTION[]`
+ * Every private operation Lumen performs is expressed as a `STRK20_ACTION[]`
  * handed to the user's wallet via `strk20InvokeTransaction`. The wallet owns
- * viewing keys, note discovery, proving and submission — Aether never sees
+ * viewing keys, note discovery, proving and submission — Lumen never sees
  * private state and never asks for a viewing key.
  *
  * The shapes below are taken from `@starknet-io/types-js@0.10.3` and from the
@@ -80,7 +80,7 @@ export interface PrivateDefiPlan {
  * that immediately returns it to the pool inside the same transaction; the
  * funds never reach a public user-controlled address and the position never
  * leaves the shielded environment. `assertNeverUnshields` below enforces that
- * distinction, which is the one invariant separating Aether from a mixer.
+ * distinction, which is the one invariant separating Lumen from a mixer.
  *
  * Observers see: pool → helper → AMM → helper. They never see who initiated it.
  */
@@ -121,7 +121,7 @@ export function buildPrivateDefi(plan: PrivateDefiPlan): STRK20_ACTION[] {
   return actions
 }
 
-/** Split modes accepted by AetherSplitter's `privacy_invoke`. */
+/** Split modes accepted by LumenSplitter's `privacy_invoke`. */
 export const SPLIT_MODE = { EXACT: 0, BPS: 1 } as const
 export type SplitMode = (typeof SPLIT_MODE)[keyof typeof SPLIT_MODE]
 
@@ -149,7 +149,7 @@ export interface SplitPlan {
  * Amount entropy is the strongest remedy the engine has — round and repeated
  * sizes are what re-link a deposit to a withdrawal — but splitting client-side
  * costs one pool fee and one timing signal per part. This routes the whole
- * split through `AetherSplitter.privacy_invoke` instead: one withdrawal, N
+ * split through `LumenSplitter.privacy_invoke` instead: one withdrawal, N
  * open notes, one invoke, and the contract asserts the parts reconcile before
  * the pool credits anything.
  *
@@ -168,7 +168,7 @@ export function buildSplit(plan: SplitPlan): STRK20_ACTION[] {
   }
   if (plan.parts.length > 16) {
     throw new Error(
-      `Refusing to build a ${plan.parts.length}-way split: AetherSplitter caps MAX_SPLITS at 16.`,
+      `Refusing to build a ${plan.parts.length}-way split: LumenSplitter caps MAX_SPLITS at 16.`,
     )
   }
 
@@ -245,7 +245,7 @@ export interface WithdrawAllowlist {
 }
 
 /**
- * Aether's core promise, enforced mechanically: capital never leaves the
+ * Lumen's core promise, enforced mechanically: capital never leaves the
  * shielded environment unless the user explicitly asked to unshield.
  *
  * A `withdraw` is permitted only when its recipient is a known helper contract
@@ -270,7 +270,7 @@ export function assertNeverUnshields(
     if (!permitted) {
       throw new Error(
         `Refusing to submit: action ${index} withdraws to ${action.recipient}, which is not a ` +
-          `helper contract in this transaction. That is an unshield, and Aether only unshields ` +
+          `helper contract in this transaction. That is an unshield, and Lumen only unshields ` +
           `on an explicit user request.`,
       )
     }
