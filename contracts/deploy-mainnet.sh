@@ -49,15 +49,18 @@ if [[ -n "${STARKNET_RPC:-}" ]]; then RPC=(--rpc "${STARKNET_RPC}"); else RPC=(-
 # ─── the deployer account itself ─────────────────────────────────────────────
 # A freshly initialised account exists only as a file until it is deployed
 # on-chain. Do that here rather than making it a separate step to remember.
-if ! starkli account fetch --output /dev/null "$(starkli account address "${STARKNET_ACCOUNT}" 2>/dev/null)" "${RPC[@]}" >/dev/null 2>&1; then
-  DEPLOYER="$(starkli account address "${STARKNET_ACCOUNT}" 2>/dev/null || echo "?")"
-  bold "0/6  Deploying the deployer account   ⚠ COSTS GAS"
-  echo "     ${DEPLOYER}"
-  if ! starkli account deploy "${STARKNET_ACCOUNT}" --keystore "${STARKNET_KEYSTORE}" "${RPC[@]}"; then
-    warn "     Account deploy did not complete."
-    warn "     If it says the account is already deployed, that is fine — continuing."
-  fi
+# starkli records this in the account file and flips it to "deployed" once the
+# DeployAccount transaction lands. There is no `starkli account address`
+# subcommand, so read the file rather than asking the CLI.
+ACCOUNT_STATUS="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['deployment']['status'])" "${STARKNET_ACCOUNT}" 2>/dev/null || echo "unknown")"
+
+if [[ "${ACCOUNT_STATUS}" == "undeployed" ]]; then
+  bold "0/6  Deploying the deployer account   ⚠ COSTS GAS — password"
+  warn "     This fails with a balance error if the account has not been funded yet."
+  starkli account deploy "${STARKNET_ACCOUNT}" --keystore "${STARKNET_KEYSTORE}" "${RPC[@]}"
   echo
+else
+  echo "     deployer account: ${ACCOUNT_STATUS}"
 fi
 
 bold "1/6  Building"
