@@ -60,6 +60,115 @@ function Redacted({ width = 'w-24' }: { width?: string }) {
   )
 }
 
+/**
+ * The observer's panel: this account redacted to what any explorer can ever
+ * know. On a wide screen it sits permanently beside your view, so the thesis
+ * needs no interaction; on a phone it replaces the screen.
+ */
+function ObserverPanel({
+  publicEntries,
+  privateCount,
+  onBack,
+}: {
+  publicEntries: LedgerEntry[]
+  privateCount: number
+  onBack?: () => void
+}) {
+  return (
+    <div className="unblur">
+      <section className="rounded-[24px] border border-dashed border-rule-strong bg-card px-6 py-6">
+        <p className="text-[13px] font-medium text-ink-muted">Some wallet</p>
+        <div className="mt-3 space-y-2.5 text-[15px]">
+          {[
+            ['Private balance', 'w-28'],
+            ['Who paid them', 'w-20'],
+            ['Who they pay', 'w-24'],
+            ['Payment history', 'w-16'],
+          ].map(([label, width]) => (
+            <p key={label} className="flex items-baseline justify-between gap-3">
+              <span className="text-ink-muted">{label}</span>
+              <Redacted width={width} />
+            </p>
+          ))}
+        </div>
+        <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
+          This is your account as any explorer, indexer or analyst sees it — forever.
+        </p>
+      </section>
+
+      <section className="mt-5">
+        <SectionLabel>Visible on-chain</SectionLabel>
+        {publicEntries.length === 0 ? (
+          <div className="card px-5 py-5 text-[13.5px] leading-relaxed text-ink-muted">
+            Nothing. This account has never crossed the public boundary.
+          </div>
+        ) : (
+          <div className="card divide-y divide-rule">
+            {publicEntries.map((entry) => (
+              <div key={entry.id} className="flex items-center gap-3.5 px-5 py-3.5">
+                <span className="grid size-9 flex-none place-items-center rounded-full bg-ink text-white">
+                  {entry.type === 'SHIELD' ? <Plus size={16} /> : <Globe size={16} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14.5px] font-semibold">
+                    {entry.type === 'SHIELD'
+                      ? 'A deposit into the pool'
+                      : entry.type === 'LINK'
+                        ? 'A deposit into an escrow'
+                        : entry.type === 'CLAIM'
+                          ? 'A claim from an escrow'
+                          : 'A withdrawal from the pool'}
+                  </span>
+                  <span className="block truncate text-[12.5px] text-ink-muted">
+                    {relativeTime(entry.timestamp)}
+                    {entry.txHash ? (
+                      <>
+                        {' · '}
+                        <a
+                          href={explorerTx(entry.txHash)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-rule-strong underline-offset-2"
+                        >
+                          on the explorer
+                        </a>
+                      </>
+                    ) : null}
+                  </span>
+                </span>
+                <span className="tabular flex-none whitespace-nowrap text-[14.5px] font-semibold">
+                  {formatUnits(entry.amount, TOKENS[entry.asset].decimals, 4)}{' '}
+                  <span className="text-[12px] font-medium text-ink-muted">{entry.asset}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {privateCount > 0 ? (
+          <div className="mt-3 rounded-[24px] border border-rule bg-card-soft px-5 py-4">
+            <p className="flex items-center gap-2 text-[13.5px] font-semibold">
+              <ShieldCheck size={15} />
+              {privateCount} private {privateCount === 1 ? 'operation' : 'operations'} — invisible
+            </p>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-ink-muted">
+              Payments, amounts and recipients settled through the pool with no public sender,
+              recipient or amount. They were never published at all.
+            </p>
+          </div>
+        ) : null}
+      </section>
+
+      {onBack ? (
+        <button onClick={onBack} className="btn btn-ink mt-8 w-full">
+          <Eye size={16} />
+          Back to your view
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 export function Home({ open }: { open: (route: SheetRoute) => void }) {
   const {
     balances,
@@ -113,7 +222,8 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
     })
 
   return (
-    <main className="mx-auto w-full max-w-[460px] px-5 pb-16 pt-6">
+    <div className="mx-auto grid w-full max-w-[1000px] gap-10 px-5 pb-16 pt-6 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
+      <main className="w-full min-w-0">
       <header className="rise flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-[10px] bg-ink text-white">
@@ -137,95 +247,12 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
       ) : null}
 
       {observer ? (
-        <div className="unblur">
-          <section className="mt-5 rounded-[24px] border border-dashed border-rule-strong bg-card px-6 py-6">
-            <p className="text-[13px] font-medium text-ink-muted">Some wallet</p>
-            <div className="mt-3 space-y-2.5 text-[15px]">
-              {[
-                ['Private balance', 'w-28'],
-                ['Who paid them', 'w-20'],
-                ['Who they pay', 'w-24'],
-                ['Payment history', 'w-16'],
-              ].map(([label, width]) => (
-                <p key={label} className="flex items-baseline justify-between gap-3">
-                  <span className="text-ink-muted">{label}</span>
-                  <Redacted width={width} />
-                </p>
-              ))}
-            </div>
-            <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
-              This is your account as any explorer, indexer or analyst sees it — forever.
-            </p>
-          </section>
-
-          <section className="mt-6">
-            <SectionLabel>Visible on-chain</SectionLabel>
-            {publicEntries.length === 0 ? (
-              <div className="card px-5 py-5 text-[13.5px] leading-relaxed text-ink-muted">
-                Nothing. This account has never crossed the public boundary.
-              </div>
-            ) : (
-              <div className="card divide-y divide-rule">
-                {publicEntries.map((entry) => (
-                  <div key={entry.id} className="flex items-center gap-3.5 px-5 py-3.5">
-                    <span className="grid size-9 flex-none place-items-center rounded-full bg-ink text-white">
-                      {entry.type === 'SHIELD' ? <Plus size={16} /> : <Globe size={16} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[14.5px] font-semibold">
-                        {entry.type === 'SHIELD'
-                          ? 'A deposit into the pool'
-                          : entry.type === 'LINK'
-                            ? 'A deposit into an escrow'
-                            : entry.type === 'CLAIM'
-                              ? 'A claim from an escrow'
-                              : 'A withdrawal from the pool'}
-                      </span>
-                      <span className="block text-[12.5px] text-ink-muted">
-                        {relativeTime(entry.timestamp)}
-                        {entry.txHash ? (
-                          <>
-                            {' · '}
-                            <a
-                              href={explorerTx(entry.txHash)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="underline decoration-rule-strong underline-offset-2"
-                            >
-                              on the explorer
-                            </a>
-                          </>
-                        ) : null}
-                      </span>
-                    </span>
-                    <span className="tabular flex-none text-[14.5px] font-semibold">
-                      {formatUnits(entry.amount, TOKENS[entry.asset].decimals, 4)}{' '}
-                      <span className="text-[12px] font-medium text-ink-muted">{entry.asset}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {privateCount > 0 ? (
-              <div className="mt-3 rounded-[24px] border border-rule bg-card-soft px-5 py-4">
-                <p className="flex items-center gap-2 text-[13.5px] font-semibold">
-                  <ShieldCheck size={15} />
-                  {privateCount} private {privateCount === 1 ? 'operation' : 'operations'} —
-                  invisible
-                </p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-muted">
-                  Your payments, amounts and recipients settled through the pool with no public
-                  sender, recipient or amount. They were never published at all.
-                </p>
-              </div>
-            ) : null}
-          </section>
-
-          <button onClick={() => setObserver(false)} className="btn btn-ink mt-8 w-full">
-            <Eye size={16} />
-            Back to your view
-          </button>
+        <div className="mt-5 lg:hidden">
+          <ObserverPanel
+            publicEntries={publicEntries}
+            privateCount={privateCount}
+            onBack={() => setObserver(false)}
+          />
         </div>
       ) : (
         <>
@@ -456,25 +483,38 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </p>
           ) : null}
 
-          {/* nothing yet at all */}
-          {waiting.length === 0 && ledger.length === 0 ? (
+          {/* first run: the most important screen in the product */}
+          {waiting.length === 0 && ledger.length === 0 && arrivals.length === 0 ? (
             <section className="rise rise-5 mt-8">
-              <div className="card px-5 py-6 text-center">
-                <span className="mx-auto grid size-11 place-items-center rounded-full bg-sunk text-ink">
-                  <ArrowDown size={19} />
-                </span>
-                <p className="mt-3 text-[15px] font-semibold">Nothing has arrived yet</p>
-                <p className="mx-auto mt-1.5 max-w-[300px] text-[13px] leading-relaxed text-ink-muted">
-                  Share your page and get paid privately — or add money once to start paying
-                  people.
+              <div className="glass px-6 py-6">
+                <p className="text-[17px] font-semibold leading-snug">
+                  Add money once. After that, nothing you do here is public.
                 </p>
-                <button
-                  onClick={() => open({ kind: 'my-page' })}
-                  className="btn btn-ink btn-small mt-4"
-                >
-                  Get your page
-                </button>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-glass-muted">
+                  Your deposit is the only visible step, and the engine tunes even that so it
+                  points at nothing you do later. Paying, getting paid and saving publish
+                  nothing at all.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2.5">
+                  <button
+                    onClick={() => open({ kind: 'add' })}
+                    className="btn btn-small bg-white text-ink hover:bg-white/90"
+                  >
+                    <Plus size={15} />
+                    Add money
+                  </button>
+                  <button
+                    onClick={() => open({ kind: 'my-page' })}
+                    className="btn btn-small border border-white/20 text-white hover:bg-white/10"
+                  >
+                    Get your page
+                  </button>
+                </div>
               </div>
+              <p className="mt-3 px-1 text-[12.5px] leading-relaxed text-ink-faint">
+                Nothing has arrived yet. When someone pays you, through a link, your page or any
+                other STRK20 app, it lands here and no two arrivals can be tied together.
+              </p>
             </section>
           ) : null}
 
@@ -561,7 +601,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
 
           <button
             onClick={() => setObserver(true)}
-            className="card card-press mt-10 flex w-full items-center gap-3.5 px-5 py-4 text-left"
+            className="card card-press mt-10 flex w-full items-center gap-3.5 px-5 py-4 text-left lg:hidden"
           >
             <span className="grid size-10 flex-none place-items-center rounded-full bg-ink text-white">
               <Globe size={18} />
@@ -581,6 +621,17 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
           </footer>
         </>
       )}
-    </main>
+      </main>
+
+      <aside className="hidden lg:block">
+        <div className="sticky top-6">
+          <p className="mb-3 flex items-center gap-2 px-1 text-[13px] font-semibold text-ink-muted">
+            <Globe size={14} />
+            What the world sees
+          </p>
+          <ObserverPanel publicEntries={publicEntries} privateCount={privateCount} />
+        </div>
+      </aside>
+    </div>
   )
 }

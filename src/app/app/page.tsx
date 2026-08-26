@@ -38,8 +38,11 @@ export default function AppPage() {
   // production build ignores this entirely.
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return
-    if (!new URLSearchParams(window.location.search).has('dev')) return
-    if (useLumen.getState().status === 'disconnected') devPreview()
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has('dev')) return
+    if (useLumen.getState().status === 'disconnected') {
+      devPreview(params.get('dev') === 'empty' ? 'empty' : 'full')
+    }
   }, [devPreview])
   const [route, setRoute] = useState<SheetRoute | null>(null)
 

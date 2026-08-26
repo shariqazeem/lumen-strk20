@@ -167,7 +167,7 @@ interface LumenState {
    * so it cannot be reached in a production build — nothing in the shipped
    * product is sample data.
    */
-  devPreview: () => void
+  devPreview: (variant?: 'full' | 'empty') => void
 }
 
 /** USD value of the full balance list under the current prices, or null when unpriced. */
@@ -730,7 +730,7 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ error: null })
   },
 
-  devPreview() {
+  devPreview(variant = 'full') {
     if (process.env.NODE_ENV !== 'development') return
 
     const now = Date.now()
@@ -799,6 +799,29 @@ export const useLumen = create<LumenState>((set, get) => ({
         },
         ...(seed.rewritten ? { rewritten: seed.rewritten } : {}),
       })
+    }
+
+    if (variant === 'empty') {
+      // The first-run screen: connected, but nothing has ever happened.
+      set({
+        status: 'connected',
+        account: null,
+        address,
+        walletName: 'Preview',
+        balancesRevealedAt: null,
+        registered: false,
+        balances: [],
+        prices: { USDC: 1, STRK: 0.41 },
+        arrivals: [],
+        journal: [],
+        people: [],
+        spaces: [],
+        receipts: [],
+        links: [],
+        ledger: [],
+        error: null,
+      })
+      return
     }
 
     set({
