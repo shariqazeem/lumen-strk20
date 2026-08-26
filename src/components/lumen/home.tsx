@@ -312,6 +312,47 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </section>
           ) : null}
 
+          {/* what the engine did */}
+          {digest.actions > 0 ? (
+            <section className="rise rise-5 mt-8">
+              <SectionLabel
+                action={
+                  <button
+                    onClick={() => open({ kind: 'journal' })}
+                    className="text-[13px] font-semibold text-ink-muted hover:text-ink"
+                  >
+                    All
+                  </button>
+                }
+              >
+                What Lumen did
+              </SectionLabel>
+              <button
+                onClick={() => open({ kind: 'journal' })}
+                className="card card-press w-full px-5 py-4 text-left"
+              >
+                <p className="flex items-center gap-2 text-[13.5px] font-semibold">
+                  <Sparkle size={15} />
+                  Last 30 days
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  {[
+                    { n: digest.actions, label: 'moves made privately' },
+                    { n: digest.rewritten, label: 'amounts rewritten' },
+                    { n: digest.flagged, label: 'flagged for you' },
+                  ].map((stat) => (
+                    <div key={stat.label}>
+                      <p className="tabular text-[22px] font-semibold leading-none">{stat.n}</p>
+                      <p className="mt-1 text-[11.5px] leading-tight text-ink-muted">
+                        {stat.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </button>
+            </section>
+          ) : null}
+
           {/* the balance — an object here, not the brand */}
           <section className="rise rise-3 mt-6">
             <div className="glass px-6 pb-6 pt-5">
@@ -459,46 +500,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </section>
           ) : null}
 
-          {/* what the engine did */}
-          {digest.actions > 0 ? (
-            <section className="rise rise-5 mt-8">
-              <SectionLabel
-                action={
-                  <button
-                    onClick={() => open({ kind: 'journal' })}
-                    className="text-[13px] font-semibold text-ink-muted hover:text-ink"
-                  >
-                    All
-                  </button>
-                }
-              >
-                What Lumen did
-              </SectionLabel>
-              <button
-                onClick={() => open({ kind: 'journal' })}
-                className="card card-press w-full px-5 py-4 text-left"
-              >
-                <p className="flex items-center gap-2 text-[13.5px] font-semibold">
-                  <Sparkle size={15} />
-                  Last 30 days
-                </p>
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  {[
-                    { n: digest.actions, label: 'moves made privately' },
-                    { n: digest.rewritten, label: 'amounts rewritten' },
-                    { n: digest.flagged, label: 'flagged for you' },
-                  ].map((stat) => (
-                    <div key={stat.label}>
-                      <p className="tabular text-[22px] font-semibold leading-none">{stat.n}</p>
-                      <p className="mt-1 text-[11.5px] leading-tight text-ink-muted">
-                        {stat.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </button>
-            </section>
-          ) : null}
 
           {/* activity */}
           {ledger.length > 0 ? (

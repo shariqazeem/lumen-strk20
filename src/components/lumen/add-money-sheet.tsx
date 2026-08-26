@@ -15,7 +15,15 @@ import { guardSeed, reviewShield } from '@/lib/lumen/guard'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
-import { AmountField, ErrorNote, GuardPanel, parseAmount, SuccessMark, TxLink } from './bits'
+import {
+  AmountField,
+  ErrorNote,
+  GuardPanel,
+  parseAmount,
+  SuccessMark,
+  TxLink,
+  WorldSaw,
+} from './bits'
 import { Clock } from './icons'
 
 export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -154,6 +162,7 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
               <TxLink hash={lastTx.hash} />
             </p>
           ) : null}
+          <WorldSaw kind="deposit" amount={`${formatUnits(tunedAmount, decimals, 6)} ${token}`} />
           <div className="mx-auto mt-5 flex w-fit items-center gap-2 rounded-full bg-card-soft px-4 py-2 text-[12.5px] text-ink-muted">
             <Clock size={14} />
             Spendable in a few minutes, once the pool settles it.

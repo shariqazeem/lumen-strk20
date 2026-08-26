@@ -31,6 +31,7 @@ import {
   parseAmount,
   SuccessMark,
   TxLink,
+  WorldSaw,
 } from './bits'
 import {
   ArrowRight,
@@ -576,6 +577,7 @@ export function PaySheet({
               <TxLink hash={lastTx.hash} />
             </p>
           ) : null}
+          <WorldSaw kind="private" />
           <div className="mt-7 space-y-2.5">
             <button onClick={() => onReceipt(receipt)} className="btn btn-quiet w-full">
               <ReceiptIcon size={17} />

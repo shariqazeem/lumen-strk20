@@ -297,6 +297,111 @@ function ExposureFeed() {
 /* feature artifacts                                                   */
 /* ------------------------------------------------------------------ */
 
+function InboxArtifact() {
+  return (
+    <div className="card px-6 py-6">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+        Incoming
+      </p>
+      <div className="mt-3 space-y-2">
+        {[
+          { from: 'A claim link', amount: '52.88 USDC', note: 'from someone with no wallet' },
+          { from: 'Your page', amount: '800.00 USDC', note: 'a client paid the invoice' },
+          { from: 'A team split', amount: '212.47 USDC', note: 'one of four, nobody sees the rest' },
+        ].map((row) => (
+          <div
+            key={row.from}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-rule bg-card-soft px-3.5 py-2.5"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-[11.5px] font-semibold">{row.from}</p>
+              <p className="truncate text-[9.5px] text-ink-muted">{row.note}</p>
+            </div>
+            <span className="tabular flex-none text-[12px] font-semibold">+{row.amount}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center gap-2 border-t border-rule pt-3">
+        <ShieldCheck size={13} />
+        <p className="text-[10.5px] text-ink-muted">
+          Three sources. No thread joins them — not even for us.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function JournalArtifact() {
+  return (
+    <div className="card px-6 py-6">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold">
+        <Sparkle size={13} />
+        What Lumen did
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        {[
+          { n: '12', label: 'moves made privately' },
+          { n: '5', label: 'amounts rewritten' },
+          { n: '1', label: 'flagged for you' },
+        ].map((stat) => (
+          <div key={stat.label}>
+            <p className="tabular text-[26px] font-semibold leading-none">{stat.n}</p>
+            <p className="mt-1 text-[9.5px] leading-tight text-ink-muted">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 space-y-2 border-t border-rule pt-3">
+        {[
+          { head: 'Adjusted the amount so the deposit blends in', sub: '100 → 99.889991 USDC' },
+          { head: 'Held a cash-out for a quieter window', sub: 'it mirrored Tuesday’s deposit' },
+        ].map((row) => (
+          <div key={row.head} className="flex gap-2">
+            <span className="mt-0.5 grid size-4 flex-none place-items-center rounded-full bg-sunk">
+              <Check size={9} strokeWidth={3} />
+            </span>
+            <div>
+              <p className="text-[10.5px] font-semibold leading-tight">{row.head}</p>
+              <p className="tabular text-[9.5px] text-ink-muted">{row.sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[10px] text-ink-faint">You were not asked. You were not there.</p>
+    </div>
+  )
+}
+
+function ObserverArtifact() {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center gap-1.5 border-b border-rule px-5 py-2.5">
+        <Globe size={12} />
+        <p className="text-[10.5px] font-semibold">What the world sees</p>
+      </div>
+      <div className="px-5 py-5">
+        <p className="text-[11px] text-ink-muted">Some wallet</p>
+        <div className="mt-3 space-y-2.5">
+          {['Private balance', 'Who paid them', 'Who they pay', 'Payment history'].map((label) => (
+            <div key={label} className="flex items-baseline justify-between gap-3">
+              <span className="text-[11.5px] text-ink-muted">{label}</span>
+              <span className="inline-block h-2.5 w-20 rounded-sm bg-sunk" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-2xl bg-card-soft px-3.5 py-3">
+          <p className="flex items-center gap-1.5 text-[10.5px] font-semibold">
+            <ShieldCheck size={12} />
+            14 private operations — invisible
+          </p>
+          <p className="mt-1 text-[9.5px] leading-snug text-ink-muted">
+            Never published. Not hidden in a database — never published at all.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ClaimArtifact() {
   return (
     <div className="card px-6 py-6">
@@ -319,63 +424,6 @@ function ClaimArtifact() {
       </div>
       <p className="mt-4 text-center text-[11px] text-ink-faint">
         No wallet? The page walks them through two minutes of setup — then the money is theirs.
-      </p>
-    </div>
-  )
-}
-
-function BoundaryArtifact() {
-  return (
-    <div className="card px-6 py-6">
-      <div className="flex items-center justify-center gap-3">
-        <span className="grid size-12 place-items-center rounded-full bg-ink text-white">
-          <LumenMark size={22} />
-        </span>
-        <span className="text-[12px] font-semibold text-ink-muted">you, once</span>
-      </div>
-      <div className="mx-auto mt-4 h-6 w-px bg-rule-strong" />
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        {[
-          { emoji: '🏠', name: 'Landlord', sees: 'rent only' },
-          { emoji: '🌊', name: 'Amara', sees: 'dinners only' },
-          { emoji: '💼', name: 'Client', sees: 'invoices only' },
-        ].map((person) => (
-          <div key={person.name} className="rounded-2xl border border-rule bg-card-soft px-3 py-4 text-center">
-            <span className="text-[22px]">{person.emoji}</span>
-            <p className="mt-1.5 text-[12.5px] font-semibold">{person.name}</p>
-            <p className="text-[10.5px] text-ink-muted">sees {person.sees}</p>
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 text-center text-[11px] text-ink-faint">
-        None of them can see each other, your balance, or your history.
-      </p>
-    </div>
-  )
-}
-
-function TuningArtifact() {
-  return (
-    <div className="card px-6 py-6">
-      <div className="flex items-center justify-center gap-4">
-        <div className="text-center">
-          <p className="text-[10.5px] font-semibold text-ink-muted">You type</p>
-          <p className="tabular mt-1 text-[26px] font-semibold tracking-[-0.02em] text-ink-faint line-through decoration-2">
-            100
-          </p>
-        </div>
-        <ArrowRight size={18} className="text-ink-muted" />
-        <div className="text-center">
-          <p className="text-[10.5px] font-semibold text-ink-muted">Lumen sends</p>
-          <p className="tabular mt-1 text-[26px] font-semibold tracking-[-0.02em]">99.889991</p>
-        </div>
-      </div>
-      <div className="mx-auto mt-5 w-fit">
-        <FloatingGuard />
-      </div>
-      <p className="mt-4 text-center text-[11px] text-ink-faint">
-        Round numbers, mirrored exits and rigid rhythms are how private money gets traced. The
-        engine fixes them before your wallet ever signs.
       </p>
     </div>
   )
@@ -433,19 +481,18 @@ export default function Landing() {
           <div>
             <p className="rise inline-flex items-center gap-2 rounded-full border border-rule bg-card px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-soft">
               <span className="size-1.5 rounded-full bg-ink" />
-              Live on Starknet mainnet · STRK20
+              The private account · Starknet mainnet
             </p>
-            <h1 className="rise rise-1 mt-7 text-[56px] font-semibold leading-[0.98] tracking-[-0.04em] sm:text-[76px]">
-              Money arrives.
+            <h1 className="rise rise-1 mt-7 text-[52px] font-semibold leading-[1.0] tracking-[-0.04em] sm:text-[68px]">
+              Your payments
               <br />
-              <span className="stroke-text">Nothing</span>
+              shouldn&rsquo;t become
               <br />
-              about you does.
+              <span className="stroke-text">a map of your life.</span>
             </h1>
             <p className="rise rise-2 mt-7 max-w-[44ch] text-[17px] leading-relaxed text-ink-muted">
-              The private inbox for money on Starknet. Get paid through one link, pay anyone —
-              even someone with no wallet — and keep every arrival from adding up to a public
-              profile of you.
+              Money arrives from links, pages, other apps. It stays private. Lumen stops those
+              arrivals from lining up.
             </p>
             <div className="rise rise-3 mt-9 flex flex-wrap items-center gap-3">
               <Link href="/app" className="btn btn-ink">
@@ -566,12 +613,16 @@ export default function Landing() {
           </Reveal>
         </section>
 
-        {/* features */}
+        {/* what the account does that a wallet cannot */}
         <section className="border-t border-rule py-28">
           <Reveal>
             <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
-              What no wallet does.
+              An account with a job.
             </h2>
+            <p className="mx-auto mt-4 max-w-[52ch] text-center text-[15.5px] leading-relaxed text-ink-muted">
+              A wallet holds a balance and waits. This holds your unlinkability — across every
+              place money reaches you, and across time.
+            </p>
           </Reveal>
 
           <div className="mt-16 space-y-24">
@@ -579,67 +630,61 @@ export default function Landing() {
               <div>
                 <p className="font-mono text-[12px] text-ink-faint">01</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
-                  Pay anyone on Earth. Wallet optional.
+                  Everything lands in one place. Nothing lines up.
                 </h3>
                 <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
-                  A claim link parks money behind a secret that travels only inside the link —
-                  no server ever sees it. Whoever you send it to claims privately whenever they
-                  arrive, with a brand-new wallet if they like, and lands already private.
-                  Unclaimed after a week? Take it back. The one wall every crypto payment hits —
-                  &ldquo;first, install all of this&rdquo; — is gone.
+                  A claim link on Monday, your page on Wednesday, a split from a team on Friday.
+                  Each one is private on its own — and together they are exactly how a profile
+                  gets built. Lumen is the account that keeps them from adding up.
                 </p>
               </div>
-              <ClaimArtifact />
+              <InboxArtifact />
             </Reveal>
 
             <Reveal className="grid items-center gap-10 lg:grid-cols-2">
               <div className="lg:order-2">
                 <p className="font-mono text-[12px] text-ink-faint">02</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
-                  Every relationship gets its own boundary.
+                  It works while you&rsquo;re gone.
                 </h3>
                 <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
-                  Your landlord, your friends, your clients — each sees only what you send them.
-                  Nothing connects one relationship to another, and the engine keeps it that way
-                  behaviourally too: a distinctive amount or a rigid rhythm that would bridge two
-                  boundaries gets caught before it happens.
+                  Before anything is signed, the engine checks the move against everything you
+                  have already done — round amounts, mirrored exits, rhythms that become a
+                  signature — and rewrites what would leak. Then it writes down what it did. No
+                  score to read. Just a log of a thing that acted on your behalf.
                 </p>
               </div>
-              <BoundaryArtifact />
+              <JournalArtifact />
             </Reveal>
 
             <Reveal className="grid items-center gap-10 lg:grid-cols-2">
               <div>
                 <p className="font-mono text-[12px] text-ink-faint">03</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
-                  Prove a payment. Publish nothing.
+                  See precisely what the world sees.
                 </h3>
                 <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
-                  Every payment mints a receipt carrying exactly one fact — this amount, this
-                  moment, settled on-chain — that you hand to exactly one person. The settlement
-                  transaction is publicly verifiable yet names no sender, no recipient, no amount.
-                  Private money you can still do business with.
+                  One tap redacts the whole account to what any explorer, indexer or analyst can
+                  ever know about you. Not a promise about privacy — the thing itself, on screen,
+                  after every move you make.
                 </p>
               </div>
-              <div className="mx-auto">
-                <FloatingReceipt />
-              </div>
+              <ObserverArtifact />
             </Reveal>
 
             <Reveal className="grid items-center gap-10 lg:grid-cols-2">
               <div className="lg:order-2">
                 <p className="font-mono text-[12px] text-ink-faint">04</p>
                 <h3 className="mt-2 text-[26px] font-semibold leading-snug tracking-[-0.02em]">
-                  A silent engine watches the leaks.
+                  Money gets in however it needs to.
                 </h3>
                 <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-ink-muted">
-                  Research on shielded pools keeps finding the same thing: the cryptography holds,
-                  and behaviour betrays people anyway. Lumen runs those exact attacks against your
-                  own next move — and quietly rewrites what would leak. You never see a score. You
-                  just stay private.
+                  Send a link to someone with no wallet. Put a page in your bio. Pay four people
+                  at once as a single operation nobody can split apart. The plumbing is ordinary
+                  on purpose — what matters is where it lands.
                 </p>
               </div>
-              <TuningArtifact />
+              <ClaimArtifact />
             </Reveal>
           </div>
         </section>

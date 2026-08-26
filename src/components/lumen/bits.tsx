@@ -9,7 +9,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { GuardReport } from '@/lib/lumen/guard'
 import { formatUnits, parseUnits } from '@/lib/strk20/wallet'
 import { explorerTx, TOKENS, type TokenSymbol } from '@/lib/strk20/config'
-import { Check, ChevronDown, ShieldCheck, Sparkle, Warning } from './icons'
+import { Check, ChevronDown, Globe, ShieldCheck, Sparkle, Warning } from './icons'
 
 /* ------------------------------------------------------------------ */
 /* money                                                               */
@@ -268,6 +268,50 @@ export function SuccessMark() {
   return (
     <div className="pop mx-auto grid size-16 place-items-center rounded-full bg-ink text-white">
       <Check size={30} strokeWidth={2.4} />
+    </div>
+  )
+}
+
+/**
+ * The trust moment: immediately after an action, show what was actually
+ * published. Per action, honestly — a private transfer publishes nothing,
+ * while a deposit publishes an amount and cannot pretend otherwise.
+ */
+export function WorldSaw({
+  kind,
+  amount,
+}: {
+  kind: 'private' | 'deposit' | 'claim' | 'withdraw'
+  amount?: string
+}) {
+  const copy = {
+    private: {
+      headline: 'One private operation',
+      detail: 'No sender, no recipient, no amount. Nothing that points at you.',
+    },
+    deposit: {
+      headline: amount ? `A deposit of ${amount}` : 'A deposit',
+      detail:
+        'The amount and the depositor are public — that is the boundary. Nothing you do next is.',
+    },
+    claim: {
+      headline: amount ? `A claim of ${amount} from an escrow` : 'A claim from an escrow',
+      detail: 'The escrow paid out. Nothing links that payout to you, or to who funded it.',
+    },
+    withdraw: {
+      headline: amount ? `A withdrawal of ${amount}` : 'A withdrawal',
+      detail: 'Public by nature — the amount, the destination, the moment.',
+    },
+  }[kind]
+
+  return (
+    <div className="glass mt-6 px-5 py-4 text-left">
+      <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-glass-muted">
+        <Globe size={12} />
+        What the world just saw
+      </p>
+      <p className="mt-2 text-[15px] font-semibold text-glass-ink">{copy.headline}</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-glass-muted">{copy.detail}</p>
     </div>
   )
 }

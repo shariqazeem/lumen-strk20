@@ -1,15 +1,14 @@
 # Lumen
 
-**Private money, by default.**
+**Your payments shouldn't become a map of your life.**
 
-Lumen is the private money network for Starknet. Pay anyone on Earth with a
-**claim link** — they need no wallet until the moment they claim, and they
-arrive already private. Get paid through your **pay page** — one link for a
-bio or an invoice, collecting payments no observer can attribute. Convert
-between tokens without leaving the pool. Set money aside, prove single
-payments with receipts, and let a silent engine check every move against the
-statistical attacks that actually undo private money. Balances, recipients,
-amounts and history never appear on-chain.
+Money reaches you from more than one place — a claim link, your page, a team
+split, another app entirely. Each of those can be private on its own. Together
+they are exactly how a public profile of you gets built.
+
+Lumen is the account those arrivals land in, and the thing that stops them
+lining up. It is not a wallet: a wallet holds a balance and waits. This holds
+your *unlinkability* — across every counterparty, and across time.
 
 Built on the live [STRK20](https://strk20-by-example.org) privacy pool,
 Starknet **mainnet**. Non-custodial: the user's privacy-enabled wallet holds
@@ -17,10 +16,52 @@ every key, discovers every note, and approves every move — Lumen never sees
 private state and never asks for a viewing key.
 
 **Live at [lumen-strk20.vercel.app](https://lumen-strk20.vercel.app).**
-`LumenEscrow` is deployed on Starknet mainnet at
+`LumenEscrow` is deployed on mainnet at
 [`0x293c8a95…8cd8`](https://voyager.online/contract/0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8),
-so claim links are live. Nothing in the product is sample data — every screen
-is the real thing, driven by a real wallet.
+so claim links are live. Nothing in the product is sample data.
+
+## Why this is not the other private-payment projects
+
+The sprint has ten link-payment apps, seven payroll apps, and a reference
+payroll implementation from StarkWare itself. **Every one of them protects a
+single transaction.** None protects the *person* across all of them — which is
+precisely where the 2026 Anonymity Gap work says privacy actually dies:
+provenance and behaviour across a sequence, never inside one transfer.
+
+That gap is only closable by something that holds history:
+
+- **Not PriPay / ShadowPay / Private Payroll** — those are a company's book.
+  Lumen is the recipient's account.
+- **Not VeilPayouts / kelpay / SABLE** — those mint a link and finish. Lumen is
+  where the link lands and keeps mattering.
+- **Not Preflight / VeilCheck** — those check one signature. Lumen keeps a
+  month, and can catch this action correlating with last Tuesday's.
+- **Not Pulse or a tip jar** — the unit here is an account with a job, not a
+  payment with a nicer screen.
+
+Those projects are not competitors so much as **suppliers**: every one of them
+can pay into a Lumen account, and the moment two of them do, only Lumen is in
+a position to keep those two arrivals from becoming one profile.
+
+## What the account actually does
+
+1. **Incoming.** The first screen is what arrived, not what you hold. Links
+   this device holds but has not claimed, and balance growth its own ledger
+   cannot explain — shown as *"we can't see who sent it, and neither can
+   anyone else,"* because a private transfer publishes no sender. It never
+   renders a source label it cannot defend.
+2. **The decision journal.** Before anything is signed the engine checks the
+   move against everything already done, rewrites what would leak, and writes
+   down what it did: *12 moves made privately · 5 amounts rewritten · 1
+   flagged.* Agency with receipts — and the only feature here that structurally
+   requires history.
+3. **Observer View.** One tap redacts the account to exactly what an explorer
+   can ever know, and it appears again after every action as *"what the world
+   just saw."*
+
+Payments are the plumbing underneath: claim links for people with no wallet,
+a pay page for a bio or an invoice, and group send that pays several people as
+one operation nobody can split apart.
 
 ---
 
@@ -68,10 +109,11 @@ behaviour automatic — and to make the network recruit itself:
 
 ## What the user sees
 
-- **Home** — one black-glass card holding the private balance (revealed only
-  through an explicit wallet consent), three verbs: **Pay · Receive · Add**,
-  and the signature switch: **"Your view / What the world sees"** — one tap
-  redacts the app to exactly what a chain observer can ever know.
+- **Incoming** — the first screen: links waiting for you, and arrivals this
+  device cannot attribute. The balance is an object further down, not the
+  brand.
+- **What Lumen did** — the decision journal, second on the screen and in its
+  own sheet.
 - **Pay with a link** — for someone with no wallet: the guard tunes the
   public escrow amount, the link carries the claim secret, `/claim` walks the
   recipient from "what is this" to a private balance. Unclaimed after the
@@ -79,6 +121,8 @@ behaviour automatic — and to make the network recruit itself:
 - **Get paid** — a standing pay page (`/pay/you`, presets priced live) or a
   one-off request that locks an exact amount. Payments to either are private
   transfers.
+- **Pay several people** — one operation, one pool fee, and no recipient can
+  see what any other received.
 - **Convert** — AVNU private swaps: value changes token inside the pool;
   observers see an executor talk to an AMM, never you.
 - **Spaces** — Rent, Travel, Rainy day: a private partition of the one

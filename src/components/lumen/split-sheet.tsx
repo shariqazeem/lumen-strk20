@@ -19,7 +19,15 @@ import { looksLikeStarknetAddress, shortAddress, type Person } from '@/lib/lumen
 import { formatUnits, parseUnits } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
-import { Avatar, ErrorNote, GuardPanel, SuccessMark, TxLink, usdText } from './bits'
+import {
+  Avatar,
+  ErrorNote,
+  GuardPanel,
+  SuccessMark,
+  TxLink,
+  usdText,
+  WorldSaw,
+} from './bits'
 import { Check, Plus, ShieldCheck, Close } from './icons'
 
 interface Line {
@@ -315,6 +323,7 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
               <TxLink hash={lastTx.hash} />
             </p>
           ) : null}
+          <WorldSaw kind="private" />
           <button onClick={onClose} className="btn btn-ink mt-7 w-full">
             <Check size={17} />
             Done
