@@ -15,7 +15,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useLumen, portfolioUsd } from '@/lib/lumen/store'
-import { personByAddress, shortAddress } from '@/lib/lumen/people'
 import { loadInbox, waitingLinks, type InboxLink } from '@/lib/lumen/inbox'
 import { summarize } from '@/lib/lumen/journal'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
@@ -178,8 +177,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
     revealBalances,
     prices,
     ledger,
-    people,
-    receipts,
     arrivals,
     journal,
     error,
@@ -205,11 +202,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
   const publicEntries = ledger.filter((entry) => entry.observer !== '—')
   const privateCount = ledger.length - publicEntries.length
 
-  const openEntry = (entry: LedgerEntry) => {
-    if (entry.type !== 'TRANSFER' || !entry.txHash) return
-    const receipt = receipts.find((r) => r.txHash === entry.txHash)
-    if (receipt) open({ kind: 'receipt', receipt })
-  }
 
   const claimHref = (link: InboxLink) =>
     encodeClaimLink(window.location.origin, {
@@ -450,30 +442,35 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </div>
           </section>
 
-          {/* the three verbs */}
-          <section className="rise rise-4 mt-4 grid grid-cols-3 gap-2.5">
-            {(
-              [
-                { label: 'Pay', icon: <ArrowUpRight size={19} />, route: { kind: 'pay' } as const },
-                {
-                  label: 'Get paid',
-                  icon: <ReceiptIcon size={19} />,
-                  route: { kind: 'my-page' } as const,
-                },
-                { label: 'Add', icon: <Plus size={19} />, route: { kind: 'add' } as const },
-              ] as const
-            ).map((action) => (
+          {/* the verbs, weighted — paying is the frequent one */}
+          <section className="rise rise-4 mt-4">
+            <button
+              onClick={() => open({ kind: 'pay' })}
+              className="btn btn-ink w-full !h-[58px] !text-[16.5px]"
+            >
+              <ArrowUpRight size={19} />
+              Pay someone
+            </button>
+            <div className="mt-2.5 grid grid-cols-2 gap-2.5">
               <button
-                key={action.label}
-                onClick={() => open(action.route)}
-                className="card card-press flex flex-col items-center gap-2 py-4"
+                onClick={() => open({ kind: 'my-page' })}
+                className="card card-press flex items-center gap-2.5 px-4 py-3.5"
               >
-                <span className="grid size-10 place-items-center rounded-full bg-ink text-white">
-                  {action.icon}
+                <span className="grid size-8 flex-none place-items-center rounded-full bg-sunk text-ink">
+                  <ReceiptIcon size={16} />
                 </span>
-                <span className="text-[13.5px] font-semibold">{action.label}</span>
+                <span className="text-[13.5px] font-semibold">Get paid</span>
               </button>
-            ))}
+              <button
+                onClick={() => open({ kind: 'add' })}
+                className="card card-press flex items-center gap-2.5 px-4 py-3.5"
+              >
+                <span className="grid size-8 flex-none place-items-center rounded-full bg-sunk text-ink">
+                  <Plus size={16} />
+                </span>
+                <span className="text-[13.5px] font-semibold">Add money</span>
+              </button>
+            </div>
           </section>
 
           {lastTx && lastTx.status === 'submitted' ? (
@@ -518,86 +515,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </section>
           ) : null}
 
-
-          {/* activity */}
-          {ledger.length > 0 ? (
-            <section className="rise rise-5 mt-8">
-              <SectionLabel>Activity</SectionLabel>
-              <div className="card divide-y divide-rule">
-                {ledger.slice(0, 6).map((entry) => {
-                  const person = entry.counterparty
-                    ? personByAddress(people, entry.counterparty)
-                    : undefined
-                  const outbound =
-                    entry.type === 'TRANSFER' || entry.type === 'UNSHIELD' || entry.type === 'LINK'
-                  const title =
-                    entry.type === 'TRANSFER'
-                      ? `Paid ${person?.name ?? (entry.counterparty ? shortAddress(entry.counterparty) : 'privately')}`
-                      : entry.type === 'SHIELD'
-                        ? 'Added money'
-                        : entry.type === 'UNSHIELD'
-                          ? 'Cashed out'
-                          : entry.type === 'LINK'
-                            ? 'Sent a claim link'
-                            : entry.type === 'CLAIM'
-                              ? entry.observer.startsWith('reclaim')
-                                ? 'Reclaimed a link'
-                                : 'Claimed money'
-                              : 'Private move'
-                  const isPublic = entry.observer !== '—'
-                  const clickable = entry.type === 'TRANSFER' && entry.txHash
-                  return (
-                    <button
-                      key={entry.id}
-                      onClick={() => openEntry(entry)}
-                      disabled={!clickable}
-                      className={`flex w-full items-center gap-3.5 px-5 py-3.5 text-left ${
-                        clickable ? 'transition-colors hover:bg-card-soft' : 'cursor-default'
-                      }`}
-                    >
-                      <span
-                        className={`grid size-9 flex-none place-items-center rounded-full ${
-                          isPublic ? 'bg-ink text-white' : 'bg-sunk text-ink-soft'
-                        }`}
-                      >
-                        {entry.type === 'TRANSFER' ? (
-                          <ArrowUpRight size={16} />
-                        ) : entry.type === 'SHIELD' ? (
-                          <Plus size={16} />
-                        ) : entry.type === 'UNSHIELD' ? (
-                          <Globe size={16} />
-                        ) : entry.type === 'LINK' ? (
-                          <LinkIcon size={16} />
-                        ) : entry.type === 'CLAIM' ? (
-                          <ArrowDown size={16} />
-                        ) : (
-                          <Sparkle size={16} />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[14.5px] font-semibold">{title}</span>
-                        <span className="block truncate text-[12.5px] text-ink-muted">
-                          {relativeTime(entry.timestamp)} ·{' '}
-                          {isPublic ? (
-                            <span className="font-semibold text-ink">{entry.observer}</span>
-                          ) : (
-                            'nothing public'
-                          )}
-                        </span>
-                      </span>
-                      <span className="tabular flex-none whitespace-nowrap text-[14.5px] font-semibold">
-                        {outbound ? '−' : '+'}
-                        {formatUnits(entry.amount, TOKENS[entry.asset].decimals, 4)}{' '}
-                        <span className="text-[12px] font-medium text-ink-muted">
-                          {entry.asset}
-                        </span>
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
-          ) : null}
 
           <button
             onClick={() => setObserver(true)}

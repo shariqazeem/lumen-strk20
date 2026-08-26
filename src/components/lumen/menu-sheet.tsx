@@ -16,6 +16,7 @@ import { Sheet } from './sheet'
 import {
   Check,
   ChevronRight,
+  Clock,
   Copy,
   Globe,
   LinkIcon,
@@ -32,6 +33,7 @@ export function MenuSheet({
   onLinks,
   onMyPage,
   onConvert,
+  onActivity,
 }: {
   open: boolean
   onClose: () => void
@@ -39,6 +41,7 @@ export function MenuSheet({
   onLinks: () => void
   onMyPage: () => void
   onConvert: () => void
+  onActivity: () => void
 }) {
   const { address, walletName, poolFee, poolFeeLive, disconnect } = useLumen()
   const [copied, setCopied] = useState(false)
@@ -95,6 +98,25 @@ export function MenuSheet({
           </span>
           <ChevronRight size={15} className="text-ink-faint" />
         </a>
+
+        <button
+          onClick={() => {
+            onClose()
+            onActivity()
+          }}
+          className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-card-soft"
+        >
+          <span className="grid size-9 flex-none place-items-center rounded-full bg-sunk text-ink-soft">
+            <Clock size={16} />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[14.5px] font-semibold">Activity</span>
+            <span className="block text-[12px] text-ink-muted">
+              Everything you did, and what the chain saw
+            </span>
+          </span>
+          <ChevronRight size={15} className="text-ink-faint" />
+        </button>
 
         <button
           onClick={() => {

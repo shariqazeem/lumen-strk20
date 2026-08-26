@@ -17,3 +17,4 @@ export type SheetRoute =
   | { kind: 'convert' }
   | { kind: 'journal' }
   | { kind: 'split' }
+  | { kind: 'activity' }
