@@ -38,7 +38,27 @@ command -v starkli >/dev/null || die "starkli not found. Install: curl https://g
 [[ -n "${STARKNET_KEYSTORE:-}" ]] || die "STARKNET_KEYSTORE is not set (path to keystore.json)."
 [[ -f "${STARKNET_KEYSTORE}" ]]  || die "No file at STARKNET_KEYSTORE: ${STARKNET_KEYSTORE}"
 
+# Reuse the app's mainnet RPC if the operator has one configured; the public
+# endpoint is rate-limited and declare is a large payload.
+if [[ -z "${STARKNET_RPC:-}" && -f ../.env.local ]]; then
+  FROM_ENV="$(grep -m1 '^NEXT_PUBLIC_STARKNET_RPC_URL=' ../.env.local | cut -d= -f2- || true)"
+  [[ -n "${FROM_ENV}" && "${FROM_ENV}" != *YOUR_ALCHEMY_KEY* ]] && STARKNET_RPC="${FROM_ENV}"
+fi
 if [[ -n "${STARKNET_RPC:-}" ]]; then RPC=(--rpc "${STARKNET_RPC}"); else RPC=(--network mainnet); fi
+
+# ─── the deployer account itself ─────────────────────────────────────────────
+# A freshly initialised account exists only as a file until it is deployed
+# on-chain. Do that here rather than making it a separate step to remember.
+if ! starkli account fetch --output /dev/null "$(starkli account address "${STARKNET_ACCOUNT}" 2>/dev/null)" "${RPC[@]}" >/dev/null 2>&1; then
+  DEPLOYER="$(starkli account address "${STARKNET_ACCOUNT}" 2>/dev/null || echo "?")"
+  bold "0/6  Deploying the deployer account   ⚠ COSTS GAS"
+  echo "     ${DEPLOYER}"
+  if ! starkli account deploy "${STARKNET_ACCOUNT}" --keystore "${STARKNET_KEYSTORE}" "${RPC[@]}"; then
+    warn "     Account deploy did not complete."
+    warn "     If it says the account is already deployed, that is fine — continuing."
+  fi
+  echo
+fi
 
 bold "1/6  Building"
 scarb build >/dev/null
