@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import { listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
 import { useLumen } from '@/lib/lumen/store'
-import { ArrowRight, Eye, LumenMark, Lock, Plus, ShieldCheck, Wallet } from './icons'
+import { ArrowRight, LumenMark, Lock, Plus, ShieldCheck, Wallet } from './icons'
 import { ErrorNote } from './bits'
 
 const STEPS = [
@@ -55,7 +55,7 @@ const STEPS = [
 ] as const
 
 export function ConnectScreen() {
-  const { connect, status, error, clearError, enterPreview } = useLumen()
+  const { connect, status, error, clearError } = useLumen()
   const [wallets, setWallets] = useState<readonly WalletWithStarknetFeatures[]>([])
 
   useEffect(() => {
@@ -157,21 +157,6 @@ export function ConnectScreen() {
           </>
         )}
 
-        <button
-          onClick={enterPreview}
-          className="card card-press mt-4 flex w-full items-center gap-3.5 px-5 py-4 text-left"
-        >
-          <span className="grid size-10 flex-none place-items-center rounded-full bg-sunk text-ink">
-            <Eye size={17} />
-          </span>
-          <span className="flex-1">
-            <span className="block text-[14.5px] font-semibold">Just looking?</span>
-            <span className="block text-[13px] text-ink-muted">
-              Walk through Lumen with sample data — nothing to install.
-            </span>
-          </span>
-          <ArrowRight size={15} className="text-ink-faint" />
-        </button>
 
         {others.length > 0 ? (
           <div className="mt-4 space-y-2">

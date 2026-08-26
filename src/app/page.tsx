@@ -29,7 +29,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Eye,
   Globe,
   LumenMark,
   Plus,
@@ -437,27 +436,25 @@ export default function Landing() {
               Live on Starknet mainnet · STRK20
             </p>
             <h1 className="rise rise-1 mt-7 text-[56px] font-semibold leading-[0.98] tracking-[-0.04em] sm:text-[76px]">
-              Your money,
+              Money arrives.
               <br />
-              <span className="stroke-text">nobody&rsquo;s</span>
+              <span className="stroke-text">Nothing</span>
               <br />
-              business.
+              about you does.
             </h1>
             <p className="rise rise-2 mt-7 max-w-[44ch] text-[17px] leading-relaxed text-ink-muted">
-              Every payment on a public chain becomes a permanent record anyone can read. Lumen is
-              money that doesn&rsquo;t do that — pay anyone with a link, even someone with no
-              wallet; get paid through your page; save and convert — with privacy as the default,
-              not a feature.
+              The private inbox for money on Starknet. Get paid through one link, pay anyone —
+              even someone with no wallet — and keep every arrival from adding up to a public
+              profile of you.
             </p>
             <div className="rise rise-3 mt-9 flex flex-wrap items-center gap-3">
               <Link href="/app" className="btn btn-ink">
                 Open Lumen
                 <ArrowRight size={17} />
               </Link>
-              <Link href="/app?preview" className="btn btn-quiet">
-                <Eye size={16} />
-                Try the walkthrough
-              </Link>
+              <a href="#how" className="btn btn-quiet">
+                How it works
+              </a>
             </div>
             <p className="rise rise-4 mt-5 text-[13px] text-ink-faint">
               Non-custodial. Your wallet holds every key. Nothing to sign up for.
@@ -785,9 +782,9 @@ export default function Landing() {
               Open Lumen
               <ArrowRight size={17} />
             </Link>
-            <Link href="/app?preview" className="btn border border-white/25 text-white hover:bg-white/10">
-              Try the walkthrough
-            </Link>
+            <a href="#how" className="btn border border-white/25 text-white hover:bg-white/10">
+              How it works
+            </a>
           </div>
         </Reveal>
       </section>

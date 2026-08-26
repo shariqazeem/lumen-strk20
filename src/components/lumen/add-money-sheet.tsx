@@ -19,7 +19,8 @@ import { AmountField, ErrorNote, GuardPanel, parseAmount, SuccessMark, TxLink } 
 import { Clock } from './icons'
 
 export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { address, prices, ledger, submitting, addMoney, error, clearError, lastTx } = useLumen()
+  const { address, prices, ledger, submitting, addMoney, noteDecision, error, clearError, lastTx } =
+    useLumen()
 
   const [token, setToken] = useState<TokenSymbol>('USDC')
   const [amountText, setAmountText] = useState('')
@@ -48,6 +49,21 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
     if (tunedAmount <= 0n) return
     try {
       await addMoney({ token, amount: tunedAmount })
+      if (report) {
+        noteDecision({
+          action: 'add',
+          report,
+          ...(tunedAmount !== typedAmount
+            ? {
+                rewritten: {
+                  from: formatUnits(typedAmount, decimals, 6),
+                  to: formatUnits(tunedAmount, decimals, 6),
+                  token,
+                },
+              }
+            : {}),
+        })
+      }
       setDone(true)
     } catch {
       // Error surfaced by the store.

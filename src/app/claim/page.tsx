@@ -33,8 +33,7 @@ type PageState =
   | { kind: 'claimed-by-me'; payload: ClaimLinkPayload; txHash: string }
 
 export default function ClaimPage() {
-  const { status, connect, claimFromLink, submitting, error, clearError, lastTx, preview } =
-    useLumen()
+  const { status, connect, claimFromLink, submitting, error, clearError, lastTx } = useLumen()
   const [state, setState] = useState<PageState>({ kind: 'reading' })
   const [wallets, setWallets] = useState<readonly WalletWithStarknetFeatures[]>([])
   const [checking, setChecking] = useState(false)
@@ -89,7 +88,7 @@ export default function ClaimPage() {
   }
 
   const ready = wallets.filter(supportsStrk20)
-  const connected = status === 'connected' && !preview
+  const connected = status === 'connected'
 
   const token = state.kind === 'ready' || state.kind === 'claimed-by-me' ? tokenForClaim(state.payload) : undefined
   const amountText =

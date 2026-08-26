@@ -22,8 +22,7 @@ import { AmountField, ErrorNote, parseAmount, SuccessMark, TxLink, usdText } fro
 import { ArrowDown, Check, Clock, ShieldCheck } from './icons'
 
 export function ConvertSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { address, balances, prices, submitting, convert, error, clearError, lastTx, preview } =
-    useLumen()
+  const { address, balances, prices, submitting, convert, error, clearError, lastTx } = useLumen()
 
   const [sellToken, setSellToken] = useState<TokenSymbol>('USDC')
   const [buyToken, setBuyToken] = useState<TokenSymbol>('STRK')
@@ -42,10 +41,10 @@ export function ConvertSheet({ open, onClose }: { open: boolean; onClose: () => 
   const balance = balances.find((b) => b.symbol === sellToken)
   const enough = balance === undefined || (amount > 0n && amount <= balance.raw)
 
-  // Debounced live quote. Preview mode never quotes — no address to quote for.
+  // Debounced live quote; requires a connected address to quote for.
   useEffect(() => {
     if (quoteTimer.current) clearTimeout(quoteTimer.current)
-    if (amount <= 0n || sellToken === buyToken || !address || preview) {
+    if (amount <= 0n || sellToken === buyToken || !address) {
       setQuoteState({ kind: 'idle' })
       return
     }
@@ -70,7 +69,7 @@ export function ConvertSheet({ open, onClose }: { open: boolean; onClose: () => 
     return () => {
       if (quoteTimer.current) clearTimeout(quoteTimer.current)
     }
-  }, [amount, sellToken, buyToken, address, preview])
+  }, [amount, sellToken, buyToken, address])
 
   const quote = quoteState.kind === 'ready' && quoteState.forAmount === amount ? quoteState : null
 
@@ -156,11 +155,7 @@ export function ConvertSheet({ open, onClose }: { open: boolean; onClose: () => 
           </div>
 
           <div className="mt-5 rounded-2xl border border-rule bg-card-soft px-4 py-3.5 text-[13.5px]">
-            {preview ? (
-              <p className="text-ink-muted">
-                Live routes need a connected wallet — this is the sample walkthrough.
-              </p>
-            ) : quoteState.kind === 'idle' ? (
+            {quoteState.kind === 'idle' ? (
               <p className="text-ink-muted">Type an amount to see the live route.</p>
             ) : quoteState.kind === 'loading' ? (
               <p className="text-ink-muted">Finding the best route…</p>

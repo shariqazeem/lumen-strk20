@@ -51,7 +51,6 @@ export default function PayPage() {
     error,
     clearError,
     lastTx,
-    preview,
   } = useLumen()
 
   const [state, setState] = useState<PageState>({ kind: 'reading' })
@@ -83,7 +82,7 @@ export default function PayPage() {
   const amount = locked ? BigInt(locked.a) : parseAmount(amountText, token)
   const decimals = TOKENS[locked ? locked.t : token].decimals
 
-  const connected = status === 'connected' && !preview
+  const connected = status === 'connected'
   const ready = wallets.filter(supportsStrk20)
 
   const report = useMemo(() => {

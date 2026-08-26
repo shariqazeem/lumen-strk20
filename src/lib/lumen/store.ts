@@ -46,16 +46,12 @@ import { readPoolFee } from '@/lib/strk20/pool'
 import { executeAvnuPrivateSwap, fetchSpotPricesUsd, type Quote } from '@/lib/strk20/swap'
 import { FALLBACK_POOL_FEE_STRK, TOKENS, tokenByAddress, type TokenSymbol } from '@/lib/strk20/config'
 import { appendLedger, loadLedger, type LedgerEntry } from '@/lib/history'
-import { loadPeople, addPerson, pickEmoji, removePerson, type Person } from './people'
-import {
-  addSpace,
-  adjustAllocation,
-  allocationOf,
-  loadSpaces,
-  removeSpace,
-  type Space,
-} from './spaces'
+import { loadPeople, addPerson, removePerson, type Person } from './people'
+import { addSpace, adjustAllocation, loadSpaces, removeSpace, type Space } from './spaces'
 import { addReceipt, loadReceipts, type Receipt } from './receipts'
+import { loadJournal, recordDecision, type JournalEntry } from './journal'
+import { loadArrivals, syncArrivals, type Arrival } from './arrivals'
+import type { GuardReport } from './guard'
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -92,6 +88,10 @@ interface LumenState {
   spaces: Space[]
   receipts: Receipt[]
   links: SentLink[]
+  /** What the engine decided, action by action. */
+  journal: JournalEntry[]
+  /** Money that showed up without this device doing anything. */
+  arrivals: Arrival[]
 
   lastTx: LastTx | null
   submitting: boolean
@@ -140,11 +140,14 @@ interface LumenState {
    */
   convert: (input: { quote: Quote; sellToken: TokenSymbol; sellAmount: bigint }) => Promise<string>
 
-  clearError: () => void
+  /** Persist what the engine decided about an action that just executed. */
+  noteDecision: (input: {
+    action: JournalEntry['action']
+    report: GuardReport
+    rewritten?: { from: string; to: string; token: string }
+  }) => void
 
-  /** True when the session is the sample-data walkthrough, not a wallet. */
-  preview: boolean
-  enterPreview: () => void
+  clearError: () => void
 }
 
 /** USD value of the full balance list under the current prices, or null when unpriced. */
@@ -166,18 +169,15 @@ export function portfolioUsd(
 
 /**
  * Chain actions need a live wallet account. Surfacing the refusal through the
- * store's error state (not just a throw) is what makes it visible in the UI —
- * and in the sample walkthrough the copy says why, instead of dead-ending.
+ * store's error state (not just a throw) is what makes it visible in the UI.
  */
 function requireAccount(
   get: () => LumenState,
   set: (partial: Partial<LumenState>) => void,
 ): { account: WalletAccountV6; address: string } {
-  const { account, address, preview } = get()
+  const { account, address } = get()
   if (account && address) return { account, address }
-  const message = preview
-    ? 'This is the sample walkthrough — connect a privacy wallet to actually move money.'
-    : 'Connect a wallet first.'
+  const message = 'Connect a wallet first.'
   set({ error: message })
   throw new Error(message)
 }
@@ -216,6 +216,8 @@ export const useLumen = create<LumenState>((set, get) => ({
   spaces: [],
   receipts: [],
   links: [],
+  journal: [],
+  arrivals: [],
 
   lastTx: null,
   submitting: false,
@@ -236,6 +238,8 @@ export const useLumen = create<LumenState>((set, get) => ({
         spaces: loadSpaces(address),
         receipts: loadReceipts(address),
         links: loadLinks(address),
+        journal: loadJournal(address),
+        arrivals: loadArrivals(address),
       })
       void get().loadMarket()
     } catch (error) {
@@ -251,7 +255,6 @@ export const useLumen = create<LumenState>((set, get) => ({
   disconnect() {
     set({
       status: 'disconnected',
-      preview: false,
       account: null,
       address: null,
       walletName: null,
@@ -263,6 +266,8 @@ export const useLumen = create<LumenState>((set, get) => ({
       spaces: [],
       receipts: [],
       links: [],
+      journal: [],
+      arrivals: [],
       lastTx: null,
       error: null,
     })
@@ -274,7 +279,19 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ balancesLoading: true, error: null })
     try {
       const balances = await readShieldedBalances(account)
-      set({ balances, balancesLoading: false, balancesRevealedAt: Date.now(), registered: true })
+      // A balance read is the only moment an arrival can be inferred, so
+      // reconcile here rather than on a timer we are not allowed to run.
+      const { address } = get()
+      const { arrivals } = address
+        ? syncArrivals(address, balances, get().ledger)
+        : { arrivals: [] as Arrival[] }
+      set({
+        balances,
+        balancesLoading: false,
+        balancesRevealedAt: Date.now(),
+        registered: true,
+        arrivals,
+      })
     } catch (error) {
       // NOT_REGISTERED (118) is not a failure: this account simply has no
       // private balance yet. The wallet registers it on the first deposit, so
@@ -307,91 +324,35 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ poolFee: fee, poolFeeLive: live, prices })
   },
 
-  // Product-data mutations persist through the lumen modules. In preview
-  // there is nothing on disk to persist into, so they operate in memory —
-  // same shapes, same rules, no storage.
+  // Product-data mutations persist through the modules under @/lib/lumen.
 
   addPerson(input) {
-    const { address, preview, people } = get()
+    const { address } = get()
     if (!address) return
-    if (preview) {
-      set({
-        people: [
-          {
-            id: `preview-${Date.now().toString(36)}`,
-            name: input.name.trim(),
-            address: input.address.trim(),
-            emoji: input.emoji?.trim() || pickEmoji(input.name),
-            createdAt: Date.now(),
-          },
-          ...people,
-        ],
-      })
-      return
-    }
     set({ people: addPerson(address, input) })
   },
 
   removePerson(id) {
-    const { address, preview, people } = get()
+    const { address } = get()
     if (!address) return
-    if (preview) {
-      set({ people: people.filter((p) => p.id !== id) })
-      return
-    }
     set({ people: removePerson(address, id) })
   },
 
   addSpace(input) {
-    const { address, preview, spaces } = get()
+    const { address } = get()
     if (!address) return
-    if (preview) {
-      set({
-        spaces: [
-          ...spaces,
-          {
-            id: `preview-${Date.now().toString(36)}`,
-            name: input.name.trim(),
-            emoji: input.emoji?.trim() || '✳️',
-            tint: spaces.length % 5,
-            ...(input.goalUsd && input.goalUsd > 0 ? { goalUsd: input.goalUsd } : {}),
-            allocations: {},
-            createdAt: Date.now(),
-          },
-        ],
-      })
-      return
-    }
     set({ spaces: addSpace(address, input) })
   },
 
   removeSpace(id) {
-    const { address, preview, spaces } = get()
+    const { address } = get()
     if (!address) return
-    if (preview) {
-      set({ spaces: spaces.filter((s) => s.id !== id) })
-      return
-    }
     set({ spaces: removeSpace(address, id) })
   },
 
   moveIntoSpace(spaceId, token, delta) {
-    const { address, preview, spaces } = get()
+    const { address } = get()
     if (!address) return
-    if (preview) {
-      set({
-        spaces: spaces.map((space) => {
-          if (space.id !== spaceId) return space
-          const current = allocationOf(space, token)
-          const updated = current + delta < 0n ? 0n : current + delta
-          const allocations = { ...space.allocations }
-          if (updated === 0n) delete allocations[token]
-          else allocations[token] = updated.toString()
-          return { ...space, allocations }
-        }),
-      })
-      return
-    }
     set({ spaces: adjustAllocation(address, spaceId, token, delta) })
   },
 
@@ -675,8 +636,8 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async syncLinks() {
-    const { address, links, preview } = get()
-    if (!address || preview) return
+    const { address, links } = get()
+    if (!address) return
     for (const link of links) {
       if (link.status !== 'open') continue
       const entry = await readEscrowEntry(link.claimSecret)
@@ -685,151 +646,14 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ links: loadLinks(address) })
   },
 
+  noteDecision(input) {
+    const { address } = get()
+    if (!address) return
+    set({ journal: recordDecision(address, input) })
+  },
+
   clearError() {
     set({ error: null })
   },
 
-  preview: false,
-
-  /**
-   * Sample-data walkthrough for people without a privacy wallet installed.
-   *
-   * Everything rendered is clearly-labeled fixture data on a throwaway
-   * address; there is no account, so every chain action still refuses with
-   * "Connect a wallet first." — the preview can show the product, never fake
-   * a transaction. Market data (prices, pool fee) is still fetched live.
-   */
-  enterPreview() {
-    const now = Date.now()
-    const HOUR = 3_600_000
-    const amara = '0x0421b1fca8f3a4b2e9a1c6d80e3f1972d54ab8c0de91f2a34b56c78d90e1f234'
-    const landlord = '0x05512c3d97e4b8a1f2063c5d41e8ba97310fedcba98765432100ffeeddccbbaa'
-    const demo = {
-      address: '0x0777de1ab77e57a1d8c2b3f4a5968derived0000000000000000000demo0001',
-      balances: [
-        { symbol: 'USDC' as const, address: TOKENS.USDC.address, raw: 2_412_713_400n, decimals: 6 },
-        { symbol: 'STRK' as const, address: TOKENS.STRK.address, raw: 1_203_814_000_000_000_000_000n, decimals: 18 },
-      ],
-      people: [
-        { id: 'p-amara', name: 'Amara', address: amara, emoji: '🌊', createdAt: now - 40 * 24 * HOUR },
-        { id: 'p-landlord', name: 'Landlord', address: landlord, emoji: '🏠', createdAt: now - 90 * 24 * HOUR },
-      ],
-      spaces: [
-        {
-          id: 's-travel',
-          name: 'Travel',
-          emoji: '✈️',
-          tint: 3,
-          goalUsd: 3000,
-          allocations: { USDC: '1240310000' },
-          createdAt: now - 30 * 24 * HOUR,
-        },
-        {
-          id: 's-rainy',
-          name: 'Rainy day',
-          emoji: '☔️',
-          tint: 0,
-          allocations: { USDC: '612480000' },
-          createdAt: now - 21 * 24 * HOUR,
-        },
-      ],
-      links: [
-        {
-          id: 'link-1',
-          claimSecret: '0x1234',
-          refundSecret: '0x5678',
-          token: 'USDC' as const,
-          amountRaw: '52880000',
-          expiry: Math.floor(now / 1000) + 5 * 24 * 3600,
-          note: 'Coffee money ☕️',
-          createdAt: now - 5 * HOUR,
-          status: 'open' as const,
-        },
-      ],
-      ledger: [
-        {
-          id: 'l-0',
-          timestamp: now - 5 * HOUR,
-          type: 'LINK' as const,
-          asset: 'USDC' as const,
-          amount: 52_880_000n,
-          route: 'DIRECT' as const,
-          txHash: '0x07f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1',
-          observer: 'escrow · public amount',
-        },
-        {
-          id: 'l-1',
-          timestamp: now - 2 * HOUR,
-          type: 'TRANSFER' as const,
-          asset: 'USDC' as const,
-          amount: 212_470_000n,
-          route: 'DIRECT' as const,
-          txHash: '0x04d21b3c9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f9e1a',
-          counterparty: amara,
-          observer: '—',
-        },
-        {
-          id: 'l-2',
-          timestamp: now - 26 * HOUR,
-          type: 'TRANSFER' as const,
-          asset: 'USDC' as const,
-          amount: 938_120_000n,
-          route: 'DIRECT' as const,
-          txHash: '0x02c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4',
-          counterparty: landlord,
-          observer: '—',
-        },
-        {
-          id: 'l-3',
-          timestamp: now - 3 * 24 * HOUR,
-          type: 'SHIELD' as const,
-          asset: 'USDC' as const,
-          amount: 987_310_000n,
-          route: 'DIRECT' as const,
-          txHash: '0x06e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8',
-          observer: 'deposit · public',
-        },
-      ],
-      receipts: [
-        {
-          id: 'r-1',
-          txHash: '0x04d21b3c9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f9e1a',
-          token: 'USDC' as const,
-          amountRaw: '212470000',
-          toName: 'Amara',
-          toAddress: amara,
-          note: 'Dinner + tickets',
-          timestamp: now - 2 * HOUR,
-        },
-        {
-          id: 'r-2',
-          txHash: '0x02c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4',
-          token: 'USDC' as const,
-          amountRaw: '938120000',
-          toName: 'Landlord',
-          toAddress: landlord,
-          timestamp: now - 26 * HOUR,
-        },
-      ],
-    }
-
-    set({
-      status: 'connected',
-      preview: true,
-      account: null,
-      address: demo.address,
-      walletName: 'Preview',
-      balances: demo.balances,
-      balancesRevealedAt: now,
-      registered: true,
-      ledger: demo.ledger,
-      people: demo.people,
-      spaces: demo.spaces,
-      receipts: demo.receipts,
-      links: demo.links,
-      prices: { USDC: 1, STRK: 0.41, ETH: 4120, WBTC: 108_500, strkBTC: 108_500 },
-      error: null,
-    })
-    void get().loadMarket()
-  },
 }))

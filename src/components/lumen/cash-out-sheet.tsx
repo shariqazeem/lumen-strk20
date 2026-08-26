@@ -18,8 +18,18 @@ import { AmountField, ErrorNote, GuardPanel, parseAmount, SuccessMark, TxLink } 
 import { Globe } from './icons'
 
 export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { address, balances, prices, ledger, submitting, cashOut, error, clearError, lastTx } =
-    useLumen()
+  const {
+    address,
+    balances,
+    prices,
+    ledger,
+    submitting,
+    cashOut,
+    noteDecision,
+    error,
+    clearError,
+    lastTx,
+  } = useLumen()
 
   const [step, setStep] = useState<'warn' | 'form' | 'done'>('warn')
   const [token, setToken] = useState<TokenSymbol>('USDC')
@@ -52,6 +62,21 @@ export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => 
     if (finalAmount <= 0n || !validDestination) return
     try {
       await cashOut({ token, amount: finalAmount, recipient: destination.trim() })
+      if (report) {
+        noteDecision({
+          action: 'out',
+          report,
+          ...(finalAmount !== typedAmount
+            ? {
+                rewritten: {
+                  from: formatUnits(typedAmount, decimals, 6),
+                  to: formatUnits(finalAmount, decimals, 6),
+                  token,
+                },
+              }
+            : {}),
+        })
+      }
       setStep('done')
     } catch {
       // Store surfaced the wallet's explanation.

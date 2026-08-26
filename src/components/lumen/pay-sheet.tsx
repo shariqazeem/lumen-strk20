@@ -64,6 +64,7 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
     submitting,
     pay,
     sendClaimLink,
+    noteDecision,
     error,
     clearError,
     lastTx,
@@ -142,6 +143,21 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
         refundAfterS,
         ...(note.trim() ? { note: note.trim() } : {}),
       })
+      if (linkReport) {
+        noteDecision({
+          action: 'link',
+          report: linkReport,
+          ...(linkAmount !== amount
+            ? {
+                rewritten: {
+                  from: formatUnits(amount, TOKENS[token].decimals, 6),
+                  to: formatUnits(linkAmount, TOKENS[token].decimals, 6),
+                  token,
+                },
+              }
+            : {}),
+        })
+      }
       setLinkUrl(url)
       setStep('linkDone')
     } catch {
@@ -169,6 +185,7 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
         ...(recipientName ? { recipientName } : {}),
         ...(note.trim() ? { note: note.trim() } : {}),
       })
+      if (report) noteDecision({ action: 'pay', report })
       setReceipt(created)
       setStep('done')
     } catch {

@@ -21,7 +21,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
-import readline from 'node:readline'
 import { scryptSync, createDecipheriv } from 'node:crypto'
 import { keccak_256 } from '@noble/hashes/sha3'
 import { Account, CallData, RpcProvider, hash } from 'starknet'

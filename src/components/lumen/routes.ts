@@ -15,3 +15,4 @@ export type SheetRoute =
   | { kind: 'links' }
   | { kind: 'my-page' }
   | { kind: 'convert' }
+  | { kind: 'journal' }

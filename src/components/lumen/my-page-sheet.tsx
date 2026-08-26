@@ -19,11 +19,11 @@ import { AmountField, Avatar, parseAmount } from './bits'
 import { Check, Copy, Share } from './icons'
 
 export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { address, registered, prices, preview } = useLumen()
+  const { address, registered, prices } = useLumen()
 
   const saved = useMemo(
-    () => (address && !preview ? loadMyPage(address) : null),
-    [address, preview],
+    () => (address ? loadMyPage(address) : null),
+    [address],
   )
 
   const [mode, setMode] = useState<'page' | 'request'>('page')
@@ -71,7 +71,7 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
       : null
 
   const copy = async (url: string, which: 'page' | 'request') => {
-    if (address && !preview && name.trim()) {
+    if (address && name.trim()) {
       saveMyPage(address, { name: name.trim(), emoji: effectiveEmoji, presets })
     }
     try {

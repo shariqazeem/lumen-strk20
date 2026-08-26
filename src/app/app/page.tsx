@@ -8,7 +8,7 @@
  * flips the route and lets everything glide.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import type { Person } from '@/lib/lumen/people'
 import type { Receipt } from '@/lib/lumen/receipts'
@@ -26,18 +26,12 @@ import { NewSpaceSheet, SpaceSheet } from '@/components/lumen/space-sheets'
 import { LinksSheet } from '@/components/lumen/links-sheet'
 import { MyPageSheet } from '@/components/lumen/my-page-sheet'
 import { ConvertSheet } from '@/components/lumen/convert-sheet'
+import { JournalSheet } from '@/components/lumen/journal-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
-  const enterPreview = useLumen((state) => state.enterPreview)
   const [route, setRoute] = useState<SheetRoute | null>(null)
 
-  // `/app?preview` opens the sample-data walkthrough for people without a
-  // privacy wallet. Read from location directly — no Suspense dance.
-  useEffect(() => {
-    const wantsPreview = new URLSearchParams(window.location.search).has('preview')
-    if (wantsPreview && useLumen.getState().status === 'disconnected') enterPreview()
-  }, [enterPreview])
 
   // Sheets keep their last payload while animating out.
   const [payPerson, setPayPerson] = useState<Person | undefined>(undefined)
@@ -80,6 +74,7 @@ export default function AppPage() {
       />
       <MyPageSheet open={route?.kind === 'my-page'} onClose={close} />
       <ConvertSheet open={route?.kind === 'convert'} onClose={close} />
+      <JournalSheet open={route?.kind === 'journal'} onClose={close} />
       <AddMoneySheet open={route?.kind === 'add'} onClose={close} />
       <CashOutSheet open={route?.kind === 'out'} onClose={close} />
       <ReceiptSheet open={route?.kind === 'receipt'} onClose={close} receipt={receipt} />
