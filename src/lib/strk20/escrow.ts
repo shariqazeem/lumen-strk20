@@ -241,3 +241,25 @@ export async function readEscrowEntry(
 
 /** Default refund window: the sender can reclaim after seven days. */
 export const DEFAULT_REFUND_WINDOW_S = 7 * 24 * 60 * 60
+
+/**
+ * Selectable reclaim windows.
+ *
+ * Short windows are safe by design: a claim stays valid after expiry right up
+ * until the sender actually reclaims, so an early window only grants the
+ * sender the *option* to take it back — it never strands a late recipient.
+ * That is what makes the ten-minute option usable for a live demo.
+ */
+export const REFUND_WINDOWS: ReadonlyArray<{
+  label: string
+  seconds: number
+  hint?: string
+}> = [
+  { label: '10 min', seconds: 600, hint: 'for testing a reclaim' },
+  { label: '1 day', seconds: 24 * 60 * 60 },
+  { label: '7 days', seconds: DEFAULT_REFUND_WINDOW_S },
+  { label: '30 days', seconds: 30 * 24 * 60 * 60 },
+]
+
+/** Floor the contract and the store agree on. */
+export const MIN_REFUND_WINDOW_S = 300

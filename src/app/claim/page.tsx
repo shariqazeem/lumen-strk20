@@ -21,6 +21,7 @@ import {
   type EscrowEntryState,
 } from '@/lib/strk20/escrow'
 import { formatUnits, listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
+import { markInboxClaimed, reconcileInbox, rememberLink } from '@/lib/lumen/inbox'
 import { useLumen } from '@/lib/lumen/store'
 import { ErrorNote, SuccessMark, TxLink } from '@/components/lumen/bits'
 import { ArrowRight, LumenMark, Lock, ShieldCheck, Wallet } from '@/components/lumen/icons'
@@ -46,6 +47,9 @@ export default function ClaimPage() {
   const refresh = useCallback(async (payload: ClaimLinkPayload) => {
     setChecking(true)
     const entry = await readEscrowEntry(payload.s)
+    // The chain is the truth: if it was claimed elsewhere, stop showing it as
+    // waiting in this device's inbox.
+    if (entry?.claimed) reconcileInbox(payload.s, true)
     setState((current) =>
       current.kind === 'claimed-by-me' ? current : { kind: 'ready', payload, entry },
     )
@@ -58,12 +62,26 @@ export default function ClaimPage() {
       setState({ kind: 'invalid' })
       return
     }
+    // Remember it before anything else: this device now holds money, and
+    // Incoming should say so even if the visitor closes the tab and returns
+    // later without the original message.
+    const token = tokenForClaim(payload)
+    if (token) {
+      rememberLink({
+        claimSecret: payload.s,
+        token: token.symbol,
+        amountRaw: payload.a,
+        ...(payload.f ? { fromName: payload.f } : {}),
+        ...(payload.n ? { note: payload.n } : {}),
+      })
+    }
     void refresh(payload)
   }, [refresh])
 
   const claim = async (payload: ClaimLinkPayload) => {
     try {
       const txHash = await claimFromLink(payload)
+      markInboxClaimed(payload.s, txHash)
       setState({ kind: 'claimed-by-me', payload, txHash })
     } catch {
       // The store surfaced the wallet's explanation.

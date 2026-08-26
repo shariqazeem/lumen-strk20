@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { guardSeed, reviewPay, reviewShield } from '@/lib/lumen/guard'
-import { DEFAULT_REFUND_WINDOW_S } from '@/lib/strk20/escrow'
+import { DEFAULT_REFUND_WINDOW_S, REFUND_WINDOWS } from '@/lib/strk20/escrow'
 import {
   looksLikeStarknetAddress,
   personByAddress,
@@ -77,6 +77,7 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
   const [note, setNote] = useState('')
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
+  const [refundAfterS, setRefundAfterS] = useState<number>(DEFAULT_REFUND_WINDOW_S)
   const [linkKeepExact, setLinkKeepExact] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
 
@@ -138,7 +139,7 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
       const { url } = await sendClaimLink({
         token,
         amount: linkAmount,
-        refundAfterS: DEFAULT_REFUND_WINDOW_S,
+        refundAfterS,
         ...(note.trim() ? { note: note.trim() } : {}),
       })
       setLinkUrl(url)
@@ -419,6 +420,35 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
             </p>
           ) : null}
 
+          <div className="mt-5">
+            <p className="mb-2 flex items-center gap-1.5 px-1 text-[13px] font-semibold text-ink-muted">
+              <Clock size={13} />
+              You can take it back after
+            </p>
+            <div className="flex gap-1.5 overflow-x-auto">
+              {REFUND_WINDOWS.map((window) => (
+                <button
+                  key={window.seconds}
+                  onClick={() => setRefundAfterS(window.seconds)}
+                  className={`h-9 flex-none rounded-full px-4 text-[13.5px] font-medium transition-colors ${
+                    refundAfterS === window.seconds
+                      ? 'bg-ink text-white'
+                      : 'bg-sunk text-ink-soft hover:bg-rule'
+                  }`}
+                >
+                  {window.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 px-1 text-[12px] leading-relaxed text-ink-faint">
+              They can still claim after that — the window only decides when
+              <em> you</em> may reclaim an untouched link.
+              {REFUND_WINDOWS.find((w) => w.seconds === refundAfterS)?.hint
+                ? ' Short windows are for testing a reclaim.'
+                : ''}
+            </p>
+          </div>
+
           <button
             onClick={submitLink}
             disabled={linkAmount <= 0n || submitting || (balanceKnown && !enough)}
@@ -426,10 +456,6 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
           >
             {submitting ? 'Waiting for your wallet…' : 'Create claim link'}
           </button>
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[12px] text-ink-faint">
-            <Clock size={13} />
-            Unclaimed after 7 days? You can take it back.
-          </p>
         </div>
       ) : null}
 

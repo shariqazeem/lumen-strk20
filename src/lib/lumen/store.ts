@@ -37,6 +37,7 @@ import {
   encodeClaimLink,
   ESCROW_ADDRESS,
   generateSecret,
+  MIN_REFUND_WINDOW_S,
   readEscrowEntry,
   type ClaimLinkPayload,
 } from '@/lib/strk20/escrow'
@@ -509,7 +510,8 @@ export const useLumen = create<LumenState>((set, get) => ({
     try {
       const claimSecret = generateSecret()
       const refundSecret = generateSecret()
-      const expiry = Math.floor(Date.now() / 1000) + Math.max(3600, input.refundAfterS)
+      const expiry =
+        Math.floor(Date.now() / 1000) + Math.max(MIN_REFUND_WINDOW_S, input.refundAfterS)
 
       const actions = buildEscrowFund({
         token: TOKENS[input.token].address,
