@@ -177,7 +177,9 @@ async function main() {
   console.log(dim(`  deployer ${address}`))
   console.log()
 
-  const account = new Account(provider, address, privateKey)
+  // starknet.js v10 takes a single options object; the pre-v10 positional form
+  // silently constructs a default provider and leaves address undefined.
+  const account = new Account({ provider, address, signer: privateKey })
 
   // --- 0. the deployer account itself -------------------------------------
   const alreadyLive = await provider
