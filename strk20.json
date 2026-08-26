@@ -1,6 +1,13 @@
 {
   "transactions": [],
-  "contracts": [],
+  "contracts": [
+    {
+      "name": "LumenEscrow",
+      "address": "0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8",
+      "class_hash": "0x7455f2335fa2fc44096af7f518b7d8f9e12bd0835ff8b735feb1ccf7e4484e6",
+      "network": "mainnet"
+    }
+  ],
   "demo_video": "",
   "demo_url": "https://lumen-strk20.vercel.app"
 }
