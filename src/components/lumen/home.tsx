@@ -130,29 +130,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
         </button>
       </header>
 
-      <div className="rise rise-1 mt-4 grid grid-cols-2 gap-1 rounded-full bg-sunk p-1">
-        <button
-          onClick={() => setObserver(false)}
-          aria-pressed={!observer}
-          className={`flex h-9 items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition-all duration-300 ${
-            !observer ? 'bg-card shadow-[0_1px_3px_rgba(18,18,20,0.1)]' : 'text-ink-muted'
-          }`}
-        >
-          <Eye size={13} />
-          Your view
-        </button>
-        <button
-          onClick={() => setObserver(true)}
-          aria-pressed={observer}
-          className={`flex h-9 items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition-all duration-300 ${
-            observer ? 'bg-ink text-white shadow-[0_1px_3px_rgba(18,18,20,0.2)]' : 'text-ink-muted'
-          }`}
-        >
-          <Globe size={13} />
-          What the world sees
-        </button>
-      </div>
-
       {error && !observer ? (
         <div className="mt-4">
           <ErrorNote message={error} onDismiss={clearError} />
@@ -256,27 +233,28 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
           {waiting.length > 0 ? (
             <section className="rise rise-2 mt-5">
               <SectionLabel>Waiting for you</SectionLabel>
-              <div className="card divide-y divide-rule">
+              <div className="space-y-2">
                 {waiting.map((link) => (
                   <a
                     key={link.claimSecret}
                     href={claimHref(link)}
-                    className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-card-soft"
+                    className="glass card-press flex items-center gap-3.5 px-5 py-4"
                   >
-                    <span className="grid size-10 flex-none place-items-center rounded-full bg-ink text-white">
-                      <LinkIcon size={17} />
+                    <span className="grid size-9 flex-none place-items-center rounded-full bg-white/10">
+                      <LinkIcon size={16} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold">
-                        {link.fromName ? `${link.fromName} sent you` : 'Someone sent you'}{' '}
-                        <span className="tabular">
-                          {formatUnits(BigInt(link.amountRaw), TOKENS[link.token].decimals, 4)}{' '}
-                          {link.token}
-                        </span>
+                      <span className="tabular block text-[17px] font-semibold leading-tight">
+                        {formatUnits(BigInt(link.amountRaw), TOKENS[link.token].decimals, 4)}{' '}
+                        {link.token}
                       </span>
-                      <span className="block text-[12.5px] text-ink-muted">
-                        {link.note ? `“${link.note}” · ` : ''}Tap to claim privately
+                      <span className="block truncate text-[12.5px] text-glass-muted">
+                        {link.fromName ? `from ${link.fromName}` : 'from someone'}
+                        {link.note ? ` · ${link.note}` : ''}
                       </span>
+                    </span>
+                    <span className="flex-none rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold">
+                      Claim
                     </span>
                   </a>
                 ))}
@@ -284,23 +262,20 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </section>
           ) : null}
 
-          {/* arrivals we cannot attribute — and say so */}
+          {/* arrivals we cannot attribute — and say so, once */}
           {revealed && arrivals.length > 0 ? (
             <section className="rise rise-2 mt-6">
               <SectionLabel>Arrived</SectionLabel>
               <div className="card divide-y divide-rule">
                 {arrivals.slice(0, 4).map((arrival) => (
-                  <div key={arrival.id} className="flex items-center gap-3.5 px-5 py-3.5">
-                    <span className="grid size-9 flex-none place-items-center rounded-full bg-sunk text-ink">
-                      <ArrowDown size={16} />
+                  <div key={arrival.id} className="flex items-center gap-3 px-5 py-3">
+                    <span className="grid size-7 flex-none place-items-center rounded-full bg-sunk text-ink">
+                      <ArrowDown size={14} />
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="tabular block text-[14.5px] font-semibold">
-                        +{formatUnits(BigInt(arrival.amountRaw), TOKENS[arrival.token].decimals, 4)}{' '}
+                    <span className="tabular flex-1 text-[15px] font-semibold">
+                      +{formatUnits(BigInt(arrival.amountRaw), TOKENS[arrival.token].decimals, 4)}{' '}
+                      <span className="text-[12.5px] font-medium text-ink-muted">
                         {arrival.token}
-                      </span>
-                      <span className="block text-[12.5px] leading-snug text-ink-muted">
-                        We can&rsquo;t see who sent it — and neither can anyone else.
                       </span>
                     </span>
                     <span className="flex-none text-[12px] text-ink-faint">
@@ -309,6 +284,9 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                   </div>
                 ))}
               </div>
+              <p className="mt-2 px-1 text-[12px] leading-relaxed text-ink-faint">
+                Nobody published who sent these — so nobody can read them, including us.
+              </p>
             </section>
           ) : null}
 
@@ -558,7 +536,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] font-semibold">{title}</span>
-                        <span className="block text-[12.5px] text-ink-muted">
+                        <span className="block truncate text-[12.5px] text-ink-muted">
                           {relativeTime(entry.timestamp)} ·{' '}
                           {isPublic ? (
                             <span className="font-semibold text-ink">{entry.observer}</span>
@@ -567,7 +545,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                           )}
                         </span>
                       </span>
-                      <span className="tabular flex-none text-[14.5px] font-semibold">
+                      <span className="tabular flex-none whitespace-nowrap text-[14.5px] font-semibold">
                         {outbound ? '−' : '+'}
                         {formatUnits(entry.amount, TOKENS[entry.asset].decimals, 4)}{' '}
                         <span className="text-[12px] font-medium text-ink-muted">
@@ -581,10 +559,25 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
             </section>
           ) : null}
 
-          <footer className="mt-12 px-1 text-center text-[12px] leading-relaxed text-ink-faint">
-            Money arrives privately. Deposits and cash-outs are public by nature;
+          <button
+            onClick={() => setObserver(true)}
+            className="card card-press mt-10 flex w-full items-center gap-3.5 px-5 py-4 text-left"
+          >
+            <span className="grid size-10 flex-none place-items-center rounded-full bg-ink text-white">
+              <Globe size={18} />
+            </span>
+            <span className="flex-1">
+              <span className="block text-[14.5px] font-semibold">See what the world sees</span>
+              <span className="block text-[12.5px] leading-snug text-ink-muted">
+                Your account, redacted to what any explorer can ever know.
+              </span>
+            </span>
+          </button>
+
+          <footer className="mt-8 px-1 text-center text-[12px] leading-relaxed text-ink-faint">
+            Deposits and cash-outs are public by nature.
             <br />
-            everything between them is not.
+            Everything between them is not.
           </footer>
         </>
       )}

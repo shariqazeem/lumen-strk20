@@ -8,7 +8,7 @@
  * flips the route and lets everything glide.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import type { Person } from '@/lib/lumen/people'
 import type { Receipt } from '@/lib/lumen/receipts'
@@ -31,6 +31,16 @@ import { SplitSheet } from '@/components/lumen/split-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
+  const devPreview = useLumen((state) => state.devPreview)
+
+  // Development affordance only: `/app?dev` fills the surface so it can be
+  // built and reviewed without a wallet. The store guards on NODE_ENV, so a
+  // production build ignores this entirely.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return
+    if (!new URLSearchParams(window.location.search).has('dev')) return
+    if (useLumen.getState().status === 'disconnected') devPreview()
+  }, [devPreview])
   const [route, setRoute] = useState<SheetRoute | null>(null)
 
 

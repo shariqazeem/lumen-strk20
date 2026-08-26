@@ -50,6 +50,7 @@ import { loadPeople, addPerson, removePerson, type Person } from './people'
 import { addSpace, adjustAllocation, loadSpaces, removeSpace, type Space } from './spaces'
 import { addReceipt, loadReceipts, type Receipt } from './receipts'
 import { loadJournal, recordDecision, type JournalEntry } from './journal'
+import { rememberLink } from './inbox'
 import { loadArrivals, syncArrivals, type Arrival } from './arrivals'
 import type { GuardReport } from './guard'
 
@@ -159,6 +160,14 @@ interface LumenState {
   }) => void
 
   clearError: () => void
+
+  /**
+   * Development-only: fill the account with representative data so the whole
+   * surface can be built and reviewed without a wallet. Guarded by NODE_ENV,
+   * so it cannot be reached in a production build — nothing in the shipped
+   * product is sample data.
+   */
+  devPreview: () => void
 }
 
 /** USD value of the full balance list under the current prices, or null when unpriced. */
@@ -719,6 +728,139 @@ export const useLumen = create<LumenState>((set, get) => ({
 
   clearError() {
     set({ error: null })
+  },
+
+  devPreview() {
+    if (process.env.NODE_ENV !== 'development') return
+
+    const now = Date.now()
+    const HOUR = 3_600_000
+    const address = '0x0777de1ab77e57a1d8c2b3f4a5968de0000000000000000000000000dev0001'
+    const amara = '0x0421b1fca8f3a4b2e9a1c6d80e3f1972d54ab8c0de91f2a34b56c78d90e1f234'
+    const landlord = '0x05512c3d97e4b8a1f2063c5d41e8ba97310fedcba98765432100ffeeddccbbaa'
+    const client = '0x0663a1e5b8c9d0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5'
+
+    // Seed through the real persistence modules so the surface exercises the
+    // same code paths a live account would.
+    try {
+      localStorage.removeItem('lumen:inbox:v1')
+      // Reset the journal too, or repeated dev entries keep inflating it.
+      localStorage.removeItem(`lumen:journal:v1:${BigInt(address).toString(16)}`)
+    } catch {
+      // Nothing to clear.
+    }
+    rememberLink({
+      claimSecret: '0xdev1',
+      token: 'USDC',
+      amountRaw: '52880000',
+      fromName: 'Amara',
+      note: 'Coffee money',
+    })
+    rememberLink({
+      claimSecret: '0xdev2',
+      token: 'STRK',
+      amountRaw: '40000000000000000000',
+      fromName: 'Hackathon',
+      note: 'Bounty payout',
+    })
+
+    for (const seed of [
+      { action: 'pay' as const, level: 'protected' as const },
+      {
+        action: 'add' as const,
+        level: 'tuned' as const,
+        rewritten: { from: '100', to: '99.889991', token: 'USDC' },
+      },
+      { action: 'link' as const, level: 'protected' as const },
+      {
+        action: 'out' as const,
+        level: 'attention' as const,
+        warn: 'This is almost exactly what you deposited recently.',
+      },
+      { action: 'pay' as const, level: 'protected' as const },
+    ]) {
+      recordDecision(address, {
+        action: seed.action,
+        report: {
+          level: seed.level,
+          checks: [
+            { id: 'p', label: 'No public record', detail: 'Nothing was published.', status: 'pass' },
+            ...(seed.warn
+              ? [
+                  {
+                    id: 'w',
+                    label: 'Entry and exit unlinked',
+                    detail: seed.warn,
+                    status: 'warn' as const,
+                  },
+                ]
+              : []),
+          ],
+        },
+        ...(seed.rewritten ? { rewritten: seed.rewritten } : {}),
+      })
+    }
+
+    set({
+      status: 'connected',
+      account: null,
+      address,
+      walletName: 'Preview',
+      balancesRevealedAt: now,
+      registered: true,
+      balances: [
+        { symbol: 'USDC', address: TOKENS.USDC.address, raw: 2_412_713_400n, decimals: 6 },
+        { symbol: 'STRK', address: TOKENS.STRK.address, raw: 1_203_814_000_000_000_000_000n, decimals: 18 },
+      ],
+      prices: { USDC: 1, STRK: 0.41, ETH: 4120, WBTC: 108_500, strkBTC: 108_500 },
+      arrivals: [
+        { id: 'a1', token: 'USDC', amountRaw: '800000000', detectedAt: now - 40 * 60_000 },
+        { id: 'a2', token: 'USDC', amountRaw: '212470000', detectedAt: now - 6 * HOUR },
+      ],
+      journal: loadJournal(address),
+      people: [
+        { id: 'p1', name: 'Amara', address: amara, emoji: '🌊', createdAt: now - 40 * 24 * HOUR },
+        { id: 'p2', name: 'Landlord', address: landlord, emoji: '🏠', createdAt: now - 90 * 24 * HOUR },
+        { id: 'p3', name: 'Client', address: client, emoji: '💼', createdAt: now - 20 * 24 * HOUR },
+      ],
+      spaces: [],
+      receipts: [],
+      links: [],
+      ledger: [
+        {
+          id: 'l1',
+          timestamp: now - 2 * HOUR,
+          type: 'TRANSFER',
+          asset: 'USDC',
+          amount: 212_470_000n,
+          route: 'DIRECT',
+          txHash: '0x04d21b3c9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f9e1a',
+          counterparty: amara,
+          observer: '—',
+        },
+        {
+          id: 'l2',
+          timestamp: now - 5 * HOUR,
+          type: 'LINK',
+          asset: 'USDC',
+          amount: 52_880_000n,
+          route: 'DIRECT',
+          txHash: '0x07f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1',
+          observer: 'escrow · public amount',
+        },
+        {
+          id: 'l3',
+          timestamp: now - 3 * 24 * HOUR,
+          type: 'SHIELD',
+          asset: 'USDC',
+          amount: 987_310_000n,
+          route: 'DIRECT',
+          txHash: '0x06e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8',
+          observer: 'deposit · public',
+        },
+      ],
+      error: null,
+    })
   },
 
 }))
