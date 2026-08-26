@@ -44,7 +44,17 @@ if [[ -z "${STARKNET_RPC:-}" && -f ../.env.local ]]; then
   FROM_ENV="$(grep -m1 '^NEXT_PUBLIC_STARKNET_RPC_URL=' ../.env.local | cut -d= -f2- || true)"
   [[ -n "${FROM_ENV}" && "${FROM_ENV}" != *YOUR_ALCHEMY_KEY* ]] && STARKNET_RPC="${FROM_ENV}"
 fi
-if [[ -n "${STARKNET_RPC:-}" ]]; then RPC=(--rpc "${STARKNET_RPC}"); else RPC=(--network mainnet); fi
+# Never fall through to starkli's auto-selected vendor: it picks Blast, whose
+# public Starknet RPC was retired and now errors on every call, which presents
+# as an indefinite hang rather than a failure. Pin a working keyless endpoint.
+FALLBACK_RPC="https://rpc.starknet.lava.build:443"
+if [[ -z "${STARKNET_RPC:-}" ]]; then
+  STARKNET_RPC="${FALLBACK_RPC}"
+  warn "No STARKNET_RPC set — using ${FALLBACK_RPC}"
+  warn "For heavy use set your own: export STARKNET_RPC=https://starknet-mainnet.g.alchemy.com/v2/KEY"
+  echo
+fi
+RPC=(--rpc "${STARKNET_RPC}")
 
 # ─── the deployer account itself ─────────────────────────────────────────────
 # A freshly initialised account exists only as a file until it is deployed
