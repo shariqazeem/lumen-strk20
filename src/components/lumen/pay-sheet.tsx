@@ -39,6 +39,7 @@ import {
   Clock,
   Copy,
   LinkIcon,
+  People,
   Plus,
   Receipt as ReceiptIcon,
   Share,
@@ -52,9 +53,17 @@ interface PaySheetProps {
   person?: Person
   onReceipt: (receipt: Receipt) => void
   onNewPerson: () => void
+  onSplit: () => void
 }
 
-export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PaySheetProps) {
+export function PaySheet({
+  open,
+  onClose,
+  person,
+  onReceipt,
+  onNewPerson,
+  onSplit,
+}: PaySheetProps) {
   const {
     address,
     people,
@@ -228,6 +237,22 @@ export function PaySheet({ open, onClose, person, onReceipt, onNewPerson }: PayS
               <span className="block text-[14.5px] font-semibold">Pay with a link</span>
               <span className="block text-[13px] leading-snug text-ink-muted">
                 For someone with no wallet yet — they claim it privately, whenever they arrive.
+              </span>
+            </span>
+            <ChevronRight size={15} className="text-ink-faint" />
+          </button>
+
+          <button
+            onClick={onSplit}
+            className="card card-press flex w-full items-center gap-3.5 px-5 py-4 text-left"
+          >
+            <span className="grid size-10 flex-none place-items-center rounded-full bg-ink text-white">
+              <People size={17} />
+            </span>
+            <span className="flex-1">
+              <span className="block text-[14.5px] font-semibold">Pay several people</span>
+              <span className="block text-[13px] leading-snug text-ink-muted">
+                One operation, one fee — and nobody sees what anyone else got.
               </span>
             </span>
             <ChevronRight size={15} className="text-ink-faint" />

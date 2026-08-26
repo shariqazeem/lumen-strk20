@@ -10,11 +10,11 @@ honest read on whether it wins.
 | | |
 |---|---|
 | **Live** | [lumen-strk20.vercel.app](https://lumen-strk20.vercel.app) |
-| **Walkthrough** | [`/app?preview`](https://lumen-strk20.vercel.app/app?preview) — sample data, no wallet needed |
+| **Escrow** | [`0x293c8a95…8cd8`](https://voyager.online/contract/0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8) — live on mainnet |
 | **Tests** | 222 green (172 TypeScript · 50 Cairo) |
 | **Code** | ~13.3k lines source · ~3.2k lines tests · 32 commits |
 | **Contracts** | 2 Cairo anonymizers (LumenEscrow, LumenSplitter) |
-| **Mainnet** | ⚠ Deploy pending — `strk20.json` still empty |
+| **Mainnet** | Escrow deployed; `transactions` still empty until the first real pool run |
 
 ---
 
@@ -196,7 +196,7 @@ languages, one assertion, both suites fail together.
 | ✅ **shipped** | Both Cairo anonymizers, written and fully tested against a simulated pool |
 | ✅ **shipped** | Silent engine wired into every money-moving flow |
 | ✅ **shipped** | Observer View, receipts, Spaces, People, Links, Convert, PWA install |
-| ✅ **shipped** | Sample walkthrough at `/app?preview` for judges with no wallet |
+| ✅ **shipped** | LumenEscrow deployed and verified on mainnet; claim links live in production |
 | ⬜ **pending** | **Mainnet deploy of LumenEscrow** — until it lands, claim links stay hidden in production |
 | ⬜ **pending** | **Three real mainnet transactions** — `strk20.json` is still empty |
 | ⬜ **pending** | **Demo video** |

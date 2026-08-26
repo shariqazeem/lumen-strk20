@@ -16,3 +16,4 @@ export type SheetRoute =
   | { kind: 'my-page' }
   | { kind: 'convert' }
   | { kind: 'journal' }
+  | { kind: 'split' }

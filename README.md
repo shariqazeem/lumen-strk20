@@ -17,9 +17,10 @@ every key, discovers every note, and approves every move — Lumen never sees
 private state and never asks for a viewing key.
 
 **Live at [lumen-strk20.vercel.app](https://lumen-strk20.vercel.app).**
-No wallet installed? Open [`/app?preview`](https://lumen-strk20.vercel.app/app?preview)
-for a sample-data walkthrough — clearly labeled, and chain actions stay
-disabled until a real wallet connects.
+`LumenEscrow` is deployed on Starknet mainnet at
+[`0x293c8a95…8cd8`](https://voyager.online/contract/0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8),
+so claim links are live. Nothing in the product is sample data — every screen
+is the real thing, driven by a real wallet.
 
 ---
 
@@ -175,8 +176,7 @@ npm run dev
 ```
 
 Open `http://localhost:3000`. The app needs a privacy-enabled Starknet wallet
-(e.g. [Ready](https://www.ready.co/)) on mainnet; `/app?preview` walks the
-full product with labeled sample data and no wallet.
+(e.g. [Ready](https://www.ready.co/)) on mainnet.
 
 ```bash
 npm run typecheck && npm run lint && npm test   # 172 tests: engine, rails, codecs

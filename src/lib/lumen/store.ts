@@ -117,6 +117,17 @@ interface LumenState {
   addMoney: (input: { token: TokenSymbol; amount: bigint }) => Promise<string>
   cashOut: (input: { token: TokenSymbol; amount: bigint; recipient: string }) => Promise<string>
 
+  /**
+   * Pay several people in one pool operation: N private transfers in a single
+   * action list. Public sees one operation, each recipient sees only their own
+   * amount, and one flat pool fee covers all of them.
+   */
+  paySplit: (input: {
+    token: TokenSymbol
+    recipients: Array<{ address: string; name?: string; amount: bigint }>
+    note?: string
+  }) => Promise<Receipt[]>
+
   /** Fund a claim link; returns the record plus the shareable URL. */
   sendClaimLink: (input: {
     token: TokenSymbol
@@ -394,6 +405,60 @@ export const useLumen = create<LumenState>((set, get) => ({
         set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
       )
       return receipt
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  async paySplit(input) {
+    const { account, address } = requireAccount(get, set)
+    const recipients = input.recipients.filter((r) => r.amount > 0n)
+    if (recipients.length === 0) throw new Error('Add at least one person and an amount.')
+    set({ submitting: true, error: null })
+    try {
+      const tokenAddress = TOKENS[input.token].address
+      const actions = recipients.flatMap((r) =>
+        buildPrivateTransfer(tokenAddress, r.amount, r.address),
+      )
+      assertNeverUnshields(actions, { contracts: [] })
+
+      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+
+      // One transaction, but one ledger entry and one receipt per person: each
+      // recipient is a separate relationship, and each may need to prove their
+      // own payment without seeing anyone else's.
+      const now = Date.now()
+      let ledger = get().ledger
+      for (const r of recipients) {
+        ledger = appendLedger(address, {
+          timestamp: now,
+          type: 'TRANSFER',
+          asset: input.token,
+          amount: r.amount,
+          route: 'DIRECT',
+          txHash: transaction_hash,
+          counterparty: r.address,
+          observer: '—',
+        })
+        addReceipt(address, {
+          txHash: transaction_hash,
+          token: input.token,
+          amountRaw: r.amount.toString(),
+          toAddress: r.address,
+          timestamp: now,
+          ...(r.name ? { toName: r.name } : {}),
+          ...(input.note ? { note: input.note } : {}),
+        })
+      }
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'pay', status: 'submitted' }
+      const receipts = loadReceipts(address)
+      set({ submitting: false, ledger, receipts, lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return receipts.slice(0, recipients.length)
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
       throw error

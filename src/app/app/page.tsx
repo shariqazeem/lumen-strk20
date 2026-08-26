@@ -27,6 +27,7 @@ import { LinksSheet } from '@/components/lumen/links-sheet'
 import { MyPageSheet } from '@/components/lumen/my-page-sheet'
 import { ConvertSheet } from '@/components/lumen/convert-sheet'
 import { JournalSheet } from '@/components/lumen/journal-sheet'
+import { SplitSheet } from '@/components/lumen/split-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
@@ -66,6 +67,7 @@ export default function AppPage() {
         {...(payPerson ? { person: payPerson } : {})}
         onReceipt={(created) => open({ kind: 'receipt', receipt: created })}
         onNewPerson={() => open({ kind: 'new-person' })}
+        onSplit={() => open({ kind: 'split' })}
       />
       <ReceiveSheet
         open={route?.kind === 'receive'}
@@ -75,6 +77,7 @@ export default function AppPage() {
       <MyPageSheet open={route?.kind === 'my-page'} onClose={close} />
       <ConvertSheet open={route?.kind === 'convert'} onClose={close} />
       <JournalSheet open={route?.kind === 'journal'} onClose={close} />
+      <SplitSheet open={route?.kind === 'split'} onClose={close} />
       <AddMoneySheet open={route?.kind === 'add'} onClose={close} />
       <CashOutSheet open={route?.kind === 'out'} onClose={close} />
       <ReceiptSheet open={route?.kind === 'receipt'} onClose={close} receipt={receipt} />
