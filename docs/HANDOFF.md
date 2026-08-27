@@ -4,7 +4,26 @@ Everything another agent needs to pick this up cold: what it is, what exists,
 how it works, what is deployed, what is left, and the specific traps that cost
 hours to find.
 
-Written 2026-08-27. Repo `shariqazeem/lumen-strk20`, branch `main`, 45 commits.
+Written 2026-08-27, revised the same day after the landing film, the brand and
+the wallet-connect fix landed. Repo `shariqazeem/lumen-strk20`, branch `main`,
+53 commits.
+
+---
+
+## 0. What changed since the first version of this document
+
+Eight commits. If you read the earlier revision, these are the parts that are
+now different rather than merely expanded:
+
+| | |
+|---|---|
+| **The landing page** | No longer sections and cards. The top is a scroll-scrubbed canvas film — §5.5. Do not add a video asset; there is a reason it is drawn |
+| **The account** | Now a three-pane shell — sidebar, top pill, sticky observer rail — §5.2. The hamburger is gone on desktop |
+| **Emoji** | Removed from the product entirely. Monograms for people, an icon set for spaces — §5.4 |
+| **Links** | A compact binary codec, and a deliberate presentation that makes the fragment the argument — §4.3, §5.3 |
+| **The mark** | Redrawn as an aperture; icons, tile and social card all generate from one geometry — §5.6 |
+| **Connect** | A real bug is fixed: `WalletAccountV6.connect` was handing back addressless accounts — §6.2 |
+| **Tests** | 200 → 237 |
 
 ---
 
@@ -46,8 +65,8 @@ framing.
 | **Escrow class hash** | `0x7455f2335fa2fc44096af7f518b7d8f9e12bd0835ff8b735feb1ccf7e4484e6` |
 | **Pool (STRK20)** | `0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a` |
 | **Deployer account** | `0x046a1747d854e74e5082c3215841b26dcff182a6a6fd7a1f83c3e1d045996101` (~19 STRK) |
-| **Tests** | 200 TypeScript (12 files) + 50 Cairo = 250 |
-| **Code** | ~13.8k lines source, ~3.6k lines tests |
+| **Tests** | 237 TypeScript (16 files) + 50 Cairo = 287 |
+| **Code** | ~15.9k lines source, ~3.1k lines tests |
 | **Stack** | Next.js 15.5.19 (App Router), React 19, Tailwind v4, zustand, starknet.js 10.4.0, Cairo/Scarb 2.15, snforge 0.56 |
 
 **Deployed and verified.** The escrow's class at that address matches the
@@ -65,13 +84,14 @@ executed against the live pool.** That is the highest-risk remaining work.
 
 | Route | File | Purpose |
 |---|---|---|
-| `/` | `src/app/page.tsx` | Marketing landing (static) |
-| `/app` | `src/app/app/page.tsx` | The account. Connect screen if no wallet, else Incoming |
+| `/` | `src/app/page.tsx` | The landing. A scroll-scrubbed film, then the chapters — §5.5 |
+| `/app` | `src/app/app/page.tsx` | The account. Connect screen if no wallet, else the shell around Incoming |
 | `/claim` | `src/app/claim/page.tsx` | Recipient claims a link. Secret in URL fragment |
 | `/pay/[[...slug]]` | `src/app/pay/[[...slug]]/page.tsx` | Someone's pay page. Payload in fragment; path segment is cosmetic |
 
-`/app/page.tsx` is the sheet router: a single `SheetRoute | null` in state, and
-every sheet stays mounted through its exit animation. Route kinds:
+`/app/page.tsx` is the sheet router and the only place `AppShell` is mounted: a
+single `SheetRoute | null` in state, and every sheet stays mounted through its
+exit animation. Route kinds:
 `pay · receive · add · out · menu · new-person · new-space · space · receipt ·
 links · my-page · convert · journal · split · activity`.
 
@@ -121,7 +141,37 @@ to claim. Do not "fix" this.
 Address keys are normalised through `BigInt(addr).toString(16)` so padded and
 unpadded felts share one key.
 
-### 4.3 The guard — `src/lib/lumen/guard.ts`
+### 4.3 Link encoding — `src/lib/lumen/codec.ts`
+
+Links are the product's whole distribution, so the fragment's length is its
+shareability. JSON-in-base64 paid three times over — key names, quoting, and a
+66-character hex address — and a pay page came out near 190 characters of
+noise. The compact codec packs the same payload as bytes:
+
+- address and claim secret as **raw bytes**, not hex text; the address is
+  variable-width because every Starknet address has a zero top byte
+- token as a **one-byte index** into `TOKEN_LIST`, not an address
+- amounts length-prefixed, so an 18-decimal balance does not force every link
+  to carry 32 bytes
+- each absent optional field costs **one flag bit**, not a key and two quotes
+
+Measured against a real mainnet address: a pay-page fragment is **56
+characters** where the JSON form was 148, and a claim fragment is **62** where
+it was 240. Full URLs land near 100 characters — Stripe-link territory, and
+about as short as a self-contained serverless link can be, since the address
+alone is 32 bytes. `Reader.felt` returns the canonical zero-padded form —
+dropping leading zeros gives the same felt but a different string, which breaks
+round-trips and surprises anything comparing addresses as text.
+
+**Both callers keep a legacy JSON decoder** (`paypage.ts`, `strk20/escrow.ts`)
+so links minted before the codec still open. Never remove those without a
+deprecation window; a dead link is money someone cannot reach.
+
+`inbox.ts` **parses the claim secret as a felt at the boundary**. Under JSON a
+corrupt secret was inert text; under the codec it throws while re-encoding the
+link, so it has to die on the way in.
+
+### 4.4 The guard — `src/lib/lumen/guard.ts`
 
 Pure, deterministic. Returns a `GuardReport { level, checks[], suggestedAmount?,
 suggestedWindow? }` where level is `protected | tuned | attention`.
@@ -141,7 +191,7 @@ Underneath sit `src/lib/engine/` (seeded splitter, timing scheduler, privacy
 scoring) and `src/lib/deanon/` (the attack heuristics). Those are the original
 "Aether" engine, now run on the defender's side. 129 of the 200 tests cover them.
 
-### 4.4 STRK20 rails — `src/lib/strk20/`
+### 4.5 STRK20 rails — `src/lib/strk20/`
 
 - `wallet.ts` — connection, capability detection **by advertised Wallet API
   version** (never by probing `strk20Balances`, which triggers a consent
@@ -159,7 +209,7 @@ action whose recipient is not on the passed allowlist. Only two call sites are
 allowed to produce a withdrawal: the explicit cash-out flow, and the escrow
 fund leg (allowlist `[ESCROW_ADDRESS]`).
 
-### 4.5 Contracts — `contracts/`
+### 4.6 Contracts — `contracts/`
 
 Scarb package `lumen_splitter` (name predates the rename; the *contracts* are
 `LumenEscrow` and `LumenSplitter`).
@@ -194,7 +244,11 @@ contract cannot find — funds stuck. **Never change one side alone.**
 
 ### 5.1 Design system — `src/app/globals.css`
 
-**Strict monochrome. The only colour in the product comes from emoji.**
+**Strict monochrome. There is no colour in the product at all.**
+
+Emoji used to be the one exception — avatars and space icons carried it. They
+are gone (§5.4). Nothing renders a hue now; the palette below is the whole
+system.
 
 The rule that governs everything: **black is value, white is chrome.**
 
@@ -223,36 +277,78 @@ hairlines at 8% ink.
 
 Key classes: `.card` `.card-press` `.glass` `.btn .btn-ink .btn-quiet
 .btn-small` `.sheet` `.rise .rise-1…5` `.reveal .reveal-stagger` `.unblur`
-`.pop` `.marquee` `.feed-scroll` `.stroke-text` `.tabular`.
+`.pop` `.marquee` `.feed-scroll` `.stroke-text` `.tabular` `.chapter`
+`.float-hint` `.film-aware`.
 
 Every animation honours `prefers-reduced-motion`.
 
-### 5.2 Screens
+**`body` uses `overflow-x: clip`, never `hidden`.** `hidden` turns the body
+into a scroll container, which breaks every `position: sticky` on the page and
+moves the scroll offset off `window`. That silently killed the landing film
+once; do not change it back.
 
-**Connect** (`connect.tsx`) — three situations on one page: a privacy wallet is
-present (one-tap connect), only ordinary wallets (explain, point at Ready), or
-nothing (three-step path). No demo entry — see §7.
+### 5.2 The app shell — `src/components/lumen/shell.tsx`
+
+The account is a **dashboard that does not look like one**. Three panes on a
+wide screen:
+
+- **Sidebar**, fixed 236px, hairlines and type rather than a slab of chrome.
+  It replaces every hamburger — there is no menu button on desktop. Items:
+  Incoming (with a waiting-links badge), Pay, Get paid, Add money, What Lumen
+  did, Links you sent, Activity; Cash out sits alone at the bottom, away from
+  everything else, above the account chip.
+- **Top pill**, centred: *Your view* / *What the world sees*. The thesis is one
+  tap, always.
+- **Content** capped at 560px with a sticky 320px **observer rail** on the
+  right, so what the world sees needs no interaction at all.
+
+On a phone the sidebar becomes a bottom bar using each item's `short` label,
+and the observer rail becomes the pill's second state.
+
+### 5.3 Screens
+
+**Landing** (`src/app/page.tsx`) — see §5.5, it is a film now.
+
+**Connect** (`connect.tsx`) — two columns, not a wizard. Left: the wordmark, the
+headline *"The account that keeps your arrivals from lining up."*, the wallet
+buttons (or an install prompt pointing at Ready when no privacy wallet is
+present), and the non-custodial line. Right: the observer's empty view, with
+the film's closing frame above it (`FilmStill`) so the walk from landing to
+wallet reads as one piece rather than two products. Ordinary non-privacy
+wallets are listed by name below, described honestly as having no private
+balances yet. No demo entry — see §7.
 
 **Incoming** (`home.tsx`) — the first screen, in this order:
 
-1. Header: mark, name, menu.
-2. **Waiting for you** — claim links this device holds, unclaimed. **Black
+1. **Waiting for you** — claim links this device holds, unclaimed. **Black
    glass cards** (value), each an `<a>` straight to `/claim#…` reconstructed
    from the inbox entry.
-3. **Arrived** — balance growth the local ledger cannot explain. One line each,
+2. **Arrived** — balance growth the local ledger cannot explain. One line each,
    with the disclaimer stated **once** for the group: *"Nobody published who
    sent these — so nobody can read them, including us."*
-4. **What Lumen did** — the journal digest (3 figures), taps into the sheet.
-5. **The balance** — black glass, consent-gated reveal, Convert/Refresh.
-6. **The verbs, weighted** — `Pay someone` full-width primary; `Get paid` and
+3. **What Lumen did** — the journal digest (3 figures), taps into the sheet.
+4. **The balance** — black glass, consent-gated reveal, Convert/Refresh.
+5. **The verbs, weighted** — `Pay someone` full-width primary; `Get paid` and
    `Add money` as quiet utility cards. Deliberately asymmetric.
-7. First-run state (when nothing at all exists): a black glass card, *"Add
+6. First-run state (when nothing at all exists): a black glass card, *"Add
    money once. After that, nothing you do here is public."*
-8. **See what the world sees** — mobile-only invitation (`lg:hidden`).
 
-**Desktop (≥1024px):** two columns. Your view on the left (max 460px), and the
-**ObserverPanel permanently on the right**, sticky. The thesis is visible with
-zero interaction. On mobile the observer replaces the screen via the toggle.
+`home.tsx` also exports **`ObserverPanel`**, which the shell mounts in the rail.
+
+**Pay page** (`/pay/[[...slug]]`) — the surface a payer sees, and the one most
+likely to be someone's first contact with Lumen, so it carries the argument
+rather than just a form. On a phone: monogram, *Pay {name}*, a *Private
+payment* pill, optional preset chips, the amount field, then **what this
+payment leaves behind** — your name never asked for, your address not
+published, the amount not published, their other payers invisible to you, your
+other payments invisible to them. On a wide screen that list moves to a second
+column beside the card, because a lone 440px card on a desktop reads as a phone
+screenshot. Wallet-less visitors get an install prompt, not a dead end.
+
+**Claim page** (`/claim`) — the secret lives in the fragment. Its invalid state
+is deliberately designed: *"This pay page didn't load — the page travels after
+the # in the link, and some apps cut it off. Ask for the link again."* Chat
+apps really do truncate fragments; a blank screen there would look like theft.
 
 **Sheets** — one modal surface (`sheet.tsx`), Apple curve
 `cubic-bezier(0.32, 0.72, 0, 1)`, deferred unmount so closing never pops,
@@ -273,13 +369,143 @@ Escape + backdrop dismiss, `locked` while a wallet prompt is in flight.
 | `receipt-sheet` | one payment, one fact, copy/share |
 | `space-sheets` | create a space; move value in/out (device-local only) |
 | `person-sheet` | add a contact |
-| `menu-sheet` | account, pool, activity, page, convert, links, cash out |
+| `menu-sheet` | mobile only — the sidebar covers this on desktop |
 
 **`WorldSaw`** (in `bits.tsx`) is the trust moment: every success state ends
 with "what the world just saw", stated honestly per action — a private transfer
 published nothing; a deposit published an amount and does not pretend otherwise.
 
-### 5.3 Copy rules
+**`ShareLink`** (`share-link.tsx`) is how every link is handed over — the claim
+link and both pay-page flavours. A raw URL in monospace was the ugliest thing
+in the product *and* a wasted argument, because everything after the `#` is why
+these links work without an account: browsers never put a fragment in a
+request. So the split is drawn deliberately — readable half in ink, private
+half **named** ("the claim secret — this is the money") rather than dumped,
+with a tap to inspect the real string, and a line stating that the fragment
+never reaches any server. `onHandOff` fires on copy/share, which is when a pay
+page stops being a draft and gets saved.
+
+### 5.4 Avatars and icons — no emoji anywhere
+
+Emoji are **gone from the product**, deliberately and completely. An avatar
+picker asked people to make a decision nobody wants to make in order to get
+paid, and the result made a payments product read like a chat app.
+
+- **People** wear **monograms** — `initials()` in `people.ts`. `Shariq Shaukat`
+  → `SS`, `amara` → `a`, `ines_roy` → `ir`. It splits on space, dot, underscore
+  and hyphen, handles non-Latin scripts, and returns `•` for an address, which
+  would otherwise monogram as a stray `0`. Six tests pin this.
+- **Spaces** wear icons from our own set: `SPACE_ICONS = goal · home · travel ·
+  rainy · work · gift`, keyed **by meaning, not by glyph**, so the drawing can
+  change without rewriting anyone's saved spaces. `SpaceGlyph` in `icons.tsx`
+  maps key → component.
+- **Pay pages no longer carry an avatar at all**, which shortened their links
+  again. Links minted while they did still decode — `CompactPage.emoji` is read
+  and discarded, because those bytes have to be stepped over either way.
+
+If you are adding a surface, do not reach for an emoji. Add an icon to
+`icons.tsx` in the house style: 24×24 viewBox, `currentColor`, `strokeWidth`
+1.7–1.8, round caps.
+
+### 5.5 The landing film — `src/components/landing/`
+
+The top of the landing page is **one continuous shot, scrubbed by the scroll**,
+not a stack of sections. The thesis is a claim about *accumulation* — that a
+sequence of private payments becomes a public portrait — and cards are
+structurally incapable of showing accumulation, because a card is a thing that
+has already finished happening.
+
+**The script.** A life's payments arrive one at a time, unordered. Lines get
+drawn between them. The clusters resolve into sentences a stranger can write
+about you — *pays rent on the 1st · same employer since March · refills a
+prescription monthly · was in another city on the 14th*. The sentences are
+struck through. The frame **cuts** to black. What comes back is the same
+account with nothing left to read, and the CTA.
+
+**It is drawn, not filmed.** A generative canvas is a few kB where a video is
+megabytes, it is sharp at every density, it scrubs exactly instead of
+buffering, and it holds the real palette. The whole sequence made the page
+*smaller* than the markup it replaced. **There is no video asset and there
+should not be one.**
+
+| File | Role |
+|---|---|
+| `film-engine.ts` | Pure drawing. No React. `buildGraph`, `paint`, `paintAmbient`, `groundDarkness`, `ACT`, `CLUSTERS` |
+| `film.tsx` | The projector: `ScrollFilm`, `FilmStill`, `FilmBackdrop` |
+| `__tests__/film-engine.test.ts` | 14 tests pinning the act structure |
+
+**Things that will bite you:**
+
+- **The acts are timing, not layout.** `ACT` maps progress `0..1` to
+  `arrive · wire · name · strike · cut · erase · calm`. Beat copy in
+  `FILM_BEATS` (in `page.tsx`) is keyed to the same numbers. Move one and move
+  the other, or the copy lands over the wrong image.
+- **The cut is a cut.** A crossfade from paper to ink spends its middle on
+  grey, and grey was the worst frame in the film. `ACT.cut` is two frames wide
+  and lands *after* `ACT.strike`, so nothing is ever read on mud. A test
+  asserts no frame outside that window is grey.
+- **Narrow frames get a different layout.** Below 760px the graph moves up and
+  the sentences list underneath, arriving one at a time. Seven anchored
+  sentences do not fit a phone; amount labels are dropped there entirely.
+- **`data-film-ground` lives on `<html>`.** The film publishes light/dark so
+  the nav can invert (`.film-aware`, `.film-mark` in globals.css) instead of
+  going black-on-black for a third of the sequence. **Every exit path must
+  clear it** or a client-side navigation carries a dark ground to the next
+  page. That was a real bug.
+- **Frame callbacks get throttled** in occluded tabs. If one has not arrived in
+  260ms the film drops the spring and tracks the scroll exactly — stiff, but a
+  film lagging a whole act behind the copy is worse.
+- **Act II sits over `FilmBackdrop`**, the same graph drifting at very low
+  contrast, so the page never reads as though the movie ended and the credits
+  started. Each chapter's argument is `lg:sticky` while its artifact scrolls
+  past it. The closing band carries `FilmStill at={0.7}` — the film's own black
+  frame — under the ask.
+
+**Reviewing it:** `npm run film` renders the frames as PNGs
+(`--width 390 --height 780` for the phone layout). In development,
+`/?film=0.62` pins a single frame so beat copy can be composed against the
+image it sits on. Both exist because a scroll-driven canvas fails *quietly* —
+nothing throws, the frame just stops saying what it was supposed to say.
+
+### 5.6 Brand — `scripts/brand.mjs`
+
+The mark is **an aperture: three blades, closed down to a point.** Not an eye,
+a shield or a lock — every surveillance product and every crypto wallet already
+wears one of those, and an aperture is the honest shape for a thing whose job
+is deciding how much gets through. Three blades rather than six because six
+merge into a blob at 16px, which is where a mark actually has to work.
+
+The geometry exists in **three places that must agree**:
+
+| Where | What |
+|---|---|
+| `LumenMark` in `icons.tsx` | 24×24, `currentColor` — nav, sidebar, connect, pay, claim |
+| `public/icon.svg` | 512 maskable tile, glyph at 62% for launcher masks |
+| `GEOMETRY` in `scripts/brand.mjs` | draws `icon-{180,192,512}.png` and `og.png` |
+
+Change one, change all three, or the favicon quietly stops matching the app.
+`npm run brand` regenerates every raster.
+
+`public/og.png` (1200×630) is wired into `metadata.openGraph.images` and
+`metadata.twitter.images`. Before it existed, every pasted link rendered bare
+in every chat app. The constellation plate behind it is
+`docs/brand/constellation.jpg`; the headline is composited by `npm run brand`,
+never baked into the source image, so it can be reworded without regenerating
+anything.
+
+**Known compromise:** the card's type is set in Arial, not Inter. `next/font`
+resolves Inter at build time into `.next`, and the canvas needs a font file it
+can register from disk. Close enough at card size, but if the wordmark ever has
+to match exactly, vendor an Inter `.ttf` into `docs/brand/` and register that
+instead.
+
+Source images live in `docs/brand/`, **not** `public/`, which would serve them
+to anyone who guessed a filename. They carry C2PA content credentials — signed
+manifests recording that they are AI-generated. Those were deliberately left
+intact; nothing that ships contains a source bitmap anyway, since the mark is
+new geometry and the card is composited fresh.
+
+### 5.7 Copy rules
 
 No jargon on the surface: no "notes", "nullifiers", "shielding", "pool" in
 user-facing text. Never claim to know something the protocol does not publish.
@@ -316,7 +542,39 @@ This is why `arrivals.ts` infers rather than observes, and why the UI says "we
 can't see who sent it — and neither can anyone else." **That honesty is the
 product.** Any change that renders a confident source label is a regression.
 
-### 6.2 starkli cannot talk to Starknet mainnet
+### 6.2 `WalletAccountV6.connect` returns an addressless account, silently
+
+```js
+static async connect(provider, walletProvider, ...) {
+  const { accounts } = await standardConnect(walletProvider, silentMode)
+  const accountAddress = accounts[0]?.address   // <- undefined, no error
+  return new WalletAccountV6({ ..., address: accountAddress, ... })
+}
+```
+
+That `?.` is the whole problem. Several wallets — Ready among them — resolve
+`connect()` **the moment their approval window opens**, before the user has
+approved anything, so `accounts` is empty and `connect` hands back an account
+with `address: undefined` and throws nothing. Taking that at face value is what
+made a first connect appear to fail and a reload appear to fix it: by the
+second load the wallet had remembered the approval.
+
+`connectWallet` in `strk20/wallet.ts` now checks the result, waits up to 90s
+for the wallet-standard `change` event (with a 400ms poll under it, because not
+every wallet emits it), then asks once more. `standard:connect` is idempotent
+for an authorised wallet, so the second call opens no second window. If it
+still shares nothing, the error **names the wallet** rather than implying the
+app broke.
+
+**Do not "simplify" this back to a single `await`.** Five tests in
+`strk20/__tests__/wallet.test.ts` cover it, including a zero address, which is
+a wallet saying "no account" in a different dialect.
+
+That test file mocks `starknet` with a **three-export factory**, not
+`importOriginal`. Spreading the real package costs seconds of module loading
+per run and timed the suite out.
+
+### 6.3 starkli cannot talk to Starknet mainnet
 
 starkli **0.4.2 is its latest release** (July 2025) and still requests the
 `pending` block tag. Mainnet moved to `pre_confirmed`; every call fails with
@@ -329,7 +587,7 @@ starkli keystore (standard Ethereum v3, scrypt + aes-128-ctr) in memory with a
 password typed at run time, deploys the account if needed, declares, deploys,
 verifies, and writes `.env.local` + `strk20.json`.
 
-### 6.3 RPC endpoints
+### 6.4 RPC endpoints
 
 - **Blast is dead.** Its public Starknet RPC returns *"Blast API is no longer
   available"* on every call — and starkli auto-selects it when no endpoint is
@@ -339,7 +597,7 @@ verifies, and writes `.env.local` + `strk20.json`.
 - For heavy use set `NEXT_PUBLIC_STARKNET_RPC_URL` / `STARKNET_RPC` to your own
   Alchemy key. Declare is a ~135KB payload and public endpoints throttle it.
 
-### 6.4 starknet.js v10 API changes
+### 6.5 starknet.js v10 API changes
 
 `Account` takes **a single options object**: `new Account({ provider, address,
 signer })`. The pre-v10 positional form is accepted silently — the provider
@@ -347,7 +605,7 @@ becomes the options bag, a default provider is constructed, and `address` lands
 undefined, surfacing much later as `Cannot read properties of undefined
 (reading 'toLowerCase')`.
 
-### 6.5 Pool facts
+### 6.6 Pool facts
 
 - **The pool fee is 6 STRK**, not the 4 in the published docs. Always read
   `get_fee_amount`; `FALLBACK_POOL_FEE_STRK` is a first-paint fallback only.
@@ -362,12 +620,12 @@ undefined, surfacing much later as `Cannot read properties of undefined
 - USDC must be **native Circle** `0x033068f6…35fb`, not bridged USDC.e
   (~19,600 shielded events vs 80 — the bridged venue has no anonymity set).
 
-### 6.6 Cairo
+### 6.7 Cairo
 
 **Cairo has no block comments.** `/* … */` is a syntax error; use `//`. This
 broke the escrow test suite once.
 
-### 6.7 Next.js / deploy
+### 6.8 Next.js / deploy
 
 `NEXT_PUBLIC_*` values are **inlined into the JS bundle at build time**, not
 into the HTML. Grepping page HTML for an env value will always fail — check the
@@ -402,9 +660,17 @@ npm run dev                    # then /app?dev to see the surface
 ```
 
 ```bash
-npm run typecheck && npm run lint && npm test    # 200 tests
+npm run typecheck && npm run lint && npm test    # 237 tests
 (cd contracts && scarb build && scarb test)      # 50 tests
 npm run build
+```
+
+Asset and review scripts:
+
+```bash
+npm run brand                                    # icons + og.png from GEOMETRY
+npm run film                                     # landing film frames as PNGs
+npm run film -- --width 390 --height 780         # the phone layout
 ```
 
 Deploy a contract (needs the funded deployer + its keystore password):
@@ -413,9 +679,17 @@ Deploy a contract (needs the funded deployer + its keystore password):
 node contracts/deploy.mjs
 ```
 
-**If the dev server renders unstyled HTML or throws stale module errors, delete
-`.next` and restart.** Running `npm run build` while `npm run dev` is live
-clobbers the dev server's chunks — that has caused two false alarms already.
+**If the dev server renders unstyled HTML, 404s `main-app.js`, or reports a
+syntax error in a file that is provably fine, delete `.next` and restart.**
+Running `npm run build` while `npm run dev` is live clobbers the dev server's
+chunks. This has now caused **four** false alarms, including one where a stale
+overlay reported a parse error in a file that typechecked, linted and built
+cleanly. Check the file on disk before believing the overlay.
+
+`.claude/launch.json` also defines a **`lumen-built`** configuration
+(`npm run start`) for previewing the production build, which has no HMR and so
+cannot go stale. Rebuild before starting it — a `.next` the dev server has
+touched will fail with `Cannot find module './157.js'`.
 
 ---
 
@@ -426,10 +700,17 @@ clobbers the dev server's chunks — that has caused two false alarms already.
 1. **Real mainnet transactions.** Add money → mint a claim link (use the 10-min
    window so a reclaim can be filmed) → claim it from a second browser → split
    to two people. Record every hash in `strk20.json`.
-2. **First real QA pass.** Incoming, the journal, group send and the WorldSaw
+2. **Answer one unknown first: does claiming a link activate a fresh account,
+   or does only a deposit?** The whole wallet-less pitch rests on a
+   never-registered wallet being able to claim. If only a deposit registers an
+   account, that flow has a hole in it and the copy on the first-run card is
+   wrong. Test it with a wallet that has never touched the pool, before
+   anything else.
+3. **First real QA pass.** Incoming, the journal, group send and the WorldSaw
    panels have never rendered against a live wallet. Their first real render
    will find bugs.
-3. **Demo video** → `strk20.json.demo_video`.
+4. **Demo video** → `strk20.json.demo_video`. The landing film is a natural
+   opening shot; `npm run film` gives you the frames.
 
 **Proposed but not started — the founder was asked and has not answered:**
 
@@ -440,6 +721,18 @@ private operation, one fee"* true. Nobody on the board can do this — Almoner
 does batch disbursement to **addresses**, and every link project mints one link
 at a time. It is a contract change plus a redeploy (one command now).
 
+**Verified in this session, so you do not have to re-check:**
+
+- The wallet connect path (§6.2) — the double-refresh is fixed and tested, but
+  **it has not been driven against a real Ready wallet**. Confirm on a fresh
+  browser profile.
+- The landing film's act structure — 14 tests plus rendered stills at desktop
+  and phone sizes. The **scrubbing itself is unverified**: the review
+  environment reported zero scroll events and zero animation frames, so nobody
+  has watched it move. Scroll it once before filming a demo.
+- `og.png` and the icons are live and byte-identical to what the build
+  produces.
+
 **Known rough edges:**
 
 - `LumenSplitter` is built and tested but unused and undeployed.
@@ -448,7 +741,11 @@ at a time. It is a contract change plus a redeploy (one command now).
 - The Scarb package is still named `lumen_splitter`; renaming changes artifact
   filenames referenced in `deploy.mjs`.
 - `docs/DOSSIER.md` (self-assessment) and `docs/TRANSFORMATION.md` (strategy)
-  predate the last three commits; the README is current.
+  predate the landing film, the brand and the emoji removal. `docs/BRAND-PROMPTS.md`
+  records what was generated and what was chosen. This file and the README are
+  current.
+- `@napi-rs/canvas` and `tsx` are devDependencies purely so `npm run brand` and
+  `npm run film` work. Nothing shipped imports them.
 
 ---
 
@@ -459,8 +756,16 @@ at a time. It is a contract change plus a redeploy (one command now).
 - **Proof outranks features.** An empty `strk20.json` beats any story.
 - **Be honest in copy and in reports.** Never overclaim what is private, and
   flag what has not been verified rather than implying it works.
-- **Design:** keep the monochrome system, keep it phone-shaped, no dashboards,
-  no tables. "Infra-shaped" is a positioning word, never a visual instruction.
+- **Design:** keep the monochrome system. The account **is** a dashboard now
+  (§5.2) — the instruction was "make it a dashboard that doesn't feel like a
+  generic dashboard", not "avoid dashboards". No emoji, anywhere, ever (§5.4).
+  "Infra-shaped" is a positioning word, never a visual instruction: build
+  infrastructure, do not make it *look* like infrastructure people lose
+  interest in.
+- **Show, do not describe.** The recurring note across every round of feedback
+  was that the product kept *explaining* its argument instead of *displaying*
+  it. The observer rail, the connect screen's redacted panel, and the landing
+  film are all the same correction. Prefer showing.
 - **Never generate or hold a private key** that controls funds, and never sign
   mainnet spends on the founder's behalf. `deploy.mjs` is the pattern: they
   type the password, the key lives only in that process.
