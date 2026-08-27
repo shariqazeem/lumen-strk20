@@ -6,6 +6,7 @@
  */
 
 import type { SVGProps } from 'react'
+import type { SpaceIcon } from '@/lib/lumen/spaces'
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number }
 
@@ -248,4 +249,115 @@ export function LumenMark({ size = 24, ...props }: IconProps) {
       <circle cx="12" cy="13" r="2.6" fill="currentColor" />
     </svg>
   )
+}
+
+/* ------------------------------------------------------------------ */
+/* spaces                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Icons a space can wear.
+ *
+ * These replaced an emoji picker. An emoji made a savings goal look like a
+ * chat reaction, and it forced a decision nobody wants to make; drawn at the
+ * same weight as the rest of the set, a space reads as part of the product.
+ */
+
+export function Home({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M3.6 10.4 12 4l8.4 6.4V19a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M9.6 20.4v-6h4.8v6" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function Plane({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M10.4 13.6 3.2 11.2l1.6-1.6 4 .8 4-4a2.3 2.3 0 0 1 3.2 3.2l-4 4 .8 4-1.6 1.6z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function Umbrella({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M3.4 12.4a8.6 8.6 0 0 1 17.2 0z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 12.4v6.2a2 2 0 0 1-4 0"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function Briefcase({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <rect x="3" y="7.4" width="18" height="12.6" rx="2" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M9 7.4V5.8a1.6 1.6 0 0 1 1.6-1.6h2.8A1.6 1.6 0 0 1 15 5.8v1.6M3 12.6h18"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function Target({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <circle cx="12" cy="12" r="8.2" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="3.8" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function Gift({ size = 20, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <rect x="3.4" y="9.6" width="17.2" height="10.8" rx="1.8" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M3.4 13.8h17.2M12 9.6v10.8" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M12 9.6S10.7 5 8.6 5a2 2 0 0 0 0 4.6zM12 9.6S13.3 5 15.4 5a2 2 0 0 1 0 4.6z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** Draws whichever icon a space wears. Keys come from `SPACE_ICONS`. */
+export function SpaceGlyph({
+  icon,
+  size = 20,
+  className = '',
+}: {
+  icon: SpaceIcon
+  size?: number
+  className?: string
+}) {
+  const Glyph = { goal: Target, home: Home, travel: Plane, rainy: Umbrella, work: Briefcase, gift: Gift }[icon]
+  return <Glyph size={size} className={className} />
 }

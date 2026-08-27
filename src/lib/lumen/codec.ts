@@ -205,6 +205,11 @@ export function decodeClaim(fragment: string): CompactClaim | null {
 export interface CompactPage {
   name: string
   address: string
+  /**
+   * Only ever read, never written: pages carried an emoji avatar before
+   * monograms replaced it, and those bytes still have to be stepped over for
+   * the rest of an older link to parse.
+   */
   emoji?: string
   /** USD preset buttons, whole dollars. */
   presets?: number[]

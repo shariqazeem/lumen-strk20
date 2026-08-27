@@ -17,7 +17,7 @@
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useReveal } from '@/lib/hooks/use-motion'
-import { ScrollFilm, type Beat } from '@/components/landing/film'
+import { FilmBackdrop, FilmStill, ScrollFilm, type Beat } from '@/components/landing/film'
 import {
   ArrowDown,
   ArrowRight,
@@ -288,7 +288,7 @@ function ClaimArtifact() {
         <div className="px-4 py-4 text-center">
           <p className="text-[9.5px] font-semibold text-ink-muted">Shariq sent you</p>
           <p className="tabular mt-1 text-[22px] font-semibold tracking-[-0.02em]">52.88 USDC</p>
-          <p className="mt-1 text-[9px] text-ink-muted">&ldquo;Coffee money ☕️&rdquo;</p>
+          <p className="mt-1 text-[9px] text-ink-muted">&ldquo;Coffee money&rdquo;</p>
           <span className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-sunk px-2 py-0.5 text-[8.5px] font-semibold">
             <ShieldCheck size={9} />
             Claims privately — no trace of you
@@ -341,10 +341,12 @@ export default function Landing() {
       {/* ACT I — the film. Pinned canvas, scrubbed by scroll. */}
       <ScrollFilm viewports={8} beats={FILM_BEATS} />
 
-      <div className="relative mx-auto max-w-[1120px] px-6">
+      {/* ACT II — the same world, quieter, with the product in it. */}
+      <div className="relative">
+        <FilmBackdrop className="absolute inset-x-0 top-0 -z-10 opacity-70" />
+        <div className="relative mx-auto max-w-[1120px] px-6">
 
-        {/* what the account does that a wallet cannot */}
-        <section className="border-t border-rule py-28">
+        <section className="py-28">
           <Reveal>
             <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
               An account with a job.
@@ -356,8 +358,8 @@ export default function Landing() {
           </Reveal>
 
           <div className="mt-20 space-y-32 sm:space-y-40">
-            <Reveal className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-              <div>
+            <Reveal className="grid items-start gap-12 lg:grid-cols-2 lg:gap-20">
+              <div className="lg:sticky lg:top-[26vh]">
                 <p className="chapter">01</p>
                 <h3 className="mt-3 text-[30px] font-semibold leading-[1.12] tracking-[-0.028em] sm:text-[36px]">
                   Everything lands in one place. Nothing lines up.
@@ -371,8 +373,8 @@ export default function Landing() {
               <InboxArtifact />
             </Reveal>
 
-            <Reveal className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-              <div className="lg:order-2">
+            <Reveal className="grid items-start gap-12 lg:grid-cols-2 lg:gap-20">
+              <div className="lg:sticky lg:top-[26vh] lg:order-2">
                 <p className="chapter">02</p>
                 <h3 className="mt-3 text-[30px] font-semibold leading-[1.12] tracking-[-0.028em] sm:text-[36px]">
                   It works while you&rsquo;re gone.
@@ -387,8 +389,8 @@ export default function Landing() {
               <JournalArtifact />
             </Reveal>
 
-            <Reveal className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-              <div>
+            <Reveal className="grid items-start gap-12 lg:grid-cols-2 lg:gap-20">
+              <div className="lg:sticky lg:top-[26vh]">
                 <p className="chapter">03</p>
                 <h3 className="mt-3 text-[30px] font-semibold leading-[1.12] tracking-[-0.028em] sm:text-[36px]">
                   See precisely what the world sees.
@@ -402,8 +404,8 @@ export default function Landing() {
               <ObserverArtifact />
             </Reveal>
 
-            <Reveal className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-              <div className="lg:order-2">
+            <Reveal className="grid items-start gap-12 lg:grid-cols-2 lg:gap-20">
+              <div className="lg:sticky lg:top-[26vh] lg:order-2">
                 <p className="chapter">04</p>
                 <h3 className="mt-3 text-[30px] font-semibold leading-[1.12] tracking-[-0.028em] sm:text-[36px]">
                   Money gets in however it needs to.
@@ -534,11 +536,16 @@ export default function Landing() {
             </div>
           </Reveal>
         </section>
+        </div>
       </div>
 
-      {/* closing band */}
-      <section className="bg-ink py-28 text-white">
-        <Reveal className="mx-auto max-w-[1120px] px-6 text-center">
+      {/* closing band — the film's last frame, held under the ask */}
+      <section className="relative isolate overflow-hidden bg-ink py-28 text-white">
+        <FilmStill
+          at={0.7}
+          className="pointer-events-none absolute inset-0 -z-10 size-full opacity-60"
+        />
+        <Reveal className="relative mx-auto max-w-[1120px] px-6 text-center">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-ink">
             <LumenMark size={24} />
           </span>

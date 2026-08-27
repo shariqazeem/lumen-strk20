@@ -20,7 +20,6 @@ export interface Person {
   name: string
   /** Their Starknet address (must be pool-registered to receive privately). */
   address: string
-  emoji: string
   createdAt: number
 }
 
@@ -54,7 +53,6 @@ function revive(raw: unknown): Person | null {
     id: r.id,
     name: r.name,
     address: r.address,
-    emoji: typeof r.emoji === 'string' && r.emoji ? r.emoji : '🙂',
     createdAt: r.createdAt,
   }
 }
@@ -91,13 +89,12 @@ function newId(): string {
 
 export function addPerson(
   account: string,
-  input: { name: string; address: string; emoji?: string },
+  input: { name: string; address: string },
 ): Person[] {
   const person: Person = {
     id: newId(),
     name: input.name.trim(),
     address: input.address.trim(),
-    emoji: input.emoji?.trim() || pickEmoji(input.name),
     createdAt: Date.now(),
   }
   const next = [person, ...loadPeople(account)]
@@ -128,25 +125,22 @@ export function personByAddress(people: readonly Person[], address: string): Per
   })
 }
 
-const EMOJI_WHEEL = ['🌿', '🌊', '🌅', '🪐', '🌸', '🍊', '🫐', '🌙', '⛰️', '🐚'] as const
-
-/** Deterministic pleasant avatar from a name — stable across renders. */
-export function pickEmoji(name: string): string {
-  let h = 0
-  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return EMOJI_WHEEL[h % EMOJI_WHEEL.length]
-}
-
 /**
- * A small ring of alternatives starting at the name's own default, so a picker
- * can show one tidy row where the first entry is always the current choice.
+ * A monogram for a name.
+ *
+ * Replaced the emoji avatar: initials cost the user no decision, stay inside
+ * the monochrome palette, and read as a person. An address is not a name — it
+ * would render as "0" — so it gets a neutral mark instead.
  */
-export function emojiChoices(name: string, count = 6): string[] {
-  const start = EMOJI_WHEEL.indexOf(pickEmoji(name) as (typeof EMOJI_WHEEL)[number])
-  return Array.from(
-    { length: Math.min(count, EMOJI_WHEEL.length) },
-    (_, i) => EMOJI_WHEEL[(start + i) % EMOJI_WHEEL.length],
-  )
+export function initials(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed || looksLikeStarknetAddress(trimmed)) return '\u2022'
+
+  const words = trimmed.split(/[\s._-]+/).filter(Boolean)
+  if (words.length === 0) return '\u2022'
+  const first = [...words[0]][0] ?? ''
+  const last = words.length > 1 ? ([...words[words.length - 1]][0] ?? '') : ''
+  return `${first}${last}`.replace(/[^\p{L}\p{N}]/gu, '') || '\u2022'
 }
 
 /** A short display form of an address, for rows where the name is unknown. */

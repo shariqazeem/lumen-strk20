@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 import { usePrefersReducedMotion } from '@/lib/hooks/use-motion'
-import { buildGraph, clamp01, groundDarkness, paint, ramp } from './film-engine'
+import { buildGraph, clamp01, groundDarkness, paint, paintAmbient, ramp } from './film-engine'
 
 /* ------------------------------------------------------------------ */
 /* the component                                                       */
@@ -258,4 +258,69 @@ export function FilmStill({
   }, [at])
 
   return <canvas ref={canvasRef} className={className} aria-hidden />
+}
+
+/**
+ * The film's world, still running behind the chapters.
+ *
+ * Sticky rather than fixed, so it belongs to the section it backs and does
+ * not bleed into the ink band at the end of the page.
+ */
+export function FilmBackdrop({ className = '' }: { className?: string }) {
+  const reduced = usePrefersReducedMotion()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const context = canvas.getContext('2d')
+    if (!context) return
+    const graph = buildGraph()
+
+    let width = 0
+    let height = 0
+    const resize = () => {
+      const ratio = Math.min(2, window.devicePixelRatio || 1)
+      width = canvas.clientWidth
+      height = canvas.clientHeight
+      if (width === 0 || height === 0) return
+      canvas.width = Math.round(width * ratio)
+      canvas.height = Math.round(height * ratio)
+      context.setTransform(ratio, 0, 0, ratio, 0, 0)
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    if (reduced) {
+      paintAmbient(context, width, height, 0, graph)
+      const still = () => {
+        resize()
+        paintAmbient(context, width, height, 0, graph)
+      }
+      window.addEventListener('resize', still)
+      return () => {
+        window.removeEventListener('resize', resize)
+        window.removeEventListener('resize', still)
+      }
+    }
+
+    let frame = 0
+    const tick = (time: number) => {
+      paintAmbient(context, width, height, time, graph)
+      frame = requestAnimationFrame(tick)
+    }
+    paintAmbient(context, width, height, 0, graph)
+    frame = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', resize)
+    }
+  }, [reduced])
+
+  return (
+    <div aria-hidden className={`pointer-events-none sticky top-0 h-[100svh] ${className}`}>
+      <canvas ref={canvasRef} className="size-full" />
+    </div>
+  )
 }

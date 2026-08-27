@@ -3,7 +3,7 @@
 /**
  * My page — the owner's side of the pay page.
  *
- * Two flavours behind one segmented control: the standing page (name, emoji,
+ * Two flavours behind one segmented control: the standing page (name and
  * optional USD presets — "put it in your bio"), and a one-off request that
  * locks an exact token amount ("invoice a client"). Both are just links; the
  * page travels in the fragment and the settings live on this device.
@@ -12,7 +12,6 @@
 import { useMemo, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { encodePayPage, loadMyPage, saveMyPage } from '@/lib/lumen/paypage'
-import { emojiChoices, pickEmoji } from '@/lib/lumen/people'
 import { TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
 import { AmountField, Avatar, parseAmount } from './bits'
@@ -31,7 +30,6 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
 
   const [mode, setMode] = useState<'page' | 'request'>('page')
   const [name, setName] = useState(saved?.name ?? '')
-  const [emoji, setEmoji] = useState(saved?.emoji ?? '')
   const [presetsText, setPresetsText] = useState(
     saved && saved.presets.length > 0 ? saved.presets.join(', ') : '',
   )
@@ -46,11 +44,6 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
     .filter((value) => Number.isFinite(value) && value > 0)
     .slice(0, 3)
 
-  const derivedEmoji = name.trim() ? pickEmoji(name.trim()) : '🙂'
-  const effectiveEmoji = emoji.trim() || derivedEmoji
-  // Only a deliberately different choice is worth the bytes; the page derives
-  // the same default from the name.
-  const emojiForLink = effectiveEmoji === derivedEmoji ? undefined : effectiveEmoji
 
   const pageUrl =
     address && name.trim()
@@ -58,7 +51,6 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
           v: 1,
           n: name.trim(),
           a: address,
-          ...(emojiForLink ? { e: emojiForLink } : {}),
           ...(presets.length > 0 ? { p: presets } : {}),
         })
       : null
@@ -70,7 +62,6 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
           v: 1,
           n: name.trim(),
           a: address,
-          ...(emojiForLink ? { e: emojiForLink } : {}),
           r: { t: reqToken, a: reqAmount.toString() },
           ...(reqNote.trim() ? { m: reqNote.trim() } : {}),
         })
@@ -79,7 +70,7 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
   // Handing the link over is the moment the page stops being a draft.
   const remember = () => {
     if (address && name.trim()) {
-      saveMyPage(address, { name: name.trim(), emoji: effectiveEmoji, presets })
+      saveMyPage(address, { name: name.trim(), presets })
     }
   }
 
@@ -109,7 +100,7 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
       </div>
 
       <div className="mt-5 flex items-center gap-3.5">
-        <Avatar emoji={effectiveEmoji} size={56} />
+        <Avatar name={name} size={56} />
         <input
           value={name}
           onChange={(event) => setName(event.target.value.slice(0, 40))}
@@ -118,26 +109,6 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
           className="h-12 min-w-0 flex-1 rounded-2xl border border-rule bg-card px-4 text-[16px] font-medium outline-none focus:border-rule-strong"
         />
       </div>
-
-      {name.trim() ? (
-        <div className="mt-3 flex items-center gap-2">
-          {emojiChoices(name.trim()).map((option) => (
-            <button
-              key={option}
-              onClick={() => setEmoji(option)}
-              aria-label={`Use ${option}`}
-              aria-pressed={effectiveEmoji === option}
-              className={`grid size-9 flex-none place-items-center rounded-full text-[17px] transition-all ${
-                effectiveEmoji === option
-                  ? 'bg-card ring-2 ring-ink'
-                  : 'bg-sunk hover:bg-rule active:scale-95'
-              }`}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       {mode === 'page' ? (
         <div className="mt-3">

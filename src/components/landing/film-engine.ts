@@ -444,3 +444,49 @@ export function paint(
   finish()
 }
 
+/**
+ * The same world, running quietly behind everything after the film.
+ *
+ * Not a still. A page that cuts from a cinematic sequence to ordinary
+ * scrolling reads as though the film ended and the credits started, so the
+ * graph keeps drifting underneath the chapters at a contrast low enough to
+ * sit behind body copy. No labels, no vignette, no acts — just the shape of
+ * the thing the page is about, still there.
+ */
+export function paintAmbient(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  time: number,
+  graph: { nodes: Node[]; edges: Edge[] },
+): void {
+  context.clearRect(0, 0, width, height)
+
+  const fit = Math.min(height * 0.62, width * 0.44)
+  const cx = width / 2
+  const cy = height / 2
+  const project = (node: Node) => [
+    cx + (node.x + Math.sin(time * 0.00012 + node.phase) * 0.012) * fit,
+    cy + (node.y + Math.cos(time * 0.0001 + node.phase * 1.7) * 0.012) * fit,
+  ]
+
+  context.strokeStyle = 'rgba(18,18,20,0.055)'
+  context.lineWidth = 1
+  context.lineCap = 'round'
+  for (const edge of graph.edges) {
+    const [ax, ay] = project(graph.nodes[edge.a])
+    const [bx, by] = project(graph.nodes[edge.b])
+    context.beginPath()
+    context.moveTo(ax, ay)
+    context.lineTo(bx, by)
+    context.stroke()
+  }
+
+  context.fillStyle = 'rgba(18,18,20,0.13)'
+  for (const node of graph.nodes) {
+    const [x, y] = project(node)
+    context.beginPath()
+    context.arc(x, y, node.r * Math.max(0.55, fit / 560), 0, Math.PI * 2)
+    context.fill()
+  }
+}

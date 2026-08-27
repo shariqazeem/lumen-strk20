@@ -16,10 +16,25 @@
 
 import type { TokenSymbol } from '@/lib/strk20/config'
 
+/**
+ * The icons a space can wear.
+ *
+ * A closed set, keyed by meaning rather than by glyph, so the drawing can
+ * change without rewriting anyone's saved spaces.
+ */
+export const SPACE_ICONS = ['goal', 'home', 'travel', 'rainy', 'work', 'gift'] as const
+
+export type SpaceIcon = (typeof SPACE_ICONS)[number]
+
+export function isSpaceIcon(value: unknown): value is SpaceIcon {
+  return typeof value === 'string' && (SPACE_ICONS as readonly string[]).includes(value)
+}
+
 export interface Space {
   id: string
   name: string
-  emoji: string
+  /** Key into the app's own icon set — see SPACE_ICONS. */
+  icon: SpaceIcon
   /** Index into the tint wheel — the UI resolves it to a pastel. */
   tint: number
   /** Optional goal in USD, for the progress arc. */
@@ -70,7 +85,7 @@ function revive(raw: unknown): Space | null {
   return {
     id: r.id,
     name: r.name,
-    emoji: typeof r.emoji === 'string' && r.emoji ? r.emoji : '✳️',
+    icon: isSpaceIcon(r.icon) ? r.icon : 'goal',
     tint: typeof r.tint === 'number' && Number.isFinite(r.tint) ? r.tint : 0,
     ...(typeof r.goalUsd === 'number' && Number.isFinite(r.goalUsd) && r.goalUsd > 0
       ? { goalUsd: r.goalUsd }
@@ -112,13 +127,13 @@ function newId(): string {
 
 export function addSpace(
   account: string,
-  input: { name: string; emoji?: string; goalUsd?: number },
+  input: { name: string; icon?: SpaceIcon; goalUsd?: number },
 ): Space[] {
   const existing = loadSpaces(account)
   const space: Space = {
     id: newId(),
     name: input.name.trim(),
-    emoji: input.emoji?.trim() || '✳️',
+    icon: input.icon ?? 'goal',
     tint: existing.length % 5,
     ...(input.goalUsd && input.goalUsd > 0 ? { goalUsd: input.goalUsd } : {}),
     allocations: {},
@@ -175,7 +190,7 @@ export function adjustAllocation(
 }
 
 /**
- * Space card tints. Monochrome by design — the emoji carries the color, the
+ * Space card tints. Monochrome by design — the icon carries the weight, the
  * greys carry the depth. The five steps only vary elevation so adjacent cards
  * still read as distinct objects.
  */

@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
-import { looksLikeStarknetAddress, pickEmoji } from '@/lib/lumen/people'
+import { looksLikeStarknetAddress } from '@/lib/lumen/people'
 import { Sheet } from './sheet'
 import { Avatar } from './bits'
 
@@ -29,7 +29,7 @@ export function PersonSheet({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <Sheet open={open} onClose={onClose} title="Add a person">
       <div className="flex justify-center py-3">
-        <Avatar emoji={name.trim() ? pickEmoji(name.trim()) : '🙂'} size={64} />
+        <Avatar name={name} size={64} />
       </div>
 
       <div className="space-y-3">

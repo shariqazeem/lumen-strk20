@@ -9,6 +9,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { decodePayPage, encodePayPage, slugify } from '../paypage'
+import { encodePage } from '../codec'
 
 const ADDRESS = '0x0421b1fca8f3a4b2e9a1c6d80e3f1972d54ab8c0de91f2a34b56c78d90e1f234'
 
@@ -21,12 +22,11 @@ describe('slugify', () => {
 })
 
 describe('round-trips', () => {
-  it('standing page with presets and emoji', () => {
+  it('standing page with presets', () => {
     const payload = {
       v: 1 as const,
       n: 'Shariq',
       a: ADDRESS,
-      e: '🌊',
       p: [5, 20, 50],
     }
     const url = encodePayPage('https://lumen-strk20.vercel.app', payload)
@@ -34,6 +34,12 @@ describe('round-trips', () => {
     const fragment = url.split('#')[1]
     expect(/^[A-Za-z0-9_-]+$/.test(fragment)).toBe(true)
     expect(decodePayPage(`#${fragment}`)).toEqual(payload)
+  })
+
+  it('still reads a link minted while pages carried an emoji', () => {
+    const legacy = encodePage({ name: 'Shariq', address: ADDRESS, emoji: '🌊' })
+    // The field is skipped on the way in, not choked on.
+    expect(decodePayPage(`#${legacy}`)).toEqual({ v: 1, n: 'Shariq', a: ADDRESS })
   })
 
   it('request link with a locked token amount and note', () => {

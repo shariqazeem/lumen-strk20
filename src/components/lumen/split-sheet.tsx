@@ -169,7 +169,7 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="card mt-4 divide-y divide-rule">
               {lines.map((line) => (
                 <div key={line.key} className="flex items-center gap-3 px-4 py-3">
-                  <Avatar emoji={line.person?.emoji ?? '👤'} size={36} />
+                  <Avatar name={line.person?.name ?? line.address} size={36} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold">
                       {line.person?.name ?? shortAddress(line.address)}
@@ -222,7 +222,7 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
                     onClick={() => addPerson(person)}
                     className="flex w-[62px] flex-none flex-col items-center gap-1.5 transition-transform active:scale-95"
                   >
-                    <Avatar emoji={person.emoji} size={46} className="bg-card" />
+                    <Avatar name={person.name} size={46} className="bg-card" />
                     <span className="w-full truncate text-center text-[11.5px] text-ink-soft">
                       {person.name}
                     </span>

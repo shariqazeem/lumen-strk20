@@ -7,6 +7,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react'
 import type { GuardReport } from '@/lib/lumen/guard'
+import { initials } from '@/lib/lumen/people'
 import { formatUnits, parseUnits } from '@/lib/strk20/wallet'
 import { explorerTx, TOKENS, type TokenSymbol } from '@/lib/strk20/config'
 import { Check, ChevronDown, Globe, ShieldCheck, Sparkle, Warning } from './icons'
@@ -46,25 +47,34 @@ export function SectionLabel({ children, action }: { children: ReactNode; action
   )
 }
 
+/**
+ * A monogram, derived from the name.
+ *
+ * This was an emoji, chosen from a picker. Nobody wants to pick an emoji to
+ * receive money, and the result made a payments product read like a chat app.
+ * Initials cost the user no decision at all, stay inside the monochrome
+ * palette, and read as a person rather than as decoration.
+ */
 export function Avatar({
-  emoji,
+  name,
   size = 44,
   className = '',
 }: {
-  emoji: string
+  name: string
   size?: number
   className?: string
 }) {
   return (
     <span
-      style={{ width: size, height: size, fontSize: size * 0.44 }}
-      className={`grid flex-none place-items-center rounded-full bg-sunk ${className}`}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
+      className={`grid flex-none select-none place-items-center rounded-full bg-sunk font-semibold uppercase leading-none tracking-[0.02em] text-ink-soft ${className}`}
       aria-hidden
     >
-      {emoji}
+      {initials(name)}
     </span>
   )
 }
+
 
 /* ------------------------------------------------------------------ */
 /* amount input                                                        */

@@ -66,8 +66,68 @@ export function provider(): RpcProvider {
   return new RpcProvider({ nodeUrl: RPC_URL })
 }
 
+/** A wallet handed us an address we can actually spend from. */
+function usableAddress(address: unknown): address is string {
+  if (typeof address !== 'string' || !address.startsWith('0x')) return false
+  try {
+    return BigInt(address) > 0n
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Wait for a wallet to finish authorising, up to `ms`.
+ *
+ * Wallets announce accounts through the wallet-standard `change` event. The
+ * event is also allowed to fire for unrelated reasons, so the account list is
+ * re-read each time rather than trusted from the payload.
+ */
+function waitForAccounts(wallet: WalletWithStarknetFeatures, ms: number): Promise<boolean> {
+  if (wallet.accounts.length > 0) return Promise.resolve(true)
+
+  return new Promise((resolve) => {
+    let done = false
+    const settle = (value: boolean) => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      off?.()
+      resolve(value)
+    }
+
+    const timer = setTimeout(() => settle(false), ms)
+    const off = wallet.features['standard:events']?.on('change', () => {
+      if (wallet.accounts.length > 0) settle(true)
+    })
+
+    // A wallet that never emits `change` still updates its account list, so
+    // poll as a floor under the event.
+    const poll = setInterval(() => {
+      if (wallet.accounts.length > 0) {
+        clearInterval(poll)
+        settle(true)
+      }
+    }, 400)
+    setTimeout(() => clearInterval(poll), ms)
+  })
+}
+
 /**
  * Connect and upgrade to a `WalletAccountV6`, which carries the STRK20 methods.
+ *
+ * `WalletAccountV6.connect` reads `accounts[0]?.address` and does not complain
+ * when there is no account — it hands back an account whose address is
+ * `undefined`. Wallets hit that path routinely: several resolve `connect()`
+ * the moment their approval window opens, before the user has approved
+ * anything. Taking that result at face value is what made a first connect
+ * appear to fail and a reload appear to fix it, since by then the wallet had
+ * remembered the approval.
+ *
+ * So the result is checked, and if there is no address yet the wallet is given
+ * time to finish before asking once more. `standard:connect` is idempotent for
+ * an already-authorised wallet, so the second call costs nothing and does not
+ * open a second window.
  *
  * The cast bridges two copies of the same interface. `get-starknet-discovery`
  * returns wallets typed by `@starknet-io/get-starknet-wallet-standard@6.0.3`,
@@ -75,17 +135,28 @@ export function provider(): RpcProvider {
  * `get-starknet-wallet-standard-v6@6.0.2` and types `connect` against that.
  * TypeScript treats them as distinct nominal types even though the runtime
  * shape is the same, so the two cannot meet without an assertion here.
- *
- * Confine it to this one line: everything either side stays properly typed.
  */
 export async function connectWallet(
   wallet: WalletWithStarknetFeatures,
 ): Promise<WalletAccountV6> {
-  return WalletAccountV6.connect(
-    provider(),
-    wallet as unknown as Parameters<typeof WalletAccountV6.connect>[1],
+  const bridged = wallet as unknown as Parameters<typeof WalletAccountV6.connect>[1]
+
+  const first = await WalletAccountV6.connect(provider(), bridged)
+  if (usableAddress(first.address)) return first
+
+  const approved = await waitForAccounts(wallet, APPROVAL_TIMEOUT_MS)
+  if (approved) {
+    const second = await WalletAccountV6.connect(provider(), bridged)
+    if (usableAddress(second.address)) return second
+  }
+
+  throw new Error(
+    `${wallet.name} did not share an account. Open the wallet, approve the connection, and try again.`,
   )
 }
+
+/** How long a wallet gets to finish its approval window. */
+const APPROVAL_TIMEOUT_MS = 90_000
 
 export interface ShieldedBalance {
   symbol: TokenSymbol

@@ -11,23 +11,24 @@
 
 import { useMemo, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
-import { allocationOf, SPACE_TINTS, totalAllocated } from '@/lib/lumen/spaces'
+import { allocationOf, SPACE_ICONS, SPACE_TINTS, totalAllocated, type SpaceIcon } from '@/lib/lumen/spaces'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
 import { AmountField, parseAmount, usdText } from './bits'
+import { SpaceGlyph } from './icons'
 
 const SPACE_IDEAS = [
-  { name: 'Rent', emoji: '🏠' },
-  { name: 'Travel', emoji: '✈️' },
-  { name: 'Rainy day', emoji: '☔️' },
-  { name: 'Freelance', emoji: '💼' },
+  { name: 'Rent', icon: 'home' as const },
+  { name: 'Travel', icon: 'travel' as const },
+  { name: 'Rainy day', icon: 'rainy' as const },
+  { name: 'Freelance', icon: 'work' as const },
 ] as const
 
 export function NewSpaceSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { addSpace } = useLumen()
   const [name, setName] = useState('')
-  const [emoji, setEmoji] = useState('')
+  const [icon, setIcon] = useState<SpaceIcon>('goal')
   const [goal, setGoal] = useState('')
 
   const save = () => {
@@ -35,11 +36,11 @@ export function NewSpaceSheet({ open, onClose }: { open: boolean; onClose: () =>
     const goalUsd = Number.parseFloat(goal)
     addSpace({
       name,
-      ...(emoji ? { emoji } : {}),
+      icon,
       ...(Number.isFinite(goalUsd) && goalUsd > 0 ? { goalUsd } : {}),
     })
     setName('')
-    setEmoji('')
+    setIcon('goal')
     setGoal('')
     onClose()
   }
@@ -52,32 +53,40 @@ export function NewSpaceSheet({ open, onClose }: { open: boolean; onClose: () =>
             key={idea.name}
             onClick={() => {
               setName(idea.name)
-              setEmoji(idea.emoji)
+              setIcon(idea.icon)
             }}
             className="flex-1 rounded-2xl bg-sunk px-2 py-2.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:bg-rule"
           >
-            <span className="block text-[17px]">{idea.emoji}</span>
+            <SpaceGlyph icon={idea.icon} size={18} className="mx-auto block" />
             {idea.name}
           </button>
         ))}
       </div>
 
       <div className="space-y-3">
-        <div className="flex gap-2">
-          <input
-            value={emoji}
-            onChange={(event) => setEmoji(event.target.value.slice(0, 4))}
-            placeholder="✳️"
-            aria-label="Emoji"
-            className="h-12 w-14 rounded-2xl border border-rule bg-card text-center text-[18px] outline-none focus:border-rule-strong"
-          />
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value.slice(0, 30))}
-            placeholder="Name — Rent, Travel…"
-            autoFocus
-            className="h-12 min-w-0 flex-1 rounded-2xl border border-rule bg-card px-4 text-[15px] outline-none focus:border-rule-strong"
-          />
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value.slice(0, 30))}
+          placeholder="Name — Rent, Travel…"
+          autoFocus
+          className="h-12 w-full rounded-2xl border border-rule bg-card px-4 text-[15px] outline-none focus:border-rule-strong"
+        />
+        <div className="flex items-center gap-2">
+          {SPACE_ICONS.map((option) => (
+            <button
+              key={option}
+              onClick={() => setIcon(option)}
+              aria-label={option}
+              aria-pressed={icon === option}
+              className={`grid size-10 flex-1 place-items-center rounded-2xl transition-all ${
+                icon === option
+                  ? 'bg-ink text-white'
+                  : 'bg-sunk text-ink-soft hover:bg-rule active:scale-95'
+              }`}
+            >
+              <SpaceGlyph icon={option} size={19} />
+            </button>
+          ))}
         </div>
         <input
           value={goal}
@@ -152,7 +161,7 @@ export function SpaceSheet({
   })()
 
   return (
-    <Sheet open={open} onClose={onClose} title={`${space.emoji} ${space.name}`}>
+    <Sheet open={open} onClose={onClose} title={space.name}>
       <div
         className="rounded-2xl px-5 py-4"
         style={{ background: tint.bg, color: tint.fg }}

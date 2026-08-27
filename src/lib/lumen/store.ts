@@ -47,7 +47,14 @@ import { executeAvnuPrivateSwap, fetchSpotPricesUsd, type Quote } from '@/lib/st
 import { FALLBACK_POOL_FEE_STRK, TOKENS, tokenByAddress, type TokenSymbol } from '@/lib/strk20/config'
 import { appendLedger, loadLedger, type LedgerEntry } from '@/lib/history'
 import { loadPeople, addPerson, removePerson, type Person } from './people'
-import { addSpace, adjustAllocation, loadSpaces, removeSpace, type Space } from './spaces'
+import {
+  addSpace,
+  adjustAllocation,
+  loadSpaces,
+  removeSpace,
+  type Space,
+  type SpaceIcon,
+} from './spaces'
 import { addReceipt, loadReceipts, type Receipt } from './receipts'
 import { loadJournal, recordDecision, type JournalEntry } from './journal'
 import { rememberLink } from './inbox'
@@ -104,7 +111,7 @@ interface LumenState {
 
   addPerson: (input: { name: string; address: string; emoji?: string }) => void
   removePerson: (id: string) => void
-  addSpace: (input: { name: string; emoji?: string; goalUsd?: number }) => void
+  addSpace: (input: { name: string; icon?: SpaceIcon; goalUsd?: number }) => void
   removeSpace: (id: string) => void
   moveIntoSpace: (spaceId: string, token: TokenSymbol, delta: bigint) => void
 
@@ -842,9 +849,9 @@ export const useLumen = create<LumenState>((set, get) => ({
       ],
       journal: loadJournal(address),
       people: [
-        { id: 'p1', name: 'Amara', address: amara, emoji: '🌊', createdAt: now - 40 * 24 * HOUR },
-        { id: 'p2', name: 'Landlord', address: landlord, emoji: '🏠', createdAt: now - 90 * 24 * HOUR },
-        { id: 'p3', name: 'Client', address: client, emoji: '💼', createdAt: now - 20 * 24 * HOUR },
+        { id: 'p1', name: 'Amara Diallo', address: amara, createdAt: now - 40 * 24 * HOUR },
+        { id: 'p2', name: 'Landlord', address: landlord, createdAt: now - 90 * 24 * HOUR },
+        { id: 'p3', name: 'Ines Roy', address: client, createdAt: now - 20 * 24 * HOUR },
       ],
       spaces: [],
       receipts: [],

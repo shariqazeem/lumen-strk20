@@ -3,8 +3,8 @@
 /**
  * Pay pages — a shareable page that collects private payments.
  *
- * There is no server, so the page IS the link: display name, address, emoji
- * and presets travel in the URL fragment, exactly like a claim link's secret.
+ * There is no server, so the page IS the link: display name, address and
+ * presets travel in the URL fragment, exactly like a claim link's secret.
  * The path segment (`/pay/shariq`) is cosmetic; the fragment is the truth.
  * Nothing here is secret — a pay page deliberately publishes its owner's
  * receiving address, the same fact the Receive QR shows — but payments TO it
@@ -24,8 +24,6 @@ export interface PayPagePayload {
   n: string
   /** Receiving Starknet address. */
   a: string
-  /** Avatar emoji. */
-  e?: string
   /** USD preset buttons for the standing page. */
   p?: number[]
   /** Request lock: exactly this token and raw amount. */
@@ -37,7 +35,6 @@ export interface PayPagePayload {
 /** The owner's saved page settings, device-local. */
 export interface MyPageConfig {
   name: string
-  emoji: string
   presets: number[]
 }
 
@@ -71,7 +68,6 @@ export function loadMyPage(account: string): MyPageConfig | null {
     if (typeof r.name !== 'string' || !r.name.trim()) return null
     return {
       name: r.name,
-      emoji: typeof r.emoji === 'string' && r.emoji ? r.emoji : '🙂',
       presets: Array.isArray(r.presets)
         ? r.presets.filter((p): p is number => typeof p === 'number' && p > 0).slice(0, 3)
         : [],
@@ -118,7 +114,6 @@ export function encodePayPage(origin: string, payload: PayPagePayload): string {
   const compact = encodePage({
     name: payload.n,
     address: payload.a,
-    ...(payload.e ? { emoji: payload.e } : {}),
     ...(payload.p?.length ? { presets: payload.p } : {}),
     ...(payload.r ? { request: { token: payload.r.t, amount: BigInt(payload.r.a) } } : {}),
     ...(payload.m ? { note: payload.m } : {}),
@@ -134,7 +129,6 @@ export function decodePayPage(fragment: string): PayPagePayload | null {
       v: 1,
       n: compact.name,
       a: compact.address,
-      ...(compact.emoji ? { e: compact.emoji } : {}),
       ...(compact.presets?.length ? { p: compact.presets } : {}),
       ...(compact.request
         ? { r: { t: compact.request.token, a: compact.request.amount.toString() } }
@@ -177,7 +171,6 @@ export function decodePayPage(fragment: string): PayPagePayload | null {
       v: 1,
       n: r.n.slice(0, 40),
       a: r.a,
-      ...(typeof r.e === 'string' && r.e ? { e: r.e.slice(0, 4) } : {}),
       ...(presets.length > 0 ? { p: presets } : {}),
       ...(request ? { r: request } : {}),
       ...(typeof r.m === 'string' && r.m ? { m: r.m.slice(0, 80) } : {}),

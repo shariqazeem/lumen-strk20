@@ -15,7 +15,6 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import { decodePayPage, type PayPagePayload } from '@/lib/lumen/paypage'
-import { pickEmoji } from '@/lib/lumen/people'
 import { reviewPay } from '@/lib/lumen/guard'
 import { formatUnits, listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, tokenByAddress, type TokenSymbol } from '@/lib/strk20/config'
@@ -164,7 +163,7 @@ export default function PayPage() {
             <div className="card overflow-hidden">
               <div className="h-1.5 bg-ink" />
               <div className="px-6 pb-6 pt-7 text-center">
-                <Avatar emoji={payload.e ?? pickEmoji(payload.n)} size={64} className="mx-auto" />
+                <Avatar name={payload.n} size={64} className="mx-auto" />
                 <h1 className="mt-3 text-[24px] font-semibold tracking-[-0.02em]">
                   Pay {payload.n}
                 </h1>

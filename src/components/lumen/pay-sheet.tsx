@@ -15,7 +15,6 @@ import { DEFAULT_REFUND_WINDOW_S, REFUND_WINDOWS } from '@/lib/strk20/escrow'
 import {
   looksLikeStarknetAddress,
   personByAddress,
-  pickEmoji,
   shortAddress,
   type Person,
 } from '@/lib/lumen/people'
@@ -257,7 +256,7 @@ export function PaySheet({
                   }}
                   className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors hover:bg-card-soft"
                 >
-                  <Avatar emoji={p.emoji} size={40} />
+                  <Avatar name={p.name} size={40} />
                   <span className="flex-1">
                     <span className="block text-[14.5px] font-semibold">{p.name}</span>
                     <span className="block font-mono text-[11.5px] text-ink-faint">
@@ -322,7 +321,7 @@ export function PaySheet({
             }}
             className="flex w-full items-center gap-3 rounded-2xl bg-card-soft px-4 py-2.5 text-left"
           >
-            <Avatar emoji={target?.emoji ?? pickEmoji(recipientAddress)} size={34} />
+            <Avatar name={target?.name ?? shortAddress(recipientAddress)} size={34} />
             <span className="flex-1">
               <span className="block text-[13.5px] font-semibold">
                 {target?.name ?? shortAddress(recipientAddress)}
