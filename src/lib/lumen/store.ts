@@ -735,7 +735,7 @@ export const useLumen = create<LumenState>((set, get) => ({
 
     const now = Date.now()
     const HOUR = 3_600_000
-    const address = '0x0777de1ab77e57a1d8c2b3f4a5968de0000000000000000000000000dev0001'
+    const address = '0x0777de1ab77e57a1d8c2b3f4a5968de00000000000000000000000000de0001'
     const amara = '0x0421b1fca8f3a4b2e9a1c6d80e3f1972d54ab8c0de91f2a34b56c78d90e1f234'
     const landlord = '0x05512c3d97e4b8a1f2063c5d41e8ba97310fedcba98765432100ffeeddccbbaa'
     const client = '0x0663a1e5b8c9d0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5'

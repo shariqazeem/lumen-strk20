@@ -14,7 +14,9 @@ import type { Person } from '@/lib/lumen/people'
 import type { Receipt } from '@/lib/lumen/receipts'
 import type { SheetRoute } from '@/components/lumen/routes'
 import { ConnectScreen } from '@/components/lumen/connect'
-import { Home } from '@/components/lumen/home'
+import { Home, ObserverPanel } from '@/components/lumen/home'
+import { AppShell } from '@/components/lumen/shell'
+import { loadInbox, waitingLinks } from '@/lib/lumen/inbox'
 import { PaySheet } from '@/components/lumen/pay-sheet'
 import { ReceiveSheet } from '@/components/lumen/receive-sheet'
 import { AddMoneySheet } from '@/components/lumen/add-money-sheet'
@@ -32,6 +34,15 @@ import { ActivitySheet } from '@/components/lumen/activity-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
+  const ledger = useLumen((state) => state.ledger)
+  const [observer, setObserver] = useState(false)
+  const [waiting, setWaiting] = useState(0)
+
+  // The inbox is device-global, so the badge is read directly rather than
+  // through the account-keyed store.
+  useEffect(() => {
+    setWaiting(waitingLinks(loadInbox()).length)
+  }, [])
   const devPreview = useLumen((state) => state.devPreview)
 
   // Development affordance only: `/app?dev` fills the surface so it can be
@@ -70,9 +81,25 @@ export default function AppPage() {
     return <ConnectScreen />
   }
 
+  const publicEntries = ledger.filter((entry) => entry.observer !== '—')
+
   return (
     <>
-      <Home open={open} />
+      <AppShell
+        activeId={route?.kind ?? 'home'}
+        waiting={waiting}
+        observer={observer}
+        onObserver={setObserver}
+        open={open}
+        rail={
+          <ObserverPanel
+            publicEntries={publicEntries}
+            privateCount={ledger.length - publicEntries.length}
+          />
+        }
+      >
+        <Home open={open} observer={observer} onObserver={setObserver} />
+      </AppShell>
 
       <PaySheet
         key={payNonce}

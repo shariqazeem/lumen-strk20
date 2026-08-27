@@ -24,11 +24,9 @@ import { explorerTx, TOKENS } from '@/lib/strk20/config'
 import {
   ArrowDown,
   ArrowUpRight,
-  Dots,
   Eye,
   Globe,
   LinkIcon,
-  LumenMark,
   Plus,
   Receipt as ReceiptIcon,
   ShieldCheck,
@@ -64,7 +62,7 @@ function Redacted({ width = 'w-24' }: { width?: string }) {
  * know. On a wide screen it sits permanently beside your view, so the thesis
  * needs no interaction; on a phone it replaces the screen.
  */
-function ObserverPanel({
+export function ObserverPanel({
   publicEntries,
   privateCount,
   onBack,
@@ -168,7 +166,15 @@ function ObserverPanel({
   )
 }
 
-export function Home({ open }: { open: (route: SheetRoute) => void }) {
+export function Home({
+  open,
+  observer,
+  onObserver,
+}: {
+  open: (route: SheetRoute) => void
+  observer: boolean
+  onObserver: (next: boolean) => void
+}) {
   const {
     balances,
     balancesLoading,
@@ -184,7 +190,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
     lastTx,
   } = useLumen()
 
-  const [observer, setObserver] = useState(false)
   const [inbox, setInbox] = useState<InboxLink[]>([])
 
   // The inbox is device-global — links land here before any wallet exists —
@@ -214,24 +219,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
     })
 
   return (
-    <div className="mx-auto grid w-full max-w-[1000px] gap-10 px-5 pb-16 pt-6 lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)]">
-      <main className="w-full min-w-0">
-      <header className="rise flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-[10px] bg-ink text-white">
-            <LumenMark size={17} />
-          </span>
-          <span className="text-[17px] font-semibold tracking-[-0.02em]">Lumen</span>
-        </div>
-        <button
-          onClick={() => open({ kind: 'menu' })}
-          aria-label="Menu"
-          className="grid size-9 place-items-center rounded-full bg-card text-ink-soft shadow-[0_1px_2px_rgba(18,18,20,0.06)] transition-transform active:scale-95"
-        >
-          <Dots size={18} />
-        </button>
-      </header>
-
+    <>
       {error && !observer ? (
         <div className="mt-4">
           <ErrorNote message={error} onDismiss={clearError} />
@@ -243,7 +231,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
           <ObserverPanel
             publicEntries={publicEntries}
             privateCount={privateCount}
-            onBack={() => setObserver(false)}
+            onBack={() => onObserver(false)}
           />
         </div>
       ) : (
@@ -396,7 +384,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
                     <p className="mt-3 text-[13.5px] leading-relaxed text-glass-muted">
                       Nothing here yet.
                       {registered === false
-                        ? ' Your private account activates with your first deposit.'
+                        ? ' Your private account activates the first time money moves — a deposit, or claiming a link someone sent you.'
                         : ''}
                     </p>
                   )}
@@ -517,7 +505,7 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
 
 
           <button
-            onClick={() => setObserver(true)}
+            onClick={() => onObserver(true)}
             className="card card-press mt-10 flex w-full items-center gap-3.5 px-5 py-4 text-left lg:hidden"
           >
             <span className="grid size-10 flex-none place-items-center rounded-full bg-ink text-white">
@@ -538,17 +526,6 @@ export function Home({ open }: { open: (route: SheetRoute) => void }) {
           </footer>
         </>
       )}
-      </main>
-
-      <aside className="hidden lg:block">
-        <div className="sticky top-6">
-          <p className="mb-3 flex items-center gap-2 px-1 text-[13px] font-semibold text-ink-muted">
-            <Globe size={14} />
-            What the world sees
-          </p>
-          <ObserverPanel publicEntries={publicEntries} privateCount={privateCount} />
-        </div>
-      </aside>
-    </div>
+    </>
   )
 }
