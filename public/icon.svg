@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- The Lumen mark: light entering a ring. Padded to the maskable safe zone
-       so one asset serves every launcher shape. -->
+  <!-- The Lumen mark: an aperture closed down to a point. The glyph sits at
+       62% of the tile so one asset serves every launcher's mask. Kept in sync
+       with LumenMark in src/components/lumen/icons.tsx. -->
   <rect width="512" height="512" rx="112" fill="#121214"/>
-  <g stroke="#ffffff" stroke-width="26" stroke-linecap="round" fill="none">
-    <circle cx="256" cy="280" r="104"/>
-    <path d="M256 118v64"/>
-    <path d="M172 148l28 39"/>
-    <path d="M340 148l-28 39"/>
+  <g stroke="#ffffff" stroke-width="43.65" fill="none">
+    <path d="M349.0 202.8A107.1 107.1 0 0 1 329.5 333.9"/>
+    <path d="M255.6 363.1A107.1 107.1 0 0 1 151.8 280.7"/>
+    <path d="M163.4 202.1A107.1 107.1 0 0 1 286.7 153.4"/>
   </g>
-  <circle cx="256" cy="280" r="38" fill="#ffffff"/>
+  <circle cx="256" cy="256" r="39.68" fill="#ffffff"/>
 </svg>

@@ -236,17 +236,24 @@ export function ArrowRight(props: IconProps) {
 }
 
 /** The Lumen mark: a soft ring with light entering from above. */
+/**
+ * The Lumen mark: an aperture, three blades, closed down to a point.
+ *
+ * Not an eye, a shield or a lock — every surveillance product and every
+ * crypto wallet already wears one of those. An aperture is the honest shape
+ * for what this does: it decides how much gets through. Three blades rather
+ * than six because six merge into a blob at sixteen pixels, which is where a
+ * mark actually has to work.
+ */
 export function LumenMark({ size = 24, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
-      <circle cx="12" cy="13" r="7.2" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 1.8v4.4M6.2 3.9l1.9 2.7M17.8 3.9l-1.9 2.7"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <circle cx="12" cy="13" r="2.6" fill="currentColor" />
+      <g stroke="currentColor" strokeWidth="3.3">
+        <path d="M19.03 7.98A8.1 8.1 0 0 1 17.56 17.89" />
+        <path d="M11.97 20.10A8.1 8.1 0 0 1 4.12 13.87" />
+        <path d="M5.00 7.92A8.1 8.1 0 0 1 14.32 4.24" />
+      </g>
+      <circle cx="12" cy="12" r="3" fill="currentColor" />
     </svg>
   )
 }

@@ -1,5 +1,30 @@
 # Asset prompts
 
+> **Resolved.** The aperture (1a) won and ships as the mark; the plate from §2
+> ships as the social card. What follows is kept as the record of what was
+> asked for and why, and as the brief to re-run if the brand ever moves.
+>
+> **What was chosen, and what changed in the drawing.** Of the three logo
+> options, the enclosed field read as a dice face and the severed thread lost
+> its gaps below about 48px — which inverted its meaning, since the gaps *are*
+> the argument. The aperture survived. It was then redrawn from scratch as
+> vector geometry rather than traced: the generated version had six irregular
+> blades with hooked tips that merged into a blob at 16px, so it is three even
+> blades now, at the size a favicon actually renders. `npm run brand`
+> regenerates every raster from that one definition.
+>
+> **On watermarks.** None of the five images carried a visible one. What they
+> carry is a C2PA content credential — a signed manifest from Grok Imagine
+> recording that the image is AI-generated. That is a provenance signal rather
+> than a badge on the artwork, so it was left alone. It costs nothing: the
+> logo is new geometry with no bitmap in it, and the social card is composited
+> fresh.
+>
+> Source images live in `docs/brand/`. They are deliberately not in `public/`,
+> which would serve them to anyone.
+
+---
+
 Generate these, drop the files where each section says, and tell me — I'll wire
 them in. Everything is monochrome on purpose: ink `#121214`, paper `#f3f2f0`,
 white `#ffffff`. No gradients, no colour, no third tone.
@@ -105,15 +130,18 @@ Swiss graphic design, absolutely no text, no letters, no logo, no watermark.
 
 ---
 
-## What I do once you send them
+## Where each asset ended up
 
-1. Trace the chosen logo to clean SVG paths and replace `LumenMark` in
-   [icons.tsx](../src/components/lumen/icons.tsx) — it drives the nav, the app
-   sidebar, the connect screen, the pay page and the claim page at once.
-2. Rebuild `public/icon.svg`, `icon-180.png`, `icon-192.png`, `icon-512.png`
-   and the web manifest from it.
-3. Add the OG image to `metadata.openGraph.images` and `metadata.twitter.images`
-   in [layout.tsx](../src/app/layout.tsx), which is what fixes link previews.
+| Asset | Lives in | Rebuilt by |
+| --- | --- | --- |
+| The mark | `LumenMark` in [icons.tsx](../src/components/lumen/icons.tsx) | by hand |
+| App tile | `public/icon.svg` | by hand, kept in step with the above |
+| Launcher icons | `public/icon-{180,192,512}.png` | `npm run brand` |
+| Social card | `public/og.png` | `npm run brand` |
+
+The geometry appears three times — in `LumenMark`, in `icon.svg`, and in
+`GEOMETRY` at the top of [brand.mjs](../scripts/brand.mjs). Change one and
+change all three, or the favicon quietly stops matching the app.
 
 ## What I am not asking you to generate
 

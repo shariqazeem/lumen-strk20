@@ -2,7 +2,7 @@
   "name": "lumen-strk20",
   "version": "0.1.0",
   "private": true,
-  "description": "Lumen — the private money app for Starknet. Pay, receive and save inside the STRK20 privacy pool without publishing a financial profile.",
+  "description": "Lumen \u2014 the private money app for Starknet. Pay, receive and save inside the STRK20 privacy pool without publishing a financial profile.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "film": "tsx scripts/film-frames.mjs"
+    "film": "tsx scripts/film-frames.mjs",
+    "brand": "tsx scripts/brand.mjs"
   },
   "dependencies": {
     "@avnu/avnu-sdk": "4.2.0",

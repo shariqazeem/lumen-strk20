@@ -39,12 +39,22 @@ export const metadata: Metadata = {
     description:
       'Pay, receive and save on Starknet without publishing a financial profile. Private is the only easy path.',
     type: 'website',
+    siteName: 'Lumen',
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Lumen — your payments should not become a map of your life.',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Lumen — private money, by default',
     description:
       'Ordinary money movement should not create a public financial profile. Lumen makes the private path the only easy path.',
+    images: ['/og.png'],
   },
 }
 
