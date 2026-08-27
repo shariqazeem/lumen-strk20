@@ -103,16 +103,24 @@ export function ScrollFilm({ beats, viewports = 7 }: { beats: Beat[]; viewports?
 
     // Anything drawn over the film has to know which ground it is on. A data
     // attribute rather than React state: this changes every frame, and a
-    // re-render per frame would be absurd.
+    // re-render per frame would be absurd. It lives on <html>, so it has to
+    // be cleared on every path out of this effect — left behind, it turns
+    // whatever page is navigated to next dark.
     let ground = ''
+    const setGround = (p: number) => {
+      const next = groundDarkness(p) > 0.5 ? 'dark' : 'light'
+      if (next === ground) return
+      ground = next
+      document.documentElement.dataset.filmGround = next
+    }
+    const clearGround = () => {
+      delete document.documentElement.dataset.filmGround
+    }
+
     const render = (time: number) => {
       paint(context, width, height, current, time, graph, fontFamily)
       applyBeats(current)
-      const next = groundDarkness(current) > 0.5 ? 'dark' : 'light'
-      if (next !== ground) {
-        ground = next
-        document.documentElement.dataset.filmGround = next
-      }
+      setGround(current)
     }
 
     if (Number.isFinite(pinned)) {
@@ -122,8 +130,10 @@ export function ScrollFilm({ beats, viewports = 7 }: { beats: Beat[]; viewports?
       }
       still()
       applyBeats(pinned)
+      setGround(pinned)
       window.addEventListener('resize', still)
       return () => {
+        clearGround()
         window.removeEventListener('resize', resize)
         window.removeEventListener('resize', still)
       }
@@ -138,8 +148,10 @@ export function ScrollFilm({ beats, viewports = 7 }: { beats: Beat[]; viewports?
       }
       still()
       applyBeats(0.92)
+      setGround(0.92)
       window.addEventListener('resize', still)
       return () => {
+        clearGround()
         window.removeEventListener('resize', resize)
         window.removeEventListener('resize', still)
       }
@@ -161,7 +173,7 @@ export function ScrollFilm({ beats, viewports = 7 }: { beats: Beat[]; viewports?
 
     return () => {
       cancelAnimationFrame(frame)
-      delete document.documentElement.dataset.filmGround
+      clearGround()
       window.removeEventListener('resize', resize)
       window.removeEventListener('scroll', readScroll)
     }

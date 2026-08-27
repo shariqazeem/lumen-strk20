@@ -146,7 +146,7 @@ export function ConnectScreen() {
         <div className="overflow-hidden rounded-[24px] border border-dashed border-rule-strong bg-card">
           {/* The film's closing frame, so the path in reads as one piece. */}
           <FilmStill className="block h-[150px] w-full" />
-          <div className="px-6 pb-6">
+          <div className="border-t border-rule px-6 pb-6 pt-5">
             <p className="text-[13px] font-medium text-ink-muted">Any Lumen account</p>
             <div className="mt-3 space-y-2.5 text-[15px]">
               {REDACTED.map((label, index) => (
