@@ -76,7 +76,9 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-feature-settings: 'cv05', 'cv11', 'ss01';
-    overflow-x: hidden;
+    /* `clip`, not `hidden`: hidden turns the body into a scroll container,
+       which breaks position:sticky and moves the scroll offset off window. */
+    overflow-x: clip;
   }
 
   ::selection {
@@ -177,6 +179,65 @@
   @supports not (-webkit-text-stroke: 1px black) {
     .stroke-text {
       color: var(--color-ink-faint);
+    }
+  }
+
+  /* Furniture drawn over the film inverts with it, or it disappears for a
+     third of the sequence. The film sets `data-film-ground` on <html>. */
+  .film-aware {
+    transition: color 220ms linear;
+  }
+
+  html[data-film-ground='dark'] .film-aware {
+    color: var(--color-glass-ink);
+  }
+
+  html[data-film-ground='dark'] .film-aware .film-mark {
+    background: var(--color-glass-ink);
+    color: var(--color-ink);
+  }
+
+  html[data-film-ground='dark'] .film-aware .btn-ink {
+    background: var(--color-glass-ink);
+    color: var(--color-ink);
+  }
+
+  html[data-film-ground='dark'] .nav-blur {
+    background: rgba(12, 12, 14, 0.72);
+    border-color: rgba(245, 244, 248, 0.12);
+  }
+
+  /* A chapter number, set like a title card rather than a list bullet. */
+  .chapter {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--color-ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .chapter::after {
+    content: '';
+    height: 1px;
+    width: 44px;
+    background: var(--color-rule-strong);
+  }
+
+  /* The scroll cue under the cold open. */
+  .float-hint {
+    animation: float-hint 2.4s var(--ease-out-quart) infinite;
+  }
+
+  @keyframes float-hint {
+    0%, 100% { transform: translateY(0); opacity: 0.5; }
+    50% { transform: translateY(4px); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .float-hint {
+      animation: none;
     }
   }
 

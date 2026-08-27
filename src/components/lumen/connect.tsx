@@ -20,6 +20,7 @@ import { listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wa
 import { useLumen } from '@/lib/lumen/store'
 import { ArrowRight, Globe, LumenMark, ShieldCheck } from './icons'
 import { ErrorNote } from './bits'
+import { FilmStill } from '@/components/landing/film'
 
 /** What an observer holds on an account that has never crossed the boundary. */
 const REDACTED = ['Balance', 'Who paid them', 'Who they pay', 'Payment history'] as const
@@ -142,23 +143,27 @@ export function ConnectScreen() {
           <Globe size={13} />
           What the world sees
         </p>
-        <div className="rounded-[24px] border border-dashed border-rule-strong bg-card px-6 py-6">
-          <p className="text-[13px] font-medium text-ink-muted">Any Lumen account</p>
-          <div className="mt-3 space-y-2.5 text-[15px]">
-            {REDACTED.map((label, index) => (
-              <p key={label} className="flex items-baseline justify-between gap-3">
-                <span className="text-ink-muted">{label}</span>
-                <span
-                  className="inline-block h-3 rounded-sm bg-sunk align-middle"
-                  style={{ width: [112, 80, 96, 64][index] }}
-                  aria-label="hidden"
-                />
-              </p>
-            ))}
+        <div className="overflow-hidden rounded-[24px] border border-dashed border-rule-strong bg-card">
+          {/* The film's closing frame, so the path in reads as one piece. */}
+          <FilmStill className="block h-[150px] w-full" />
+          <div className="px-6 pb-6">
+            <p className="text-[13px] font-medium text-ink-muted">Any Lumen account</p>
+            <div className="mt-3 space-y-2.5 text-[15px]">
+              {REDACTED.map((label, index) => (
+                <p key={label} className="flex items-baseline justify-between gap-3">
+                  <span className="text-ink-muted">{label}</span>
+                  <span
+                    className="inline-block h-3 rounded-sm bg-sunk align-middle"
+                    style={{ width: [112, 80, 96, 64][index] }}
+                    aria-label="hidden"
+                  />
+                </p>
+              ))}
+            </div>
+            <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
+              Not hidden behind a login. Never published in the first place.
+            </p>
           </div>
-          <p className="mt-5 border-t border-rule pt-4 text-[12.5px] leading-relaxed text-ink-faint">
-            Not hidden behind a login. Never published in the first place.
-          </p>
         </div>
 
       </div>
