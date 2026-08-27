@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import { decodePayPage, type PayPagePayload } from '@/lib/lumen/paypage'
+import { pickEmoji } from '@/lib/lumen/people'
 import { reviewPay } from '@/lib/lumen/guard'
 import { formatUnits, listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, tokenByAddress, type TokenSymbol } from '@/lib/strk20/config'
@@ -132,7 +133,7 @@ export default function PayPage() {
   })()
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-6 pb-10 pt-[max(36px,5vh)]">
+    <main className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-6 pb-10 pt-[max(36px,5vh)] lg:max-w-[900px] lg:px-10">
       <Link href="/" className="rise flex items-center gap-2.5">
         <span className="grid size-9 place-items-center rounded-xl bg-ink text-white">
           <LumenMark size={20} />
@@ -140,7 +141,7 @@ export default function PayPage() {
         <span className="text-[19px] font-semibold tracking-[-0.02em]">Lumen</span>
       </Link>
 
-      <div className="flex flex-1 flex-col justify-center py-8">
+      <div className="flex flex-1 flex-col justify-center py-8 lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-center lg:gap-16">
         {state.kind === 'reading' ? <div className="card shimmer h-72 rounded-[24px]" /> : null}
 
         {state.kind === 'invalid' ? (
@@ -163,16 +164,16 @@ export default function PayPage() {
             <div className="card overflow-hidden">
               <div className="h-1.5 bg-ink" />
               <div className="px-6 pb-6 pt-7 text-center">
-                <Avatar emoji={payload.e ?? '🙂'} size={64} className="mx-auto" />
+                <Avatar emoji={payload.e ?? pickEmoji(payload.n)} size={64} className="mx-auto" />
                 <h1 className="mt-3 text-[24px] font-semibold tracking-[-0.02em]">
                   Pay {payload.n}
                 </h1>
                 {payload.m ? (
                   <p className="mt-1 text-[14px] text-ink-muted">{payload.m}</p>
                 ) : null}
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sunk px-3 py-1 text-[12px] font-semibold">
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sunk px-3.5 py-1.5 text-[12.5px] font-semibold">
                   <ShieldCheck size={13} />
-                  Private — no public sender, amount, or history
+                  Private payment
                 </p>
 
                 {locked ? (
@@ -278,6 +279,35 @@ export default function PayPage() {
               </div>
             )}
           </div>
+        ) : null}
+
+        {payload && state.kind !== 'paid' ? (
+          <aside className="rise rise-3 mt-6 lg:mt-0">
+            <p className="text-[13px] font-semibold text-ink-muted">
+              What this payment leaves behind
+            </p>
+            <div className="mt-3 space-y-px overflow-hidden rounded-[20px] border border-rule bg-card">
+              {[
+                ['Your name', 'Never asked for'],
+                ['Your wallet address', 'Not published'],
+                ['The amount', 'Not published'],
+                [`${payload.n}'s other payers`, 'Invisible to you'],
+                ['Your other payments', `Invisible to ${payload.n}`],
+              ].map(([label, value]) => (
+                <p
+                  key={label}
+                  className="flex items-baseline justify-between gap-4 border-b border-rule px-5 py-3 text-[14px] last:border-b-0"
+                >
+                  <span className="text-ink-muted">{label}</span>
+                  <span className="flex-none font-medium">{value}</span>
+                </p>
+              ))}
+            </div>
+            <p className="mt-4 text-[12.5px] leading-relaxed text-ink-faint">
+              Settlement happens inside the STRK20 privacy pool on Starknet mainnet. There is no
+              Lumen server in the path — this page ran entirely in your browser.
+            </p>
+          </aside>
         ) : null}
 
         {state.kind === 'paid' && payload ? (

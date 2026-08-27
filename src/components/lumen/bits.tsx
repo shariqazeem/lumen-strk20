@@ -19,6 +19,8 @@ export function usdText(value: number): string {
   return value.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
+    // Whole amounts read as buttons; ".00" reads as a total.
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: value >= 1000 ? 0 : 2,
   })
 }
@@ -135,8 +137,8 @@ export function AmountField({
         {usd !== null ? <span className="tabular">≈ {usdText(usd)}</span> : null}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-1.5 overflow-x-auto">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
           {tokens.map((symbol) => (
             <button
               key={symbol}

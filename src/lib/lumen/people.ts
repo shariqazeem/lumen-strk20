@@ -137,6 +137,18 @@ export function pickEmoji(name: string): string {
   return EMOJI_WHEEL[h % EMOJI_WHEEL.length]
 }
 
+/**
+ * A small ring of alternatives starting at the name's own default, so a picker
+ * can show one tidy row where the first entry is always the current choice.
+ */
+export function emojiChoices(name: string, count = 6): string[] {
+  const start = EMOJI_WHEEL.indexOf(pickEmoji(name) as (typeof EMOJI_WHEEL)[number])
+  return Array.from(
+    { length: Math.min(count, EMOJI_WHEEL.length) },
+    (_, i) => EMOJI_WHEEL[(start + i) % EMOJI_WHEEL.length],
+  )
+}
+
 /** A short display form of an address, for rows where the name is unknown. */
 export function shortAddress(address: string): string {
   const trimmed = address.trim()

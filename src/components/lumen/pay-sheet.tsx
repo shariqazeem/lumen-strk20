@@ -23,6 +23,7 @@ import type { Receipt } from '@/lib/lumen/receipts'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
+import { ShareLink } from './share-link'
 import {
   AmountField,
   Avatar,
@@ -35,15 +36,12 @@ import {
 } from './bits'
 import {
   ArrowRight,
-  Check,
   ChevronRight,
   Clock,
-  Copy,
   LinkIcon,
   People,
   Plus,
   Receipt as ReceiptIcon,
-  Share,
 } from './icons'
 
 type Step = 'to' | 'amount' | 'done' | 'linkAmount' | 'linkDone'
@@ -90,7 +88,6 @@ export function PaySheet({
   const [linkUrl, setLinkUrl] = useState('')
   const [refundAfterS, setRefundAfterS] = useState<number>(DEFAULT_REFUND_WINDOW_S)
   const [linkKeepExact, setLinkKeepExact] = useState(false)
-  const [linkCopied, setLinkCopied] = useState(false)
 
   // Reset per open. Keyed remount is handled by the parent passing a fresh
   // sheet each time; this guards the in-place person shortcut.
@@ -172,16 +169,6 @@ export function PaySheet({
       setStep('linkDone')
     } catch {
       // The store surfaced the explanation; stay here.
-    }
-  }
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(linkUrl)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 1600)
-    } catch {
-      // The URL stays visible to copy by hand.
     }
   }
 
@@ -513,42 +500,18 @@ export function PaySheet({
             wallet needed until the moment they do.
           </p>
 
-          <button
-            onClick={copyLink}
-            className="mt-6 w-full break-all rounded-2xl border border-rule bg-card-soft px-4 py-3.5 text-left font-mono text-[11.5px] leading-relaxed text-ink-soft transition-colors hover:border-rule-strong"
-          >
-            {linkUrl}
-          </button>
+          <ShareLink
+            url={linkUrl}
+            shareText="I sent you money on Lumen"
+            privateLabel="the claim secret — this is the money"
+            className="mt-6 text-left"
+          />
 
           {lastTx ? (
             <p className="mt-3">
               <TxLink hash={lastTx.hash} />
             </p>
           ) : null}
-
-          <div className="mt-5 grid grid-cols-2 gap-2.5">
-            <button onClick={copyLink} className="btn btn-quiet">
-              {linkCopied ? <Check size={16} /> : <Copy size={16} />}
-              {linkCopied ? 'Copied' : 'Copy link'}
-            </button>
-            <button
-              onClick={async () => {
-                if (typeof navigator.share === 'function') {
-                  try {
-                    await navigator.share({ url: linkUrl, text: 'I sent you money on Lumen' })
-                    return
-                  } catch {
-                    // Fall through to copy.
-                  }
-                }
-                await copyLink()
-              }}
-              className="btn btn-ink"
-            >
-              <Share size={16} />
-              Share
-            </button>
-          </div>
 
           <p className="mx-auto mt-4 max-w-[310px] text-[12px] leading-relaxed text-ink-faint">
             The secret travels only inside this link — no server ever sees it. Your reclaim key is

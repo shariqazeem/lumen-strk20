@@ -15,7 +15,8 @@
 
 import { hash, RpcProvider, shortString } from 'starknet'
 import type { STRK20_ACTION } from '@starknet-io/types-js'
-import { RPC_URL, sameAddress, TOKEN_LIST, type TokenConfig } from './config'
+import { RPC_URL, sameAddress, TOKEN_LIST, TOKENS, type TokenConfig } from './config'
+import { decodeClaim, encodeClaim } from '@/lib/lumen/codec'
 import { openNoteRef } from './actions'
 
 /** Deployed LumenEscrow instance; empty until the mainnet deploy lands. */
@@ -150,13 +151,7 @@ export interface ClaimLinkPayload {
   n?: string
 }
 
-function base64url(text: string): string {
-  return btoa(unescape(encodeURIComponent(text)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
+/** Legacy JSON links only — new links use the compact codec. */
 function fromBase64url(text: string): string {
   const padded = text.replace(/-/g, '+').replace(/_/g, '/')
   return decodeURIComponent(escape(atob(padded)))
@@ -167,10 +162,31 @@ function fromBase64url(text: string): string {
  * sent in HTTP requests, so no server — including ours — ever sees a secret.
  */
 export function encodeClaimLink(origin: string, payload: ClaimLinkPayload): string {
-  return `${origin}/claim#${base64url(JSON.stringify(payload))}`
+  const token = TOKEN_LIST.find((t) => sameAddress(t.address, payload.t))
+  if (!token) throw new Error('Unknown token for claim link.')
+  const compact = encodeClaim({
+    secret: payload.s,
+    token: token.symbol,
+    amount: BigInt(payload.a),
+    ...(payload.f ? { from: payload.f } : {}),
+    ...(payload.n ? { note: payload.n } : {}),
+  })
+  return `${origin}/claim#${compact}`
 }
 
 export function decodeClaimLink(fragment: string): ClaimLinkPayload | null {
+  // Compact form first; links minted before the codec still decode below.
+  const compact = decodeClaim(fragment)
+  if (compact) {
+    return {
+      v: 1,
+      s: compact.secret,
+      t: TOKENS[compact.token].address,
+      a: compact.amount.toString(),
+      ...(compact.from ? { f: compact.from } : {}),
+      ...(compact.note ? { n: compact.note } : {}),
+    }
+  }
   try {
     const raw: unknown = JSON.parse(fromBase64url(fragment.replace(/^#/, '')))
     if (typeof raw !== 'object' || raw === null) return null

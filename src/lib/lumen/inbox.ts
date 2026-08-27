@@ -54,8 +54,11 @@ function revive(raw: unknown): InboxLink | null {
   if (typeof r.token !== 'string' || !(r.token in TOKENS)) return null
   if (typeof r.amountRaw !== 'string') return null
   if (typeof r.firstSeenAt !== 'number' || !Number.isFinite(r.firstSeenAt)) return null
+  // Both must parse as numbers: the compact codec packs them as bytes, so a
+  // corrupt row would throw while re-encoding the link rather than here.
   try {
     BigInt(r.amountRaw)
+    if (BigInt(r.claimSecret) <= 0n) return null
   } catch {
     return null
   }

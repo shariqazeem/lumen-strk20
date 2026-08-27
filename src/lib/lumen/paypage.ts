@@ -16,6 +16,7 @@
  */
 
 import { TOKENS, type TokenSymbol } from '@/lib/strk20/config'
+import { decodePage, encodePage } from './codec'
 
 export interface PayPagePayload {
   v: 1
@@ -94,13 +95,7 @@ export function saveMyPage(account: string, config: MyPageConfig): void {
 /* codec                                                               */
 /* ------------------------------------------------------------------ */
 
-function base64url(text: string): string {
-  return btoa(unescape(encodeURIComponent(text)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
+/** Legacy JSON links only — new links use the compact codec. */
 function fromBase64url(text: string): string {
   const padded = text.replace(/-/g, '+').replace(/_/g, '/')
   return decodeURIComponent(escape(atob(padded)))
@@ -120,10 +115,33 @@ export function slugify(name: string): string {
 }
 
 export function encodePayPage(origin: string, payload: PayPagePayload): string {
-  return `${origin}/pay/${slugify(payload.n)}#${base64url(JSON.stringify(payload))}`
+  const compact = encodePage({
+    name: payload.n,
+    address: payload.a,
+    ...(payload.e ? { emoji: payload.e } : {}),
+    ...(payload.p?.length ? { presets: payload.p } : {}),
+    ...(payload.r ? { request: { token: payload.r.t, amount: BigInt(payload.r.a) } } : {}),
+    ...(payload.m ? { note: payload.m } : {}),
+  })
+  return `${origin}/pay/${slugify(payload.n)}#${compact}`
 }
 
 export function decodePayPage(fragment: string): PayPagePayload | null {
+  // Compact form first; anything minted before the codec still decodes below.
+  const compact = decodePage(fragment)
+  if (compact) {
+    return {
+      v: 1,
+      n: compact.name,
+      a: compact.address,
+      ...(compact.emoji ? { e: compact.emoji } : {}),
+      ...(compact.presets?.length ? { p: compact.presets } : {}),
+      ...(compact.request
+        ? { r: { t: compact.request.token, a: compact.request.amount.toString() } }
+        : {}),
+      ...(compact.note ? { m: compact.note } : {}),
+    }
+  }
   try {
     const raw: unknown = JSON.parse(fromBase64url(fragment.replace(/^#/, '')))
     if (typeof raw !== 'object' || raw === null) return null

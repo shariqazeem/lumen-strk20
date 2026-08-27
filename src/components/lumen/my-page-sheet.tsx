@@ -12,11 +12,14 @@
 import { useMemo, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { encodePayPage, loadMyPage, saveMyPage } from '@/lib/lumen/paypage'
-import { pickEmoji } from '@/lib/lumen/people'
+import { emojiChoices, pickEmoji } from '@/lib/lumen/people'
 import { TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
 import { AmountField, Avatar, parseAmount } from './bits'
-import { Check, Copy, Share } from './icons'
+import { ShareLink } from './share-link'
+
+/** Up to three; tapping toggles. Beats parsing a comma-separated string. */
+const PRESET_CHOICES = [5, 10, 20, 50, 100] as const
 
 export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { address, registered, prices } = useLumen()
@@ -32,7 +35,6 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
   const [presetsText, setPresetsText] = useState(
     saved && saved.presets.length > 0 ? saved.presets.join(', ') : '',
   )
-  const [copied, setCopied] = useState<'page' | 'request' | null>(null)
 
   const [reqToken, setReqToken] = useState<TokenSymbol>('USDC')
   const [reqAmountText, setReqAmountText] = useState('')
@@ -44,7 +46,11 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
     .filter((value) => Number.isFinite(value) && value > 0)
     .slice(0, 3)
 
-  const effectiveEmoji = emoji.trim() || (name.trim() ? pickEmoji(name.trim()) : '🙂')
+  const derivedEmoji = name.trim() ? pickEmoji(name.trim()) : '🙂'
+  const effectiveEmoji = emoji.trim() || derivedEmoji
+  // Only a deliberately different choice is worth the bytes; the page derives
+  // the same default from the name.
+  const emojiForLink = effectiveEmoji === derivedEmoji ? undefined : effectiveEmoji
 
   const pageUrl =
     address && name.trim()
@@ -52,7 +58,7 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
           v: 1,
           n: name.trim(),
           a: address,
-          e: effectiveEmoji,
+          ...(emojiForLink ? { e: emojiForLink } : {}),
           ...(presets.length > 0 ? { p: presets } : {}),
         })
       : null
@@ -64,35 +70,17 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
           v: 1,
           n: name.trim(),
           a: address,
-          e: effectiveEmoji,
+          ...(emojiForLink ? { e: emojiForLink } : {}),
           r: { t: reqToken, a: reqAmount.toString() },
           ...(reqNote.trim() ? { m: reqNote.trim() } : {}),
         })
       : null
 
-  const copy = async (url: string, which: 'page' | 'request') => {
+  // Handing the link over is the moment the page stops being a draft.
+  const remember = () => {
     if (address && name.trim()) {
       saveMyPage(address, { name: name.trim(), emoji: effectiveEmoji, presets })
     }
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(which)
-      setTimeout(() => setCopied(null), 1600)
-    } catch {
-      // URL stays visible.
-    }
-  }
-
-  const share = async (url: string, which: 'page' | 'request') => {
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ url, text: `Pay ${name.trim() || 'me'} privately on Lumen` })
-        return
-      } catch {
-        // Fall through to copy.
-      }
-    }
-    await copy(url, which)
   }
 
   const activeUrl = mode === 'page' ? pageUrl : requestUrl
@@ -120,40 +108,66 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
         ))}
       </div>
 
-      <div className="mt-5 flex items-center gap-3">
-        <Avatar emoji={effectiveEmoji} size={52} />
-        <div className="min-w-0 flex-1 space-y-2">
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value.slice(0, 40))}
-            placeholder="Your display name"
-            autoFocus={!saved}
-            className="h-11 w-full rounded-2xl border border-rule bg-card px-4 text-[15px] outline-none focus:border-rule-strong"
-          />
-        </div>
+      <div className="mt-5 flex items-center gap-3.5">
+        <Avatar emoji={effectiveEmoji} size={56} />
         <input
-          value={emoji}
-          onChange={(event) => setEmoji(event.target.value.slice(0, 4))}
-          placeholder="🙂"
-          aria-label="Emoji"
-          className="h-11 w-14 rounded-2xl border border-rule bg-card text-center text-[17px] outline-none focus:border-rule-strong"
+          value={name}
+          onChange={(event) => setName(event.target.value.slice(0, 40))}
+          placeholder="Your name"
+          autoFocus={!saved}
+          className="h-12 min-w-0 flex-1 rounded-2xl border border-rule bg-card px-4 text-[16px] font-medium outline-none focus:border-rule-strong"
         />
       </div>
 
+      {name.trim() ? (
+        <div className="mt-3 flex items-center gap-2">
+          {emojiChoices(name.trim()).map((option) => (
+            <button
+              key={option}
+              onClick={() => setEmoji(option)}
+              aria-label={`Use ${option}`}
+              aria-pressed={effectiveEmoji === option}
+              className={`grid size-9 flex-none place-items-center rounded-full text-[17px] transition-all ${
+                effectiveEmoji === option
+                  ? 'bg-card ring-2 ring-ink'
+                  : 'bg-sunk hover:bg-rule active:scale-95'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {mode === 'page' ? (
         <div className="mt-3">
-          <input
-            value={presetsText}
-            onChange={(event) => setPresetsText(event.target.value.slice(0, 30))}
-            placeholder="Preset amounts in USD — e.g. 5, 20, 50 (optional)"
-            inputMode="decimal"
-            className="h-11 w-full rounded-2xl border border-rule bg-card px-4 text-[14px] outline-none focus:border-rule-strong"
-          />
-          <p className="mt-3 px-1 text-[12.5px] leading-relaxed text-ink-faint">
-            Your page shows your name and receiving address — the same fact your Receive code
-            shows. Every payment to it arrives privately: no public sender, no public amount, and
-            no payer can see any other.
+          <p className="mb-2 px-1 text-[13px] font-semibold text-ink-muted">
+            Quick amounts <span className="font-normal text-ink-faint">— optional</span>
           </p>
+          <div className="flex flex-wrap gap-1.5">
+            {PRESET_CHOICES.map((choice) => {
+              const on = presets.includes(choice)
+              return (
+                <button
+                  key={choice}
+                  onClick={() =>
+                    setPresetsText(
+                      (on
+                        ? presets.filter((p) => p !== choice)
+                        : [...presets, choice].sort((a, b) => a - b).slice(0, 3)
+                      ).join(', '),
+                    )
+                  }
+                  aria-pressed={on}
+                  className={`h-9 rounded-full px-4 text-[13.5px] font-semibold transition-colors ${
+                    on ? 'bg-ink text-white' : 'bg-sunk text-ink-soft hover:bg-rule'
+                  }`}
+                >
+                  ${choice}
+                </button>
+              )
+            })}
+          </div>
         </div>
       ) : (
         <div className="mt-1">
@@ -182,24 +196,13 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
       ) : null}
 
       {activeUrl ? (
-        <>
-          <button
-            onClick={() => copy(activeUrl, mode)}
-            className="mt-5 w-full break-all rounded-2xl border border-rule bg-card-soft px-4 py-3.5 text-left font-mono text-[11.5px] leading-relaxed text-ink-soft transition-colors hover:border-rule-strong"
-          >
-            {activeUrl}
-          </button>
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
-            <button onClick={() => copy(activeUrl, mode)} className="btn btn-quiet">
-              {copied === mode ? <Check size={16} /> : <Copy size={16} />}
-              {copied === mode ? 'Copied' : 'Copy link'}
-            </button>
-            <button onClick={() => share(activeUrl, mode)} className="btn btn-ink">
-              <Share size={16} />
-              Share
-            </button>
-          </div>
-        </>
+        <ShareLink
+          url={activeUrl}
+          onHandOff={remember}
+          shareText={`Pay ${name.trim()} privately on Lumen`}
+          privateLabel="your page, packed into the link"
+          className="mt-5"
+        />
       ) : (
         <p className="mt-5 text-center text-[13px] text-ink-faint">
           {mode === 'page'
@@ -207,6 +210,12 @@ export function MyPageSheet({ open, onClose }: { open: boolean; onClose: () => v
             : 'Add a name and an amount and the request link appears here.'}
         </p>
       )}
+
+      <p className="mt-4 px-1 text-[12.5px] leading-relaxed text-ink-faint">
+        The page shows your name and receiving address — the same fact your Receive code shows.
+        What it does not show is anything that happens next: no public sender, no public amount,
+        and no payer can see any other.
+      </p>
     </Sheet>
   )
 }

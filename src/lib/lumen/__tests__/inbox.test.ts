@@ -107,7 +107,7 @@ describe('status', () => {
 
   it('marking an unknown secret is a harmless no-op', () => {
     rememberLink(link())
-    expect(() => markInboxClaimed('0xnothing')).not.toThrow()
+    expect(() => markInboxClaimed('0x0f')).not.toThrow()
     expect(loadInbox()[0].status).toBe('waiting')
   })
 })
@@ -119,16 +119,19 @@ describe('resilience', () => {
       JSON.stringify([
         // A fully-shaped stored row — note `firstSeenAt`, which the input
         // shape does not carry.
-        { ...link({ claimSecret: '0xgood' }), firstSeenAt: 1, status: 'waiting' },
+        { ...link({ claimSecret: '0x600d' }), firstSeenAt: 1, status: 'waiting' },
         { claimSecret: '0xbad', token: 'DOGE', amountRaw: '1', firstSeenAt: 1 },
         { claimSecret: '0xbad2', token: 'USDC', amountRaw: 'xyz', firstSeenAt: 1 },
+        // Not a felt: the compact codec would throw while re-encoding a link
+        // from this row, so it has to die here instead.
+        { claimSecret: '0xnope', token: 'USDC', amountRaw: '1', firstSeenAt: 1 },
         null,
         'junk',
       ]),
     )
     const all = loadInbox()
     expect(all).toHaveLength(1)
-    expect(all[0].claimSecret).toBe('0xgood')
+    expect(all[0].claimSecret).toBe('0x600d')
   })
 
   it('returns [] on unparseable storage, never throws', () => {

@@ -125,7 +125,13 @@ describe('link codec', () => {
     // Fragment must be URL-safe: no +, /, = that chat apps mangle.
     const fragment = url.split('#')[1]
     expect(/^[A-Za-z0-9_-]+$/.test(fragment)).toBe(true)
-    expect(decodeClaimLink(`#${fragment}`)).toEqual(payload)
+    const back = decodeClaimLink(`#${fragment}`)
+    // The compact codec returns canonical padded felts; the value is identical.
+    expect(BigInt(back!.s)).toBe(BigInt(payload.s))
+    expect(BigInt(back!.t)).toBe(BigInt(payload.t))
+    expect(back!.a).toBe(payload.a)
+    expect(back!.f).toBe(payload.f)
+    expect(back!.n).toBe(payload.n)
   })
 
   it('rejects garbage, wrong versions, and non-hex secrets', async () => {

@@ -750,14 +750,14 @@ export const useLumen = create<LumenState>((set, get) => ({
       // Nothing to clear.
     }
     rememberLink({
-      claimSecret: '0xdev1',
+      claimSecret: '0xde01',
       token: 'USDC',
       amountRaw: '52880000',
       fromName: 'Amara',
       note: 'Coffee money',
     })
     rememberLink({
-      claimSecret: '0xdev2',
+      claimSecret: '0xde02',
       token: 'STRK',
       amountRaw: '40000000000000000000',
       fromName: 'Hackathon',
