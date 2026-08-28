@@ -1,5 +1,12 @@
 {
-  "transactions": [],
+  "transactions": [
+    {
+      "hash": "0x747ea8c9ef941c278275c2c8e12e54b1ba7f1cab0c25d421a2718e45a6b5d52",
+      "network": "mainnet",
+      "what": "Claim link minted: 2 STRK withdrawn from the pool into LumenEscrow behind a Poseidon commitment. Claimable by whoever holds the secret, with no wallet or pool registration needed until they open it.",
+      "block": 14011191
+    }
+  ],
   "contracts": [
     {
       "name": "LumenEscrow",

@@ -214,6 +214,18 @@ export function portfolioUsd(
  * Chain actions need a live wallet account. Surfacing the refusal through the
  * store's error state (not just a throw) is what makes it visible in the UI.
  */
+/**
+ * One wallet operation at a time.
+ *
+ * Every submitting action guards on this rather than trusting a disabled
+ * button: a second entry point, a stray keypress, or a component that
+ * re-renders mid-flight would otherwise queue a second prompt against money
+ * that is already moving. Rejecting is free; a duplicate transfer is not.
+ */
+function requireIdle(get: () => LumenState): void {
+  if (get().submitting) throw new Error('Something is already going to your wallet — finish that first.')
+}
+
 function requireAccount(
   get: () => LumenState,
   set: (partial: Partial<LumenState>) => void,
@@ -407,6 +419,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async pay(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
@@ -451,6 +464,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async paySplit(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     const recipients = input.recipients.filter((r) => r.amount > 0n)
     if (recipients.length === 0) throw new Error('Add at least one person and an amount.')
@@ -505,6 +519,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async addMoney(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
@@ -542,6 +557,7 @@ export const useLumen = create<LumenState>((set, get) => ({
    * several uneven notes instead of one round one.
    */
   async scatterBalance(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     const plan = scatterPlan({
       token: TOKENS[input.token].address,
@@ -583,6 +599,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async cashOut(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
@@ -628,6 +645,7 @@ export const useLumen = create<LumenState>((set, get) => ({
    * whole payout as a sequence.
    */
   async sendClaimLinks(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
@@ -702,6 +720,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async sendClaimLink(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
@@ -765,6 +784,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async claimFromLink(payload) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
@@ -801,6 +821,7 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async refundLink(id) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     const link = get().links.find((l) => l.id === id)
     if (!link) throw new Error('That link is not in this device’s records.')
