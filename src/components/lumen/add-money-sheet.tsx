@@ -100,36 +100,8 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
     <Sheet open={open} onClose={onClose} locked={submitting} title={done ? 'Added' : 'Add money'}>
       {!done ? (
         <div>
-          {/* The pool charges a flat fee per operation, so the *proportion* it
-          takes depends entirely on the size of the deposit. Six STRK is
-          nothing against 700 and most of the money against 10, and nobody
-          should discover that at the wallet's confirm screen. */}
-      {feeShare !== null && feeShare > 0.05 ? (
-        <div className="mb-5 rounded-2xl bg-glass px-5 py-4 text-glass-ink">
-          <p className="text-[14px] font-semibold">
-            The pool fee would be {(feeShare * 100).toFixed(0)}% of this deposit
-          </p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-glass-muted">
-            It is a flat {formatUnits(poolFee, 18, 2)} STRK per operation, not a percentage — so
-            it barely registers on a large deposit and eats a small one. Adding more at once
-            costs the same fee and leaves you free to spend it in as many private payments as
-            you like, each of which is also one fee.
-          </p>
-        </div>
-      ) : null}
-
-      {registered === false ? (
-        <div className="mb-5 rounded-2xl bg-glass px-5 py-4 text-glass-ink">
-          <p className="text-[14px] font-semibold">One step happens in your wallet first</p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-glass-muted">
-            Your account has not joined the privacy pool yet, and no app can join it for you —
-            the wallet API has no such method. Open your wallet, shield any small amount there
-            once, and come back. After that everything here works, and you will never see this
-            again.
-          </p>
-        </div>
-      ) : null}
-
+          {/* One line, under the amount, only when the number makes it
+              matter — not two stacked slabs above the field. */}
       <AmountField
             value={amountText}
             onChange={(next) => {
@@ -191,6 +163,19 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
           >
             {submitting ? 'Waiting for your wallet…' : 'Add to private balance'}
           </button>
+          {feeShare !== null && feeShare > 0.05 ? (
+            <p className="mt-3 text-center text-[13px] font-semibold">
+              The pool&rsquo;s flat {formatUnits(poolFee, 18, 0)} STRK fee is{' '}
+              {(feeShare * 100).toFixed(0)}% of this. Adding more costs the same.
+            </p>
+          ) : null}
+
+          {registered === false ? (
+            <p className="mt-3 text-center text-[13px] font-semibold">
+              Shield once in your wallet first — no app can join the pool for you.
+            </p>
+          ) : null}
+
           <p className="mt-3 text-center text-[12px] leading-relaxed text-ink-faint">
             Your wallet will ask twice — once to approve {token}, once to deposit. Both are part
             of the same step.

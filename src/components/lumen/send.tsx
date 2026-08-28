@@ -302,19 +302,15 @@ export function SendComposer({
       </div>
 
       {target && reach === 'unregistered' ? (
-        <div className="card mt-3 px-5 py-5">
-          <p className="text-[15px] font-semibold">
-            {target.name ?? shortAddress(target.address)} has never used a private balance.
-          </p>
-          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-muted">
-            A private transfer needs both sides registered with the pool, so this one cannot
-            land. A link can — it holds the money behind a hash until they open it, and they
-            can collect it whenever they are ready.
-          </p>
-          <button onClick={onNeedsLink} className="btn btn-ink mt-4 w-full">
-            <LinkIcon size={17} />
+        <div className="mt-3">
+          <button onClick={onNeedsLink} className="btn btn-ink w-full !h-[58px] !text-[16.5px]">
+            <LinkIcon size={19} />
             Send a link instead
           </button>
+          <p className="mt-3 text-center text-[12.5px] text-ink-muted">
+            {target.name ?? shortAddress(target.address)} is not set up for private transfers. A
+            link reaches them anyway.
+          </p>
         </div>
       ) : target ? (
         <button

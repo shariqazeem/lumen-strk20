@@ -17,7 +17,6 @@
  * flat, which makes a small first deposit a bad trade rather than a small one.
  */
 
-import { formatUnits } from '@/lib/strk20/wallet'
 import { ArrowRight, Plus, ShieldCheck } from './icons'
 
 export function NotRegistered({ walletName }: { walletName: string | null }) {
@@ -28,39 +27,21 @@ export function NotRegistered({ walletName }: { walletName: string | null }) {
         One step, once, in your wallet
       </p>
       <h2 className="mt-4 text-[26px] font-semibold leading-[1.15] tracking-[-0.025em] text-glass-ink">
-        Your wallet has to join the privacy pool before anything can be private.
+        One step in your wallet, then everything here is private.
       </h2>
       <p className="mt-4 text-[15px] leading-relaxed text-glass-muted">
-        {walletName ?? 'Your wallet'} does this the first time you shield something in it. No app
-        can do it for you — the wallet API has no method for it, which is exactly why nobody can
-        register you behind your back either.
-      </p>
-      <ol className="mt-5 space-y-2.5 text-[14.5px] text-glass-muted">
-        {[
-          `Open ${walletName ?? 'your wallet'} and shield some ${''}STRK there.`,
-          'Approve it. That approval is the registration.',
-          'Come back here. You will never see this screen again.',
-        ].map((line, index) => (
-          <li key={line} className="flex gap-3">
-            <span className="font-mono text-[12px] text-glass-faint">0{index + 1}</span>
-            {line}
-          </li>
-        ))}
-      </ol>
-      <p className="mt-6 border-t border-white/10 pt-4 text-[13px] leading-relaxed text-glass-faint">
-        Shield a real amount rather than a token one. The pool charges a flat fee per operation,
-        so a small first deposit loses most of itself to it and a large one barely notices.
+        Shield something in {walletName ?? 'your wallet'} once — that is the joining — then come
+        back. Make it a real amount: the pool&rsquo;s fee is flat, so a small first deposit
+        loses most of itself to it.
       </p>
     </section>
   )
 }
 
 export function NothingToSend({
-  poolFee,
   onAdd,
   onGetPaid,
 }: {
-  poolFee: bigint
   onAdd: () => void
   onGetPaid: () => void
 }) {
@@ -70,12 +51,8 @@ export function NothingToSend({
         Add money once. After that, nothing you do here is public.
       </h2>
       <p className="mt-4 text-[15px] leading-relaxed text-glass-muted">
-        Your deposit is the only visible step, and the engine tunes even that so it points at
-        nothing you do later. Paying, getting paid and saving publish nothing at all.
-      </p>
-      <p className="mt-3 text-[13px] leading-relaxed text-glass-faint">
-        The pool charges a flat {formatUnits(poolFee, 18, 2)} STRK per operation, so one larger
-        deposit costs the same as one small one and leaves more to spend.
+        Your deposit is the only visible step, and the engine tunes even that. Everything after
+        it publishes nothing.
       </p>
       <div className="mt-6 flex flex-wrap gap-2.5">
         <button onClick={onAdd} className="btn bg-white text-ink hover:bg-white/90">

@@ -220,7 +220,6 @@ export function Home({
     clearError,
     lastTx,
     walletName,
-    poolFee,
   } = useLumen()
 
   const [inbox, setInbox] = useState<InboxLink[]>([])
@@ -281,7 +280,6 @@ export function Home({
           ) : !hasBalance ? (
             <div className="mt-1">
               <NothingToSend
-                poolFee={poolFee}
                 onAdd={() => open({ kind: 'add' })}
                 onGetPaid={() => open({ kind: 'my-page' })}
               />
