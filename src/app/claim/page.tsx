@@ -119,6 +119,8 @@ export default function ClaimPage() {
     try {
       const txHash = await claimAnyWay({ payload, recipient: address })
       markInboxClaimed(payload.s, txHash)
+      // An empty hash means the wallet went quiet but the chain confirmed the
+      // claim settled. It is still a success and must read as one.
       setState({ kind: 'claimed-by-me', payload, txHash })
     } catch {
       // The store surfaced the reason. The money is untouched either way —
@@ -331,7 +333,7 @@ export default function ClaimPage() {
               Claimed into your private balance. No one — including the sender — can see what you
               do with it next.
             </p>
-            {lastTx ? (
+            {lastTx && state.txHash ? (
               <p className="mt-3">
                 <TxLink hash={lastTx.hash} />
               </p>

@@ -230,6 +230,37 @@ export function portfolioUsd(
  * re-renders mid-flight would otherwise queue a second prompt against money
  * that is already moving. Rejecting is free; a duplicate transfer is not.
  */
+/**
+ * How long to wait on a wallet before asking the chain instead.
+ *
+ * A wallet's promise can hang: the user rejects and nothing rejects back, or
+ * the transaction succeeds and the response never routes home. Both leave the
+ * UI insisting it is waiting while the money has already moved, which is the
+ * worst thing this product can display.
+ */
+const WALLET_TIMEOUT_MS = 45_000
+
+/** Resolves to `null` if the wallet has not answered in time. */
+function withWalletTimeout<T>(work: Promise<T>): Promise<T | null> {
+  return Promise.race([
+    work,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), WALLET_TIMEOUT_MS)),
+  ])
+}
+
+/**
+ * Ask the escrow whether a claim actually settled.
+ *
+ * The chain is the authority. If the wallet went quiet but the entry is marked
+ * claimed, the money moved and the UI must say so.
+ */
+async function claimSettled(secret: string): Promise<boolean> {
+  const holder = await findEscrowHolding(secret)
+  // `findEscrowHolding` only returns entries that still exist and are
+  // unclaimed, so its absence after an attempt means the claim went through.
+  return holder === null
+}
+
 function requireIdle(get: () => LumenState): void {
   if (get().submitting) throw new Error('Something is already going to your wallet — finish that first.')
 }
@@ -855,7 +886,18 @@ export const useLumen = create<LumenState>((set, get) => ({
       })
       // A plain Starknet invoke, deliberately not `strk20InvokeTransaction`:
       // nothing about this touches the pool.
-      const { transaction_hash } = await account.execute([call])
+      const submitted = await withWalletTimeout(account.execute([call]))
+      if (!submitted) {
+        if (await claimSettled(input.secret)) {
+          set({ submitting: false, error: null })
+          return ''
+        }
+        throw new Error(
+          'Your wallet did not answer. Check it — if the transaction went through, this link is ' +
+            'already claimed and refreshing will show it.',
+        )
+      }
+      const { transaction_hash } = submitted
 
       const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
       set({ submitting: false, lastTx })
@@ -879,7 +921,19 @@ export const useLumen = create<LumenState>((set, get) => ({
         recipient: address,
         secret: payload.s,
       })
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const submitted = await withWalletTimeout(account.strk20InvokeTransaction(actions))
+      if (!submitted) {
+        // The wallet stopped answering. The chain still knows the truth.
+        if (await claimSettled(payload.s)) {
+          set({ submitting: false, error: null })
+          return ''
+        }
+        throw new Error(
+          'Your wallet did not answer. Check it — if the transaction went through, this link is ' +
+            'already claimed and refreshing will show it.',
+        )
+      }
+      const { transaction_hash } = submitted
 
       const token = tokenByAddress(payload.t)
       const ledger = token
