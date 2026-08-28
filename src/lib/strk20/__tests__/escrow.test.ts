@@ -11,6 +11,8 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 const ESCROW = '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+/** What the builders hand the wallet: the same felt, minimal hex. */
+const ESCROW_SENT = `0x${BigInt(ESCROW).toString(16)}`
 
 beforeAll(() => {
   vi.stubEnv('NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS', ESCROW)
@@ -60,13 +62,14 @@ describe('action builders', () => {
     expect(actions).toHaveLength(2)
     expect(actions[0]).toEqual({
       type: 'withdraw',
+      // Not a felt, so it passes through untouched — see `walletFelt`.
       token: '0xt0ken',
       amount: `0x${(149_884_201n).toString(16)}`,
-      recipient: ESCROW,
+      recipient: ESCROW_SENT,
     })
     const invoke = actions[1]
     if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
-    expect(invoke.contract).toBe(ESCROW)
+    expect(invoke.contract).toBe(ESCROW_SENT)
     // [op, claim, refund, expiry, token, amount, secret, note, batch_len]
     expect(invoke.calldata).toEqual([
       '0x0',
@@ -163,7 +166,7 @@ describe('batch claim links', () => {
       type: 'withdraw',
       token: '0xt0ken',
       amount: `0x${total.toString(16)}`,
-      recipient: ESCROW,
+      recipient: ESCROW_SENT,
     })
 
     const invoke = actions[1]
@@ -240,10 +243,10 @@ describe('batch claim links', () => {
 })
 
 describe('wallet payload shape', () => {
-  it('pads every address to 66 characters', async () => {
-    // `0x43e4…` and `0x043e4…` are the same felt and different strings, and a
-    // wallet validating the string answers INVALID_REQUEST_PAYLOAD without
-    // saying which field was short.
+  it('writes every address as minimal hex, never zero-padded', async () => {
+    // Verified against a wallet on mainnet: the same action array passes with
+    // minimal hex and fails, as INVALID_REQUEST_PAYLOAD, when zero-padded to
+    // 64 digits. The error names no field, so this is pinned here instead.
     const { buildEscrowFund, buildEscrowClaim, buildEscrowFundMany } = await lib()
     const everything = [
       ...buildEscrowFund({
@@ -265,7 +268,7 @@ describe('wallet payload shape', () => {
       for (const field of ['token', 'recipient', 'contract'] as const) {
         const value = (action as Record<string, unknown>)[field]
         if (typeof value !== 'string') continue
-        expect(value, `${action.type}.${field}`).toMatch(/^0x[0-9a-f]{64}$/)
+        expect(value, `${action.type}.${field}`).toMatch(/^0x(0|[1-9a-f][0-9a-f]*)$/)
       }
     }
   })

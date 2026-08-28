@@ -15,7 +15,7 @@
 
 import { hash, RpcProvider, shortString } from 'starknet'
 import type { STRK20_ACTION } from '@starknet-io/types-js'
-import { padAddress, RPC_URL, sameAddress, TOKEN_LIST, TOKENS, type TokenConfig } from './config'
+import { walletFelt, RPC_URL, sameAddress, TOKEN_LIST, TOKENS, type TokenConfig } from './config'
 import { decodeClaim, encodeClaim } from '@/lib/lumen/codec'
 import { openNoteRef } from './actions'
 
@@ -27,7 +27,7 @@ const RAW_ESCROW_ADDRESS = process.env.NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS ?? ''
  * a deploy log, a dashboard field, a copy-paste — the wallet always receives
  * the canonical form.
  */
-export const ESCROW_ADDRESS = RAW_ESCROW_ADDRESS ? padAddress(RAW_ESCROW_ADDRESS) : ''
+export const ESCROW_ADDRESS = RAW_ESCROW_ADDRESS ? walletFelt(RAW_ESCROW_ADDRESS) : ''
 
 export function escrowEnabled(): boolean {
   return ESCROW_ADDRESS.length > 0
@@ -87,7 +87,7 @@ export function buildEscrowFund(input: {
   return [
     {
       type: 'withdraw',
-      token: padAddress(input.token),
+      token: walletFelt(input.token),
       amount: hex(input.amount),
       recipient: ESCROW_ADDRESS,
     },
@@ -99,7 +99,7 @@ export function buildEscrowFund(input: {
         claimCommitment(input.claimSecret),
         refundCommitment(input.refundSecret),
         hex(BigInt(Math.max(0, Math.trunc(input.expiry)))),
-        padAddress(input.token),
+        walletFelt(input.token),
         hex(input.amount),
         '0x0',
         '0x0',
@@ -159,7 +159,7 @@ export function buildEscrowFundMany(input: {
   return [
     {
       type: 'withdraw',
-      token: padAddress(input.token),
+      token: walletFelt(input.token),
       amount: hex(total),
       recipient: ESCROW_ADDRESS,
     },
@@ -171,7 +171,7 @@ export function buildEscrowFundMany(input: {
         '0x0',
         '0x0',
         hex(BigInt(Math.max(0, Math.trunc(input.expiry)))),
-        padAddress(input.token),
+        walletFelt(input.token),
         hex(total),
         '0x0',
         '0x0',
@@ -193,9 +193,9 @@ function buildEscrowExit(
   return [
     {
       type: 'transfer',
-      token: padAddress(input.token),
+      token: walletFelt(input.token),
       amount: 'OPEN',
-      recipient: padAddress(input.recipient),
+      recipient: walletFelt(input.recipient),
     },
     {
       type: 'invoke',

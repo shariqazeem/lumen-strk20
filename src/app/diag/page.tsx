@@ -15,81 +15,56 @@ import { useState } from 'react'
 import type { STRK20_ACTION } from '@starknet-io/types-js'
 import { useLumen } from '@/lib/lumen/store'
 import { listWallets, supportsStrk20 } from '@/lib/strk20/wallet'
-import { ESCROW_ADDRESS, claimCommitment, refundCommitment } from '@/lib/strk20/escrow'
-import { padAddress, TOKENS } from '@/lib/strk20/config'
+import {
+  buildEscrowClaim,
+  buildEscrowFund,
+  buildEscrowFundMany,
+  buildEscrowRefund,
+  ESCROW_ADDRESS,
+} from '@/lib/strk20/escrow'
+import { walletFelt, TOKENS } from '@/lib/strk20/config'
 
-const STRK = padAddress(TOKENS.STRK.address)
 const AMOUNT = 2_000_000_000_000_000_000n // 2 STRK
-const hex = (v: bigint) => `0x${v.toString(16)}`
 const EXPIRY = Math.floor(Date.now() / 1000) + 600
 
-/** The nine-felt Deposit calldata our contract expects. */
-const depositCalldata = (thinHex = false) => [
-  '0x0',
-  claimCommitment('0xa11ce'),
-  refundCommitment('0xb0b'),
-  hex(BigInt(EXPIRY)),
-  thinHex ? `0x${BigInt(STRK).toString(16)}` : STRK,
-  hex(AMOUNT),
-  '0x0',
-  '0x0',
-  '0x0',
-]
-
-/** Minimal hex, the way `num.toHex` writes it — no zero padding. */
-const thin = (value: string) => `0x${BigInt(value).toString(16)}`
-
-const ESCROW_THIN = thin(ESCROW_ADDRESS)
-const STRK_THIN = thin(STRK)
-
 const CANDIDATES: { name: string; actions: STRK20_ACTION[] }[] = [
-  // Does the hex form of the *recipient* decide whether OPEN is accepted?
   {
-    name: '1 — OPEN note, padded recipient',
-    actions: [{ type: 'transfer', token: STRK, amount: 'OPEN', recipient: 'SELF' }],
+    name: '1 — Deposit, exactly as the app now builds it',
+    actions: buildEscrowFund({
+      token: TOKENS.STRK.address,
+      amount: AMOUNT,
+      claimSecret: '0xa11ce',
+      refundSecret: '0xb0b',
+      expiry: EXPIRY,
+    }),
   },
   {
-    name: '2 — OPEN note, minimal-hex recipient and token',
-    actions: [{ type: 'transfer', token: STRK_THIN, amount: 'OPEN', recipient: 'SELF_THIN' }],
-  },
-  // Does the hex form of the invoke *contract* decide?
-  {
-    name: '3 — invoke, padded contract, empty calldata',
-    actions: [{ type: 'invoke', contract: ESCROW_ADDRESS, calldata: [] }],
-  },
-  {
-    name: '4 — invoke, minimal-hex contract, empty calldata',
-    actions: [{ type: 'invoke', contract: ESCROW_THIN, calldata: [] }],
-  },
-  // The starter kit's exact working shape, pointed at our escrow. Order is
-  // withdraw, then OPEN, then invoke — not the order we ship.
-  {
-    name: '5 — starter-kit shape: withdraw, OPEN, invoke (all minimal hex)',
-    actions: [
-      { type: 'withdraw', token: STRK_THIN, amount: hex(AMOUNT), recipient: ESCROW_THIN },
-      { type: 'transfer', token: STRK_THIN, amount: 'OPEN', recipient: 'SELF_THIN' },
-      {
-        type: 'invoke',
-        contract: ESCROW_THIN,
-        calldata: [STRK_THIN, '${poolAddress}', '${openNoteIds[0]}'],
-      },
-    ],
-  },
-  // Same order and hex form, but our real nine-felt Deposit calldata.
-  {
-    name: '6 — starter-kit order, our Deposit calldata (minimal hex)',
-    actions: [
-      { type: 'withdraw', token: STRK_THIN, amount: hex(AMOUNT), recipient: ESCROW_THIN },
-      { type: 'transfer', token: STRK_THIN, amount: 'OPEN', recipient: 'SELF_THIN' },
-      { type: 'invoke', contract: ESCROW_THIN, calldata: depositCalldata(true) },
-    ],
+    name: '2 — Claim, exactly as the app now builds it',
+    actions: buildEscrowClaim({
+      token: TOKENS.STRK.address,
+      recipient: 'SELF_RAW',
+      secret: '0xa11ce',
+    }),
   },
   {
-    name: '7 — as 6 but no OPEN note (Deposit credits nothing back)',
-    actions: [
-      { type: 'withdraw', token: STRK_THIN, amount: hex(AMOUNT), recipient: ESCROW_THIN },
-      { type: 'invoke', contract: ESCROW_THIN, calldata: depositCalldata(true) },
-    ],
+    name: '3 — Refund, exactly as the app now builds it',
+    actions: buildEscrowRefund({
+      token: TOKENS.STRK.address,
+      recipient: 'SELF_RAW',
+      secret: '0xb0b',
+    }),
+  },
+  {
+    name: '4 — DepositMany, three links in one operation',
+    actions: buildEscrowFundMany({
+      token: TOKENS.STRK.address,
+      expiry: EXPIRY,
+      legs: [
+        { amount: 700_000_000_000_000_000n, claimSecret: '0xc1', refundSecret: '0xd1' },
+        { amount: 600_000_000_000_000_000n, claimSecret: '0xc2', refundSecret: '0xd2' },
+        { amount: 700_000_000_000_000_000n, claimSecret: '0xc3', refundSecret: '0xd3' },
+      ],
+    }),
   },
 ]
 
@@ -101,7 +76,7 @@ export default function DiagPage() {
   const run = async () => {
     if (!account) return
     setBusy(true)
-    const me = padAddress(account.address)
+    const me = walletFelt(account.address)
     // What the wallet advertises, next to what it actually accepts. If it
     // claims an API version whose spec includes `invoke` and rejects `invoke`,
     // that is a wallet gap and not our payload.
@@ -111,7 +86,7 @@ export default function DiagPage() {
       | undefined
     setLines([
       `escrow ${ESCROW_ADDRESS}`,
-      `token  ${STRK}`,
+      `token  ${walletFelt(TOKENS.STRK.address)}`,
       `self   ${me}`,
       `wallet ${wallet?.name ?? '?'}`,
       `api    ${(feature?.supportedApiVersions ?? [feature?.version ?? '?']).join(', ')}`,
@@ -120,13 +95,11 @@ export default function DiagPage() {
     ])
     for (const candidate of CANDIDATES) {
       // Placeholders resolved here so the list can be written declaratively.
-      const meThin = `0x${BigInt(account.address).toString(16)}`
-      const actions = candidate.actions.map((action) => {
-        if (!('recipient' in action)) return action
-        if (action.recipient === 'SELF') return { ...action, recipient: me }
-        if (action.recipient === 'SELF_THIN') return { ...action, recipient: meThin }
-        return action
-      }) as STRK20_ACTION[]
+      const actions = candidate.actions.map((action) =>
+        'recipient' in action && action.recipient === 'SELF_RAW'
+          ? { ...action, recipient: walletFelt(account.address) }
+          : action,
+      ) as STRK20_ACTION[]
       try {
         await account.strk20PrepareInvoke(actions, true)
         setLines((l) => [...l, `PASS  ${candidate.name}`])
@@ -149,9 +122,8 @@ export default function DiagPage() {
       <p className="mt-3 max-w-[58ch] text-[14.5px] leading-relaxed text-ink-muted">
         Dry-runs each candidate action array through the wallet with{' '}
         <span className="font-mono text-[13px]">simulate = true</span>. Nothing is submitted and
-        nothing is signed. The first four are controls — if those fail, the escrow is not the
-        problem. Five to seven isolate the <span className="font-mono text-[13px]">invoke</span>{' '}
-        action from the smallest possible shape upward.
+        nothing is signed. These are the four escrow flows exactly as the app builds them, after
+        the minimal-hex fix.
       </p>
 
       {status !== 'connected' ? (
@@ -165,7 +137,7 @@ export default function DiagPage() {
         </div>
       ) : (
         <button onClick={() => void run()} disabled={busy} className="btn btn-ink mt-8">
-          {busy ? 'Asking the wallet…' : 'Run the seven candidates'}
+          {busy ? 'Asking the wallet…' : 'Run the four real flows'}
         </button>
       )}
 

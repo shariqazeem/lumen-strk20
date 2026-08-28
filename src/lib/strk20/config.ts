@@ -211,18 +211,23 @@ export function preferredToken(
 export const FLAGSHIP: TokenSymbol = 'strkBTC'
 
 /**
- * A Starknet address as the Wallet API expects to receive it: `0x` plus 64
- * hex digits, zero-padded.
+ * A felt as the Wallet API expects to receive it: `0x` followed by the
+ * shortest hex that represents it, with no leading zeros.
  *
- * `0x43e4…` and `0x043e4…` are the same felt and different strings, and a
- * wallet validating the string rejects the short one — which surfaces as
- * `INVALID_REQUEST_PAYLOAD` with no indication of which field was wrong. Every
- * address handed to the wallet goes through here.
+ * This is what `num.toHex` produces and what the official starter kit hands
+ * the wallet. Zero-padding the same value to 64 digits is the same felt and a
+ * different string, and it is rejected with `INVALID_REQUEST_PAYLOAD` — an
+ * error that names no field. Verified against a wallet on mainnet: identical
+ * action arrays pass minimal and fail padded.
+ *
+ * Wallet placeholders (`${openNoteIds[0]}`, `${poolAddress}`) are substituted
+ * during assembly and must be passed through untouched, so anything that is
+ * not parseable as a number is returned as-is.
  */
-export function padAddress(address: string): string {
+export function walletFelt(value: string): string {
   try {
-    return `0x${BigInt(address).toString(16).padStart(64, '0')}`
+    return `0x${BigInt(value).toString(16)}`
   } catch {
-    return address
+    return value
   }
 }
