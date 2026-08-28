@@ -644,7 +644,41 @@ That test file mocks `starknet` with a **three-export factory**, not
 `importOriginal`. Spreading the real package costs seconds of module loading
 per run and timed the suite out.
 
-### 6.3 starkli cannot talk to Starknet mainnet
+### 6.3 Wallet payloads: minimal hex, and three shape rules
+
+All four verified against Ready X on mainnet with
+`strk20PrepareInvoke(actions, true)`, which dry-runs without submitting or
+signing. Each rule below is the difference between two action arrays that
+were otherwise identical — one passing, one returning **114
+INVALID_REQUEST_PAYLOAD**, an error that names no field.
+
+**1. Felts are minimal hex, never zero-padded.** `0x43e4…`, what `num.toHex`
+produces. The same felt padded to 64 digits is rejected. `walletFelt` in
+`config.ts` is the only way an address should reach the wallet, and a test
+pins it. Padding was introduced once as a *fix* for this error and made it
+worse — the short address had been right for the wrong reason.
+
+**2. `invoke` must arrive with the `withdraw` that funds the helper.** An
+invoke on its own is rejected, minimal hex or not, with empty calldata or
+full.
+
+**3. An `OPEN` note must be filled by the helper's return.** An open note on
+its own is rejected, and so is one in front of a helper that returns an empty
+span. Our Deposit credits nothing back, so it opens no note; Claim and Refund
+return one `OpenNoteDeposit` each, so they do.
+
+**Wallet placeholders are not felts.** `${openNoteIds[0]}` and
+`${poolAddress}` are substituted during assembly and must pass through
+untouched — `walletFelt` returns anything unparseable as-is for exactly this
+reason.
+
+`/diag` dry-runs the four escrow flows as the app builds them. Reach for it
+before reasoning about a payload: two rounds of inference from documentation
+did not solve this, and one run of the wallet's own verdict did. Note that it
+must report the *connected* wallet — taking the first STRK20-capable wallet
+instead once labelled a Ready result as Xverse.
+
+### 6.4 starkli cannot talk to Starknet mainnet
 
 starkli **0.4.2 is its latest release** (July 2025) and still requests the
 `pending` block tag. Mainnet moved to `pre_confirmed`; every call fails with
@@ -657,7 +691,7 @@ starkli keystore (standard Ethereum v3, scrypt + aes-128-ctr) in memory with a
 password typed at run time, deploys the account if needed, declares, deploys,
 verifies, and writes `.env.local` + `strk20.json`.
 
-### 6.4 RPC endpoints
+### 6.5 RPC endpoints
 
 - **Blast is dead.** Its public Starknet RPC returns *"Blast API is no longer
   available"* on every call — and starkli auto-selects it when no endpoint is
@@ -667,7 +701,7 @@ verifies, and writes `.env.local` + `strk20.json`.
 - For heavy use set `NEXT_PUBLIC_STARKNET_RPC_URL` / `STARKNET_RPC` to your own
   Alchemy key. Declare is a ~135KB payload and public endpoints throttle it.
 
-### 6.5 starknet.js v10 API changes
+### 6.6 starknet.js v10 API changes
 
 `Account` takes **a single options object**: `new Account({ provider, address,
 signer })`. The pre-v10 positional form is accepted silently — the provider
@@ -675,7 +709,7 @@ becomes the options bag, a default provider is constructed, and `address` lands
 undefined, surfacing much later as `Cannot read properties of undefined
 (reading 'toLowerCase')`.
 
-### 6.6 Pool facts
+### 6.7 Pool facts
 
 - **The pool fee is 6 STRK**, not the 4 in the published docs. Always read
   `get_fee_amount`; `FALLBACK_POOL_FEE_STRK` is a first-paint fallback only.
@@ -690,12 +724,12 @@ undefined, surfacing much later as `Cannot read properties of undefined
 - USDC must be **native Circle** `0x033068f6…35fb`, not bridged USDC.e
   (~19,600 shielded events vs 80 — the bridged venue has no anonymity set).
 
-### 6.7 Cairo
+### 6.8 Cairo
 
 **Cairo has no block comments.** `/* … */` is a syntax error; use `//`. This
 broke the escrow test suite once.
 
-### 6.8 Next.js / deploy
+### 6.9 Next.js / deploy
 
 `NEXT_PUBLIC_*` values are **inlined into the JS bundle at build time**, not
 into the HTML. Grepping page HTML for an env value will always fail — check the
