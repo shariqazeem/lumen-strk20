@@ -257,7 +257,11 @@ export function Home({
         <>
           {/* Send is the product — first, and not behind a button. */}
           <div className="mt-1">
-            <SendComposer onObserver={() => onObserver(true)} onReceipt={onReceipt} />
+            <SendComposer
+              onObserver={() => onObserver(true)}
+              onReceipt={onReceipt}
+              onNeedsLink={() => open({ kind: 'pay' })}
+            />
           </div>
 
           {/* the balance — an object here, not the brand */}

@@ -22,11 +22,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { reviewPay } from '@/lib/lumen/guard'
 import { looksLikeStarknetAddress, shortAddress, type Person } from '@/lib/lumen/people'
+import { readRegistration, type Registration } from '@/lib/strk20/registration'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { preferredToken, TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import type { Receipt } from '@/lib/lumen/receipts'
 import { AmountField, Avatar, ErrorNote, parseAmount, SuccessMark, TxLink } from './bits'
-import { ArrowRight, ArrowUpRight, Check, Globe, ShieldCheck } from './icons'
+import { ArrowRight, ArrowUpRight, Check, Globe, LinkIcon, ShieldCheck } from './icons'
 
 /** Who the money is going to, once it is settled enough to send. */
 interface Target {
@@ -37,9 +38,12 @@ interface Target {
 export function SendComposer({
   onObserver,
   onReceipt,
+  onNeedsLink,
 }: {
   onObserver: () => void
   onReceipt: (receipt: Receipt) => void
+  /** The recipient cannot receive a private transfer; offer the escrow path. */
+  onNeedsLink: () => void
 }) {
   const {
     people,
@@ -59,6 +63,10 @@ export function SendComposer({
   const [amountText, setAmountText] = useState('')
   const [token, setToken] = useState<TokenSymbol | null>(null)
   const [sent, setSent] = useState<Receipt | null>(null)
+  // The pool requires both sides to be registered before a private transfer.
+  // Reading it here means the dead end is found before the wallet prompt, and
+  // it has somewhere to go: a link needs no registration at all.
+  const [reach, setReach] = useState<Registration>('unknown')
   const amountRef = useRef<HTMLDivElement>(null)
 
   // Null until balances land, so the composer never opens on an asset the
@@ -89,6 +97,21 @@ export function SendComposer({
   // exactly two fields and should never make anyone hunt for the second.
   useEffect(() => {
     if (target) amountRef.current?.querySelector('input')?.focus()
+  }, [target])
+
+  useEffect(() => {
+    if (!target) {
+      setReach('unknown')
+      return
+    }
+    let live = true
+    setReach('unknown')
+    void readRegistration(target.address).then((result) => {
+      if (live) setReach(result)
+    })
+    return () => {
+      live = false
+    }
   }, [target])
 
   const submit = async () => {
@@ -278,7 +301,22 @@ export function SendComposer({
         ) : null}
       </div>
 
-      {target ? (
+      {target && reach === 'unregistered' ? (
+        <div className="card mt-3 px-5 py-5">
+          <p className="text-[15px] font-semibold">
+            {target.name ?? shortAddress(target.address)} has never used a private balance.
+          </p>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-ink-muted">
+            A private transfer needs both sides registered with the pool, so this one cannot
+            land. A link can — it holds the money behind a hash until they open it, and they
+            need no wallet at all to do that.
+          </p>
+          <button onClick={onNeedsLink} className="btn btn-ink mt-4 w-full">
+            <LinkIcon size={17} />
+            Send a link instead
+          </button>
+        </div>
+      ) : target ? (
         <button
           onClick={submit}
           disabled={amount <= 0n || !enough || submitting}
