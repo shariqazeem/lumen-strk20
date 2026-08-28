@@ -71,6 +71,18 @@ pub enum EscrowOperation {
     Deposit,
     Claim,
     Refund,
+    /// N hash-locked entries funded by one pool withdrawal, one fee, one
+    /// timestamp. See `deposit_many`.
+    DepositMany,
+}
+
+/// One entry in a batch. Parallel arrays would let the caller desynchronise
+/// commitments from amounts; a struct cannot.
+#[derive(Drop, Serde, Copy, starknet::Store)]
+pub struct EscrowLeg {
+    pub claim_commitment: felt252,
+    pub refund_commitment: felt252,
+    pub amount: u128,
 }
 
 /// Domain-separation tags. Two domains, so a refund secret can never be spent
@@ -99,7 +111,17 @@ pub mod errors {
     pub const COMMITMENT_NOT_FOUND: felt252 = 'COMMITMENT_NOT_FOUND';
     pub const ALREADY_CLAIMED: felt252 = 'ALREADY_CLAIMED';
     pub const NOT_EXPIRED: felt252 = 'NOT_EXPIRED';
+    pub const EMPTY_BATCH: felt252 = 'EMPTY_BATCH';
+    pub const BATCH_TOO_LARGE: felt252 = 'BATCH_TOO_LARGE';
+    pub const BATCH_AMOUNT_MISMATCH: felt252 = 'BATCH_AMOUNT_MISMATCH';
 }
+
+/// Legs per batch.
+///
+/// Bounded because one pool operation must stay inside a block's gas: each leg
+/// is two storage writes and an event. Thirty-two is far above any real
+/// payout and far below anything that could wedge a transaction.
+pub const MAX_BATCH: u32 = 32;
 
 #[starknet::interface]
 pub trait ILumenEscrow<T> {
@@ -123,6 +145,11 @@ pub trait ILumenEscrow<T> {
     ///
     /// **Refund** uses `secret` (refund preimage) and `note_id`; only valid
     /// once `expiry` has passed and the entry is unclaimed.
+    ///
+    /// **DepositMany** uses `legs`, `expiry` and `token`, and requires
+    /// `amount` to equal the sum of the legs — the batch is bound to the funds
+    /// the pool actually delivered. Every other operation passes an empty
+    /// `legs`.
     fn privacy_invoke(
         ref self: T,
         operation: EscrowOperation,
@@ -133,6 +160,7 @@ pub trait ILumenEscrow<T> {
         amount: u128,
         secret: felt252,
         note_id: felt252,
+        legs: Span<EscrowLeg>,
     ) -> Span<OpenNoteDeposit>;
 }
 
@@ -145,6 +173,7 @@ pub mod LumenEscrow {
     };
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use crate::splitter::{IErc20Dispatcher, IErc20DispatcherTrait, OpenNoteDeposit};
+    use super::{EscrowLeg, MAX_BATCH};
     use super::{
         EscrowEntry, EscrowOperation, ILumenEscrow, compute_claim_commitment,
         compute_refund_commitment, errors,
@@ -166,6 +195,7 @@ pub mod LumenEscrow {
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         Deposited: Deposited,
+        DepositedMany: DepositedMany,
         Claimed: Claimed,
         Refunded: Refunded,
     }
@@ -179,6 +209,15 @@ pub mod LumenEscrow {
         pub token: ContractAddress,
         pub amount: u128,
         pub expiry: u64,
+    }
+
+    /// One batch. The per-leg `Deposited` events carry the commitments; this
+    /// says only how many arrived together, which is what an observer sees.
+    #[derive(Drop, starknet::Event)]
+    pub struct DepositedMany {
+        pub count: u32,
+        pub token: ContractAddress,
+        pub amount: u128,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -219,6 +258,7 @@ pub mod LumenEscrow {
             amount: u128,
             secret: felt252,
             note_id: felt252,
+            legs: Span<EscrowLeg>,
         ) -> Span<OpenNoteDeposit> {
             let pool = self.pool.read();
             assert(get_caller_address() == pool, errors::CALLER_NOT_PRIVACY);
@@ -226,6 +266,10 @@ pub mod LumenEscrow {
             match operation {
                 EscrowOperation::Deposit => {
                     self.deposit(claim_commitment, refund_commitment, expiry, token, amount);
+                    [].span()
+                },
+                EscrowOperation::DepositMany => {
+                    self.deposit_many(legs, expiry, token, amount);
                     [].span()
                 },
                 EscrowOperation::Claim => {
@@ -262,6 +306,58 @@ pub mod LumenEscrow {
             token: ContractAddress,
             amount: u128,
         ) {
+            self.record_entry(claim_commitment, refund_commitment, expiry, token, amount);
+            self.assert_solvent(token);
+        }
+
+        /// N entries from one delivered amount.
+        ///
+        /// Solvency is checked once, after every leg is recorded, rather than
+        /// per leg: the invariant that matters is that the escrow can cover
+        /// everything it now owes, and asking the token for its balance once
+        /// instead of N times is the difference between a batch that is worth
+        /// sending and one that is not.
+        ///
+        /// `amount` is what the pool's Withdraw leg delivered, so requiring it
+        /// to equal the sum binds the batch to real funds and rejects a caller
+        /// who asks for more entries than they paid for.
+        fn deposit_many(
+            ref self: ContractState,
+            legs: Span<EscrowLeg>,
+            expiry: u64,
+            token: ContractAddress,
+            amount: u128,
+        ) {
+            assert(legs.len().is_non_zero(), errors::EMPTY_BATCH);
+            assert(legs.len() <= MAX_BATCH, errors::BATCH_TOO_LARGE);
+
+            let mut total: u128 = 0;
+            let mut i: u32 = 0;
+            while i < legs.len() {
+                let leg = *legs.at(i);
+                self
+                    .record_entry(
+                        leg.claim_commitment, leg.refund_commitment, expiry, token, leg.amount,
+                    );
+                total += leg.amount;
+                i += 1;
+            };
+
+            assert(total == amount, errors::BATCH_AMOUNT_MISMATCH);
+            self.assert_solvent(token);
+            self.emit(DepositedMany { count: legs.len(), token, amount });
+        }
+
+        /// Write one entry and add it to what this escrow owes. Deliberately
+        /// does *not* check the balance — callers batch that.
+        fn record_entry(
+            ref self: ContractState,
+            claim_commitment: felt252,
+            refund_commitment: felt252,
+            expiry: u64,
+            token: ContractAddress,
+            amount: u128,
+        ) {
             assert(claim_commitment.is_non_zero(), errors::ZERO_COMMITMENT);
             assert(token.is_non_zero(), errors::ZERO_TOKEN);
             assert(amount.is_non_zero(), errors::ZERO_AMOUNT);
@@ -281,14 +377,7 @@ pub mod LumenEscrow {
                 assert(expiry.is_zero(), errors::EXPIRY_WITHOUT_REFUND);
             }
 
-            // Solvency: the pool's Withdraw leg must have delivered enough to
-            // back this entry on top of everything still owed in this token.
-            let owed = self.outstanding.read(token) + amount;
-            let held = IErc20Dispatcher { contract_address: token }
-                .balance_of(starknet::get_contract_address());
-            assert(held >= owed.into(), errors::INSUFFICIENT_BACKING);
-            self.outstanding.write(token, owed);
-
+            self.outstanding.write(token, self.outstanding.read(token) + amount);
             self
                 .entries
                 .write(
@@ -296,6 +385,15 @@ pub mod LumenEscrow {
                     EscrowEntry { token, amount, refund_commitment, expiry, claimed: false },
                 );
             self.emit(Deposited { claim_commitment, token, amount, expiry });
+        }
+
+        /// The pool's Withdraw leg must have delivered enough to back every
+        /// entry this escrow still owes in this token.
+        fn assert_solvent(ref self: ContractState, token: ContractAddress) {
+            let owed = self.outstanding.read(token);
+            let held = IErc20Dispatcher { contract_address: token }
+                .balance_of(starknet::get_contract_address());
+            assert(held >= owed.into(), errors::INSUFFICIENT_BACKING);
         }
 
         /// Load an entry, assert it is live, and flip it to claimed. Both exit

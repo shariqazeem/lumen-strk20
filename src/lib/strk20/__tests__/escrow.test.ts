@@ -67,7 +67,7 @@ describe('action builders', () => {
     const invoke = actions[1]
     if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
     expect(invoke.contract).toBe(ESCROW)
-    // [op, claim_commitment, refund_commitment, expiry, token, amount, secret, note]
+    // [op, claim, refund, expiry, token, amount, secret, note, batch_len]
     expect(invoke.calldata).toEqual([
       '0x0',
       claimCommitment('0xaaa'),
@@ -75,6 +75,7 @@ describe('action builders', () => {
       `0x${(1_756_600_000).toString(16)}`,
       '0xt0ken',
       `0x${(149_884_201n).toString(16)}`,
+      '0x0',
       '0x0',
       '0x0',
     ])
@@ -141,5 +142,99 @@ describe('link codec', () => {
     expect(
       decodeClaimLink(`#${btoa(JSON.stringify({ v: 1, s: 'hello', t: '0x1', a: '1' }))}`),
     ).toBeNull()
+  })
+})
+
+describe('batch claim links', () => {
+  it('carries one withdraw for the total and one invoke for every leg', async () => {
+    const { buildEscrowFundMany, claimCommitment, refundCommitment } = await lib()
+    const actions = buildEscrowFundMany({
+      token: '0xt0ken',
+      expiry: 1_756_600_000,
+      legs: [
+        { amount: 41_003_117n, claimSecret: '0xa1', refundSecret: '0xb1' },
+        { amount: 8_819_443n, claimSecret: '0xa2', refundSecret: '0xb2' },
+      ],
+    })
+    expect(actions).toHaveLength(2)
+
+    const total = 41_003_117n + 8_819_443n
+    expect(actions[0]).toEqual({
+      type: 'withdraw',
+      token: '0xt0ken',
+      amount: `0x${total.toString(16)}`,
+      recipient: ESCROW,
+    })
+
+    const invoke = actions[1]
+    if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+    // [op, claim, refund, expiry, token, amount, secret, note, len, ...legs]
+    expect(invoke.calldata).toEqual([
+      '0x3',
+      '0x0',
+      '0x0',
+      `0x${(1_756_600_000).toString(16)}`,
+      '0xt0ken',
+      `0x${total.toString(16)}`,
+      '0x0',
+      '0x0',
+      '0x2',
+      claimCommitment('0xa1'),
+      refundCommitment('0xb1'),
+      `0x${(41_003_117n).toString(16)}`,
+      claimCommitment('0xa2'),
+      refundCommitment('0xb2'),
+      `0x${(8_819_443n).toString(16)}`,
+    ])
+  })
+
+  it('withdraws exactly the sum, so the contract cannot be asked for more', async () => {
+    const { buildEscrowFundMany } = await lib()
+    const legs = [7n, 13n, 29n].map((amount, i) => ({
+      amount,
+      claimSecret: `0x${i + 1}a`,
+      refundSecret: `0x${i + 1}b`,
+    }))
+    const actions = buildEscrowFundMany({ token: '0xt', legs, expiry: 0 })
+    if (actions[0].type !== 'withdraw') throw new Error('first action must be withdraw')
+    expect(BigInt(actions[0].amount)).toBe(49n)
+  })
+
+  it('refuses an empty batch and one past the contract limit', async () => {
+    const { buildEscrowFundMany, MAX_BATCH } = await lib()
+    expect(() => buildEscrowFundMany({ token: '0xt', legs: [], expiry: 0 })).toThrow(
+      /at least one/,
+    )
+    const tooMany = Array.from({ length: MAX_BATCH + 1 }, (_, i) => ({
+      amount: 1_000n,
+      claimSecret: `0x${(i + 1).toString(16)}a`,
+      refundSecret: `0x${(i + 1).toString(16)}b`,
+    }))
+    expect(() => buildEscrowFundMany({ token: '0xt', legs: tooMany, expiry: 0 })).toThrow(
+      /at most 32/,
+    )
+  })
+
+  it('every single-leg operation still passes an empty batch payload', async () => {
+    // The Cairo signature ends in `Span<EscrowLeg>`; omitting it would shift
+    // nothing but would deserialise as a missing argument.
+    const { buildEscrowFund, buildEscrowClaim, buildEscrowRefund } = await lib()
+    const fund = buildEscrowFund({
+      token: '0xt',
+      amount: 1n,
+      claimSecret: '0xa',
+      refundSecret: '0xb',
+      expiry: 1_756_600_000,
+    })
+    for (const actions of [
+      fund,
+      buildEscrowClaim({ token: '0xt', recipient: '0xme', secret: '0xs' }),
+      buildEscrowRefund({ token: '0xt', recipient: '0xme', secret: '0xr' }),
+    ]) {
+      const invoke = actions[1]
+      if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+      expect(invoke.calldata).toHaveLength(9)
+      expect(invoke.calldata?.[8]).toBe('0x0')
+    }
   })
 })

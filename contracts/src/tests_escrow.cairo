@@ -13,7 +13,7 @@ use snforge_std::{
 };
 use starknet::ContractAddress;
 use crate::escrow::{
-    EscrowOperation, ILumenEscrowDispatcher, ILumenEscrowDispatcherTrait,
+    EscrowLeg, EscrowOperation, ILumenEscrowDispatcher, ILumenEscrowDispatcherTrait,
     compute_claim_commitment, compute_refund_commitment,
 };
 use crate::mock_erc20::{IMockErc20Dispatcher, IMockErc20DispatcherTrait};
@@ -76,7 +76,7 @@ fn fund_and_deposit(
             token.contract_address,
             amount,
             0,
-            0,
+            0, [].span(),
         );
     stop_cheat_caller_address(escrow.contract_address);
 }
@@ -87,7 +87,7 @@ fn claim(
     start_cheat_caller_address(escrow.contract_address, pool());
     let deposits = escrow
         .privacy_invoke(
-            EscrowOperation::Claim, 0, 0, 0, token.contract_address, 0, secret, note,
+            EscrowOperation::Claim, 0, 0, 0, token.contract_address, 0, secret, note, [].span(),
         );
     stop_cheat_caller_address(escrow.contract_address);
     deposits
@@ -99,7 +99,7 @@ fn refund(
     start_cheat_caller_address(escrow.contract_address, pool());
     let deposits = escrow
         .privacy_invoke(
-            EscrowOperation::Refund, 0, 0, 0, token.contract_address, 0, secret, note,
+            EscrowOperation::Refund, 0, 0, 0, token.contract_address, 0, secret, note, [].span(),
         );
     stop_cheat_caller_address(escrow.contract_address);
     deposits
@@ -124,7 +124,7 @@ fn test_only_pool_may_invoke() {
             token.contract_address,
             AMOUNT,
             0,
-            0,
+            0, [].span(),
         );
 }
 
@@ -174,7 +174,7 @@ fn test_unbacked_deposit_rejected() {
             token.contract_address,
             AMOUNT,
             0,
-            0,
+            0, [].span(),
         );
 }
 
@@ -195,7 +195,7 @@ fn test_backing_cannot_be_double_counted() {
             token.contract_address,
             AMOUNT,
             0,
-            0,
+            0, [].span(),
         );
 }
 
@@ -402,4 +402,178 @@ fn test_claim_commitment_matches_client_vector() {
             == 0x308c7c8531f0e0d2789204d5bd59baa4b55308631b86215304789c774ac500d,
         'client vector mismatch',
     );
+}
+
+// ---------------------------------------------------------------------------
+// DepositMany — N hash-locked entries from one pool withdrawal
+// ---------------------------------------------------------------------------
+
+const BATCH_SECRET_A: felt252 = 'batch-secret-a';
+const BATCH_SECRET_B: felt252 = 'batch-secret-b';
+const BATCH_SECRET_C: felt252 = 'batch-secret-c';
+
+/// Three legs whose amounts are deliberately unequal and non-round.
+fn three_legs() -> Span<EscrowLeg> {
+    [
+        EscrowLeg {
+            claim_commitment: compute_claim_commitment(BATCH_SECRET_A),
+            refund_commitment: 0,
+            amount: 41_003_117,
+        },
+        EscrowLeg {
+            claim_commitment: compute_claim_commitment(BATCH_SECRET_B),
+            refund_commitment: 0,
+            amount: 8_819_443,
+        },
+        EscrowLeg {
+            claim_commitment: compute_claim_commitment(BATCH_SECRET_C),
+            refund_commitment: 0,
+            amount: 130_555_901,
+        },
+    ]
+        .span()
+}
+
+fn batch_total() -> u128 {
+    41_003_117 + 8_819_443 + 130_555_901
+}
+
+fn deposit_many(
+    escrow: ILumenEscrowDispatcher,
+    token: IMockErc20Dispatcher,
+    legs: Span<EscrowLeg>,
+    amount: u128,
+) {
+    start_cheat_caller_address(escrow.contract_address, pool());
+    escrow
+        .privacy_invoke(
+            EscrowOperation::DepositMany, 0, 0, 0, token.contract_address, amount, 0, 0, legs,
+        );
+    stop_cheat_caller_address(escrow.contract_address);
+}
+
+#[test]
+fn test_batch_creates_every_entry_and_each_claims_once() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    token.mint(escrow.contract_address, batch_total().into());
+    deposit_many(escrow, token, three_legs(), batch_total());
+
+    assert(escrow.get_outstanding(token.contract_address) == batch_total(), 'owes the whole batch');
+
+    // Each leg is independently claimable by its own secret, and only its own.
+    let a = claim(escrow, token, BATCH_SECRET_A, NOTE);
+    assert(*a.at(0).amount == 41_003_117, 'leg a amount');
+    let b = claim(escrow, token, BATCH_SECRET_B, NOTE_2);
+    assert(*b.at(0).amount == 8_819_443, 'leg b amount');
+
+    // Settling two legs leaves exactly the third outstanding.
+    assert(escrow.get_outstanding(token.contract_address) == 130_555_901, 'third still owed');
+}
+
+#[test]
+#[should_panic(expected: 'BATCH_AMOUNT_MISMATCH')]
+fn test_batch_cannot_mint_more_than_was_delivered() {
+    // The whole point: a caller who withdrew one amount from the pool must not
+    // be able to hand out claims worth more than it.
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    token.mint(escrow.contract_address, batch_total().into());
+    deposit_many(escrow, token, three_legs(), batch_total() - 1);
+}
+
+#[test]
+#[should_panic(expected: 'INSUFFICIENT_BACKING')]
+fn test_batch_rejects_entries_the_escrow_cannot_back() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    // Sum matches what was asked for, but the pool never delivered it.
+    token.mint(escrow.contract_address, (batch_total() - 1).into());
+    deposit_many(escrow, token, three_legs(), batch_total());
+}
+
+#[test]
+#[should_panic(expected: 'EMPTY_BATCH')]
+fn test_empty_batch_is_rejected() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    deposit_many(escrow, token, [].span(), 0);
+}
+
+#[test]
+#[should_panic(expected: 'COMMITMENT_EXISTS')]
+fn test_batch_rejects_a_duplicated_commitment_inside_itself() {
+    // Two legs sharing a secret would let one claim settle both liabilities.
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    let same = compute_claim_commitment(BATCH_SECRET_A);
+    let legs = [
+        EscrowLeg { claim_commitment: same, refund_commitment: 0, amount: 10_000 },
+        EscrowLeg { claim_commitment: same, refund_commitment: 0, amount: 20_000 },
+    ]
+        .span();
+    token.mint(escrow.contract_address, 30_000);
+    deposit_many(escrow, token, legs, 30_000);
+}
+
+#[test]
+#[should_panic(expected: 'CALLER_NOT_PRIVACY')]
+fn test_batch_is_pool_gated_like_every_other_operation() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    token.mint(escrow.contract_address, batch_total().into());
+    start_cheat_caller_address(escrow.contract_address, ATTACKER.try_into().unwrap());
+    escrow
+        .privacy_invoke(
+            EscrowOperation::DepositMany,
+            0,
+            0,
+            0,
+            token.contract_address,
+            batch_total(),
+            0,
+            0,
+            three_legs(),
+        );
+}
+
+#[test]
+fn test_batch_legs_can_carry_refunds() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    start_cheat_block_timestamp(escrow.contract_address, T0);
+    let legs = [
+        EscrowLeg {
+            claim_commitment: compute_claim_commitment(BATCH_SECRET_A),
+            refund_commitment: compute_refund_commitment(REFUND_SECRET),
+            amount: 55_555,
+        },
+    ]
+        .span();
+    token.mint(escrow.contract_address, 55_555);
+    start_cheat_caller_address(escrow.contract_address, pool());
+    escrow
+        .privacy_invoke(
+            EscrowOperation::DepositMany, 0, 0, EXPIRY, token.contract_address, 55_555, 0, 0, legs,
+        );
+    stop_cheat_caller_address(escrow.contract_address);
+
+    // Unclaimed past expiry, the sender reclaims it exactly as with one link.
+    start_cheat_block_timestamp(escrow.contract_address, EXPIRY + 1);
+    start_cheat_caller_address(escrow.contract_address, pool());
+    let refunded = escrow
+        .privacy_invoke(
+            EscrowOperation::Refund,
+            0,
+            0,
+            0,
+            token.contract_address,
+            0,
+            REFUND_SECRET,
+            NOTE,
+            [].span(),
+        );
+    stop_cheat_caller_address(escrow.contract_address);
+    assert(*refunded.at(0).amount == 55_555, 'refunded the leg');
+    stop_cheat_block_timestamp(escrow.contract_address);
 }

@@ -31,7 +31,10 @@ const CLAIM_TAG = shortString.encodeShortString('LUMEN_ESCROW_CLAIM:V1')
 const REFUND_TAG = shortString.encodeShortString('LUMEN_ESCROW_REFUND:V1')
 
 /** Cairo enum discriminants for `EscrowOperation`. */
-const OP = { DEPOSIT: '0x0', CLAIM: '0x1', REFUND: '0x2' } as const
+const OP = { DEPOSIT: '0x0', CLAIM: '0x1', REFUND: '0x2', DEPOSIT_MANY: '0x3' } as const
+
+/** Matches `MAX_BATCH` in escrow.cairo. Kept in step by a test. */
+export const MAX_BATCH = 32
 
 /**
  * A fresh 248-bit secret — comfortably inside the felt field, far beyond
@@ -93,6 +96,74 @@ export function buildEscrowFund(input: {
         hex(input.amount),
         '0x0',
         '0x0',
+        // No batch payload: Cairo reads an empty `Span<EscrowLeg>` as a zero
+        // length and nothing after it.
+        '0x0',
+      ],
+    },
+  ]
+}
+
+export interface BatchLeg {
+  /** Raw units for this recipient. */
+  amount: bigint
+  claimSecret: string
+  refundSecret: string
+}
+
+/**
+ * Fund N claim links in one pool operation.
+ *
+ * One Withdraw leg carries the whole total to the escrow, and one invoke
+ * records every commitment against it — so N people who have never touched
+ * Starknet each get money, and the chain sees a single operation with a single
+ * fee and a single timestamp. Paying them one at a time would publish N
+ * operations whose sizes and spacing are a pattern in themselves.
+ *
+ * The contract requires `amount` to equal the sum of the legs, so a caller
+ * cannot hand out more claims than the pool actually delivered.
+ */
+export function buildEscrowFundMany(input: {
+  token: string
+  legs: readonly BatchLeg[]
+  /** Seconds since epoch when every refund path in this batch opens. */
+  expiry: number
+}): STRK20_ACTION[] {
+  if (!escrowEnabled()) throw new Error('Claim links are not enabled on this deployment yet.')
+  if (input.legs.length === 0) throw new Error('A batch needs at least one recipient.')
+  if (input.legs.length > MAX_BATCH) {
+    throw new Error(`A batch holds at most ${MAX_BATCH} recipients.`)
+  }
+
+  const total = input.legs.reduce((sum, leg) => sum + leg.amount, 0n)
+  if (total <= 0n) throw new Error('A batch needs a positive total.')
+
+  // `Span<EscrowLeg>` serialises as a length followed by each field in
+  // declaration order: claim, refund, amount.
+  const legs: string[] = [hex(BigInt(input.legs.length))]
+  for (const leg of input.legs) {
+    legs.push(
+      claimCommitment(leg.claimSecret),
+      refundCommitment(leg.refundSecret),
+      hex(leg.amount),
+    )
+  }
+
+  return [
+    { type: 'withdraw', token: input.token, amount: hex(total), recipient: ESCROW_ADDRESS },
+    {
+      type: 'invoke',
+      contract: ESCROW_ADDRESS,
+      calldata: [
+        OP.DEPOSIT_MANY,
+        '0x0',
+        '0x0',
+        hex(BigInt(Math.max(0, Math.trunc(input.expiry)))),
+        input.token,
+        hex(total),
+        '0x0',
+        '0x0',
+        ...legs,
       ],
     },
   ]
@@ -112,7 +183,18 @@ function buildEscrowExit(
     {
       type: 'invoke',
       contract: ESCROW_ADDRESS,
-      calldata: [operation, '0x0', '0x0', '0x0', '0x0', '0x0', input.secret, openNoteRef(0)],
+      calldata: [
+        operation,
+        '0x0',
+        '0x0',
+        '0x0',
+        '0x0',
+        '0x0',
+        input.secret,
+        openNoteRef(0),
+        // Empty batch payload.
+        '0x0',
+      ],
     },
   ]
 }
