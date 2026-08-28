@@ -113,8 +113,20 @@ export function ObserverPanel({
       <section className="mt-5">
         <SectionLabel>Visible on-chain</SectionLabel>
         {publicEntries.length === 0 ? (
-          <div className="card px-5 py-5 text-[13.5px] leading-relaxed text-ink-muted">
-            Nothing. This account has never crossed the public boundary.
+          <div className="card px-5 py-5">
+            <p className="text-[13.5px] leading-relaxed text-ink-muted">
+              <span className="font-semibold text-ink">Lumen has published nothing</span> from
+              this account.
+            </p>
+            {/* This panel can only speak for what Lumen did. A deposit made in
+                the wallet itself is public, is not in this ledger, and claiming
+                otherwise would be the exact dishonesty the panel exists to
+                expose. */}
+            <p className="mt-2 text-[12.5px] leading-relaxed text-ink-faint">
+              It cannot see what your wallet did on its own. If you shielded or withdrew there,
+              that is public and is not listed here — read your public address below for
+              everything the chain actually holds.
+            </p>
           </div>
         ) : (
           <div className="card divide-y divide-rule">
