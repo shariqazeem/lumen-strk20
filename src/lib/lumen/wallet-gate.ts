@@ -31,9 +31,31 @@ export const WALLET_SILENT_MESSAGE =
 
 let outstanding: Promise<unknown> | null = null
 
+/**
+ * Leave a breadcrumb when a request is turned away.
+ *
+ * A duplicate prompt was reported on mainnet that this app cannot account for:
+ * `strk20InvokeTransaction` is a single request to the wallet, and the store
+ * marks itself submitting synchronously, so a second prompt should not be
+ * reachable from here. Either something is calling twice by a route not yet
+ * found, or the wallet is raising the second one itself. Those look identical
+ * on screen and call for opposite fixes, so the refusal says so out loud: a
+ * duplicate prompt with this line in the console is ours, and a duplicate
+ * prompt without it is not. Silent on the normal path.
+ */
+function noteRefusal(): void {
+  console.info(
+    '[lumen] refused a second wallet request while one was still open — ' +
+      'this one came from the app, not the wallet.',
+  )
+}
+
 /** Send one request to the wallet, or refuse because one is already open. */
 export function walletRequest<T>(work: () => Promise<T>): Promise<T> {
-  if (outstanding !== null) return Promise.reject(new Error(WALLET_BUSY_MESSAGE))
+  if (outstanding !== null) {
+    noteRefusal()
+    return Promise.reject(new Error(WALLET_BUSY_MESSAGE))
+  }
   const run = work()
   const release = () => {
     outstanding = null
