@@ -14,7 +14,7 @@
  */
 
 import type { STRK20_ACTION } from '@starknet-io/types-js'
-import { POOL_ADDRESS, sameAddress } from './config'
+import { padAddress, POOL_ADDRESS, sameAddress } from './config'
 
 /** The wallet expands this to the id of the Nth open note in the same transaction. */
 export const openNoteRef = (index: number): string => `\${openNoteIds[${index}]}`
@@ -47,7 +47,14 @@ export function buildPrivateTransfer(
   amount: bigint,
   recipient: string,
 ): STRK20_ACTION[] {
-  return [{ type: 'transfer', token, amount: `0x${amount.toString(16)}`, recipient }]
+  return [
+    {
+      type: 'transfer',
+      token: padAddress(token),
+      amount: `0x${amount.toString(16)}`,
+      recipient: padAddress(recipient),
+    },
+  ]
 }
 
 export interface PrivateDefiPlan {

@@ -238,3 +238,35 @@ describe('batch claim links', () => {
     }
   })
 })
+
+describe('wallet payload shape', () => {
+  it('pads every address to 66 characters', async () => {
+    // `0x43e4…` and `0x043e4…` are the same felt and different strings, and a
+    // wallet validating the string answers INVALID_REQUEST_PAYLOAD without
+    // saying which field was short.
+    const { buildEscrowFund, buildEscrowClaim, buildEscrowFundMany } = await lib()
+    const everything = [
+      ...buildEscrowFund({
+        token: '0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+        amount: 1n,
+        claimSecret: '0xa',
+        refundSecret: '0xb',
+        expiry: 1_756_600_000,
+      }),
+      ...buildEscrowClaim({ token: '0xabc', recipient: '0xdef', secret: '0x1' }),
+      ...buildEscrowFundMany({
+        token: '0xabc',
+        expiry: 0,
+        legs: [{ amount: 5n, claimSecret: '0x1a', refundSecret: '0x1b' }],
+      }),
+    ]
+
+    for (const action of everything) {
+      for (const field of ['token', 'recipient', 'contract'] as const) {
+        const value = (action as Record<string, unknown>)[field]
+        if (typeof value !== 'string') continue
+        expect(value, `${action.type}.${field}`).toMatch(/^0x[0-9a-f]{64}$/)
+      }
+    }
+  })
+})

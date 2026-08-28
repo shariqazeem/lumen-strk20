@@ -209,3 +209,20 @@ export function preferredToken(
 
 /** The asset Lumen leads with. */
 export const FLAGSHIP: TokenSymbol = 'strkBTC'
+
+/**
+ * A Starknet address as the Wallet API expects to receive it: `0x` plus 64
+ * hex digits, zero-padded.
+ *
+ * `0x43e4…` and `0x043e4…` are the same felt and different strings, and a
+ * wallet validating the string rejects the short one — which surfaces as
+ * `INVALID_REQUEST_PAYLOAD` with no indication of which field was wrong. Every
+ * address handed to the wallet goes through here.
+ */
+export function padAddress(address: string): string {
+  try {
+    return `0x${BigInt(address).toString(16).padStart(64, '0')}`
+  } catch {
+    return address
+  }
+}
