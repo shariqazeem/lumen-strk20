@@ -20,6 +20,7 @@ import { summarize } from '@/lib/lumen/journal'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
 import type { Receipt } from '@/lib/lumen/receipts'
 import { SendComposer } from './send'
+import { NotRegistered, NothingToSend } from './first-run'
 import type { LedgerEntry } from '@/lib/history'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { explorerTx, TOKENS } from '@/lib/strk20/config'
@@ -206,6 +207,8 @@ export function Home({
     error,
     clearError,
     lastTx,
+    walletName,
+    poolFee,
   } = useLumen()
 
   const [inbox, setInbox] = useState<InboxLink[]>([])
@@ -219,6 +222,8 @@ export function Home({
   const waiting = useMemo(() => waitingLinks(inbox), [inbox])
   const totalUsd = useMemo(() => portfolioUsd(balances, prices), [balances, prices])
   const nonZero = balances.filter((b) => b.raw > 0n)
+  // Waiting links count: money is here even before it is claimed.
+  const hasBalance = nonZero.length > 0 || waiting.length > 0
   const revealed = balancesRevealedAt !== null
   const digest = useMemo(() => summarize(journal, Date.now()), [journal])
 
@@ -255,16 +260,32 @@ export function Home({
         </div>
       ) : (
         <>
-          {/* Send is the product — first, and not behind a button. */}
-          <div className="mt-1">
-            <SendComposer
-              onObserver={() => onObserver(true)}
-              onReceipt={onReceipt}
-              onNeedsLink={() => open({ kind: 'pay' })}
-            />
-          </div>
+          {/* One thing at a time. A composer that cannot submit and a deposit
+              button that will fail are worse than a single sentence. */}
+          {registered === false ? (
+            <div className="mt-1">
+              <NotRegistered walletName={walletName} />
+            </div>
+          ) : !hasBalance ? (
+            <div className="mt-1">
+              <NothingToSend
+                poolFee={poolFee}
+                onAdd={() => open({ kind: 'add' })}
+                onGetPaid={() => open({ kind: 'my-page' })}
+              />
+            </div>
+          ) : (
+            <div className="mt-1">
+              <SendComposer
+                onObserver={() => onObserver(true)}
+                onReceipt={onReceipt}
+                onNeedsLink={() => open({ kind: 'pay' })}
+              />
+            </div>
+          )}
 
           {/* the balance — an object here, not the brand */}
+          {registered === false ? null : (
           <section className="rise rise-3 mt-6">
             <div className="glass px-6 pb-6 pt-5">
               <div className="flex items-center justify-between">
@@ -309,9 +330,6 @@ export function Home({
                   ) : (
                     <p className="mt-3 text-[13.5px] leading-relaxed text-glass-muted">
                       Nothing here yet.
-                      {registered === false
-                        ? ' Your private account activates the first time money moves — a deposit, or claiming a link someone sent you.'
-                        : ''}
                     </p>
                   )}
 
@@ -355,6 +373,8 @@ export function Home({
               )}
             </div>
           </section>
+
+          )}
 
           {/* waiting for you — the heartbeat */}
           {waiting.length > 0 ? (
@@ -459,7 +479,9 @@ export function Home({
           ) : null}
 
           {/* Everything else is utility now — Send is above, and it is the
-              product. These stay quiet and equal. */}
+              product. These stay quiet and equal, and they stay hidden until
+              they can do anything. */}
+          {registered === false ? null : (
           <section className="rise rise-4 mt-4">
             <div className="grid grid-cols-2 gap-2.5">
               <button
@@ -482,6 +504,7 @@ export function Home({
               </button>
             </div>
           </section>
+          )}
 
           {lastTx && lastTx.status === 'submitted' ? (
             <p className="mt-3 flex items-center gap-2 px-1 text-[12.5px] text-ink-muted">
@@ -490,40 +513,7 @@ export function Home({
             </p>
           ) : null}
 
-          {/* first run: the most important screen in the product */}
-          {waiting.length === 0 && ledger.length === 0 && arrivals.length === 0 ? (
-            <section className="rise rise-5 mt-8">
-              <div className="glass px-6 py-6">
-                <p className="text-[17px] font-semibold leading-snug">
-                  Add money once. After that, nothing you do here is public.
-                </p>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-glass-muted">
-                  Your deposit is the only visible step, and the engine tunes even that so it
-                  points at nothing you do later. Paying, getting paid and saving publish
-                  nothing at all.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2.5">
-                  <button
-                    onClick={() => open({ kind: 'add' })}
-                    className="btn btn-small bg-white text-ink hover:bg-white/90"
-                  >
-                    <Plus size={15} />
-                    Add money
-                  </button>
-                  <button
-                    onClick={() => open({ kind: 'my-page' })}
-                    className="btn btn-small border border-white/20 text-white hover:bg-white/10"
-                  >
-                    Get your page
-                  </button>
-                </div>
-              </div>
-              <p className="mt-3 px-1 text-[12.5px] leading-relaxed text-ink-faint">
-                Nothing has arrived yet. When someone pays you, through a link, your page or any
-                other STRK20 app, it lands here and no two arrivals can be tied together.
-              </p>
-            </section>
-          ) : null}
+
 
 
           <button

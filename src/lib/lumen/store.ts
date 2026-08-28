@@ -64,6 +64,7 @@ import { loadArrivals, syncArrivals, type Arrival } from './arrivals'
 import type { GuardReport } from './guard'
 import { guardSeed } from './guard'
 import { scatterPlan, SPLITTER_ADDRESS } from './scatter'
+import { readRegistration } from '@/lib/strk20/registration'
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -284,6 +285,13 @@ export const useLumen = create<LumenState>((set, get) => ({
         arrivals: loadArrivals(address),
       })
       void get().loadMarket()
+      // The pool publishes every account's viewing key, so whether this one
+      // can hold a private balance is readable without a wallet prompt. It
+      // decides which single screen the account opens on.
+      void readRegistration(address).then((result) => {
+        if (get().address !== address) return
+        if (result !== 'unknown') set({ registered: result === 'registered' })
+      })
     } catch (error) {
       set({
         status: 'error',
