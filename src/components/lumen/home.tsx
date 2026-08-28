@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useLumen, portfolioUsd } from '@/lib/lumen/store'
-import { loadInbox, waitingLinks, type InboxLink } from '@/lib/lumen/inbox'
+import { loadInbox, verifyInbox, waitingLinks, type InboxLink } from '@/lib/lumen/inbox'
 import { summarize } from '@/lib/lumen/journal'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
 import type { Receipt } from '@/lib/lumen/receipts'
@@ -216,6 +216,7 @@ export function Home({
     ledger,
     arrivals,
     journal,
+    submitting,
     error,
     clearError,
     lastTx,
@@ -226,8 +227,25 @@ export function Home({
 
   // The inbox is device-global — links land here before any wallet exists —
   // so it is read directly rather than through the account-keyed store.
+  //
+  // Anything still marked waiting is checked against the chain before it is
+  // painted. Showing it first and correcting a moment later would flash money
+  // that is already gone, and "you have money waiting" is the claim on this
+  // screen that has to be true when it appears. Nothing waiting means nothing
+  // to check, which is the common case and stays instant.
   useEffect(() => {
-    setInbox(loadInbox())
+    const stored = loadInbox()
+    if (waitingLinks(stored).length === 0) {
+      setInbox(stored)
+      return
+    }
+    let live = true
+    void verifyInbox().then((verified) => {
+      if (live) setInbox(verified)
+    })
+    return () => {
+      live = false
+    }
   }, [])
 
   const waiting = useMemo(() => waitingLinks(inbox), [inbox])
@@ -356,7 +374,7 @@ export function Home({
                       ) : null}
                       <button
                         onClick={() => revealBalances()}
-                        disabled={balancesLoading}
+                        disabled={balancesLoading || submitting}
                         className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline disabled:opacity-50"
                       >
                         {balancesLoading ? 'Checking…' : 'Refresh'}
@@ -367,7 +385,7 @@ export function Home({
               ) : (
                 <button
                   onClick={() => revealBalances()}
-                  disabled={balancesLoading}
+                  disabled={balancesLoading || submitting}
                   className="mt-3 block w-full text-left"
                 >
                   <span className="text-[42px] font-semibold leading-none tracking-[0.1em] text-glass-ink/90">

@@ -6,7 +6,7 @@
  * re-opening a link must never duplicate it or resurrect a claimed one.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   forgetLink,
   loadInbox,
@@ -153,5 +153,68 @@ describe('resilience', () => {
     const all = loadInbox()
     expect(all).toHaveLength(1)
     expect(all[0].claimSecret).toBe('0xbbb')
+  })
+})
+
+/**
+ * "Waiting for you" offering money that is already gone is the one lie this
+ * screen must never tell — and it told it on mainnet, because the inbox is
+ * written optimistically and nothing ever asked the chain.
+ */
+describe('verifyInbox', () => {
+  const holding = (claimed: boolean) => ({ address: '0xesc', entry: { exists: true, claimed } })
+
+  afterEach(() => {
+    vi.resetModules()
+    vi.doUnmock('@/lib/strk20/escrow')
+  })
+
+  const withChain = async (
+    find: (secret: string) => Promise<unknown>,
+  ): Promise<typeof import('../inbox')> => {
+    vi.resetModules()
+    vi.doMock('@/lib/strk20/escrow', () => ({ findEscrowHolding: find }))
+    return import('../inbox')
+  }
+
+  it('marks a link the chain says was already claimed', async () => {
+    const inbox = await withChain(async () => holding(true))
+    inbox.rememberLink(link())
+    expect(await inbox.verifyInbox()).toHaveLength(1)
+    expect(inbox.waitingLinks()).toHaveLength(0)
+  })
+
+  it('leaves a link the chain still holds', async () => {
+    const inbox = await withChain(async () => holding(false))
+    inbox.rememberLink(link())
+    await inbox.verifyInbox()
+    expect(inbox.waitingLinks()).toHaveLength(1)
+  })
+
+  it('leaves a link it cannot find, rather than assuming it is gone', async () => {
+    // An escrow this build does not carry is not evidence of a claim.
+    const inbox = await withChain(async () => null)
+    inbox.rememberLink(link())
+    await inbox.verifyInbox()
+    expect(inbox.waitingLinks()).toHaveLength(1)
+  })
+
+  it('survives an RPC that throws', async () => {
+    const inbox = await withChain(async () => {
+      throw new Error('RPC down')
+    })
+    inbox.rememberLink(link())
+    await expect(inbox.verifyInbox()).resolves.toHaveLength(1)
+    expect(inbox.waitingLinks()).toHaveLength(1)
+  })
+
+  it('asks nothing of the chain when nothing is waiting', async () => {
+    let asked = 0
+    const inbox = await withChain(async () => {
+      asked += 1
+      return holding(true)
+    })
+    expect(await inbox.verifyInbox()).toHaveLength(0)
+    expect(asked).toBe(0)
   })
 })

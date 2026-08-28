@@ -18,6 +18,7 @@
  */
 
 import { TOKENS, type TokenSymbol } from '@/lib/strk20/config'
+import { findEscrowHolding } from '@/lib/strk20/escrow'
 
 export interface InboxLink {
   /** Claim secret — the identity of the link. */
@@ -151,6 +152,49 @@ export function markInboxClaimed(claimSecret: string, txHash?: string): InboxLin
 export function reconcileInbox(claimSecret: string, claimedOnChain: boolean): InboxLink[] {
   if (!claimedOnChain) return loadInbox()
   return markInboxClaimed(claimSecret)
+}
+
+/**
+ * How many waiting links to verify on a page load.
+ *
+ * Each one is an RPC read per known escrow, so the check is bounded rather
+ * than unbounded — the newest are the ones anybody is about to act on.
+ */
+const VERIFY_CAP = 20
+
+/**
+ * Check waiting links against the chain and mark the ones already settled.
+ *
+ * The inbox is written optimistically: a link is remembered the moment it is
+ * opened, and the claim can land somewhere this device never observes — on
+ * another device, by whoever else the link reached, or right here in a wallet
+ * that approved the transaction and never reported back. Without this,
+ * "Waiting for you" keeps offering money that is already gone, which is the
+ * one lie this screen must never tell.
+ */
+export async function verifyInbox(): Promise<InboxLink[]> {
+  const pending = waitingLinks().slice(0, VERIFY_CAP)
+  if (pending.length === 0) return loadInbox()
+
+  const settled = await Promise.all(
+    pending.map(async (link) => {
+      try {
+        const holder = await findEscrowHolding(link.claimSecret)
+        // A link we cannot find is not a link we know was claimed — it may
+        // have been minted against an escrow this build does not carry. Only
+        // a positive `claimed` flag is evidence.
+        return holder?.entry.claimed ? link.claimSecret : null
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  let inbox = loadInbox()
+  for (const claimSecret of settled) {
+    if (claimSecret) inbox = markInboxClaimed(claimSecret)
+  }
+  return inbox
 }
 
 /** Links still waiting to be claimed, newest first. The Incoming heartbeat. */

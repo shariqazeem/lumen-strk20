@@ -17,6 +17,13 @@ import { create } from 'zustand'
 import type { WalletAccountV6 } from 'starknet'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import {
+  raceTheChain,
+  walletIsBusy,
+  walletRequest,
+  WALLET_BUSY_MESSAGE,
+  WALLET_SILENT_MESSAGE,
+} from '@/lib/lumen/wallet-gate'
+import {
   connectWallet,
   formatUnits,
   provider,
@@ -219,36 +226,6 @@ export function portfolioUsd(
 }
 
 /**
- * Chain actions need a live wallet account. Surfacing the refusal through the
- * store's error state (not just a throw) is what makes it visible in the UI.
- */
-/**
- * One wallet operation at a time.
- *
- * Every submitting action guards on this rather than trusting a disabled
- * button: a second entry point, a stray keypress, or a component that
- * re-renders mid-flight would otherwise queue a second prompt against money
- * that is already moving. Rejecting is free; a duplicate transfer is not.
- */
-/**
- * How long to wait on a wallet before asking the chain instead.
- *
- * A wallet's promise can hang: the user rejects and nothing rejects back, or
- * the transaction succeeds and the response never routes home. Both leave the
- * UI insisting it is waiting while the money has already moved, which is the
- * worst thing this product can display.
- */
-const WALLET_TIMEOUT_MS = 45_000
-
-/** Resolves to `null` if the wallet has not answered in time. */
-function withWalletTimeout<T>(work: Promise<T>): Promise<T | null> {
-  return Promise.race([
-    work,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), WALLET_TIMEOUT_MS)),
-  ])
-}
-
-/**
  * Ask the escrow whether a claim actually settled.
  *
  * The chain is the authority. If the wallet went quiet but the entry is marked
@@ -265,9 +242,17 @@ async function claimSettled(secret: string): Promise<boolean> {
 }
 
 function requireIdle(get: () => LumenState): void {
+  // Two different kinds of busy. `submitting` is this app's in-flight action;
+  // the gate also knows about a request the app stopped waiting for while the
+  // wallet still holds it, which is the one that produces a surprise prompt.
+  if (walletIsBusy()) throw new Error(WALLET_BUSY_MESSAGE)
   if (get().submitting) throw new Error('Something is already going to your wallet — finish that first.')
 }
 
+/**
+ * Chain actions need a live wallet account. Surfacing the refusal through the
+ * store's error state (not just a throw) is what makes it visible in the UI.
+ */
 function requireAccount(
   get: () => LumenState,
   set: (partial: Partial<LumenState>) => void,
@@ -382,7 +367,7 @@ export const useLumen = create<LumenState>((set, get) => ({
     if (!account) return
     set({ balancesLoading: true, error: null })
     try {
-      const balances = await readShieldedBalances(account)
+      const balances = await walletRequest(() => readShieldedBalances(account))
       // A balance read is the only moment an arrival can be inferred, so
       // reconcile here rather than on a timer we are not allowed to run.
       const { address } = get()
@@ -470,7 +455,7 @@ export const useLumen = create<LumenState>((set, get) => ({
         input.amount,
         input.recipient,
       )
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -518,7 +503,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       )
       assertNeverUnshields(actions, { contracts: [] })
 
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       // One transaction, but one ledger entry and one receipt per person: each
       // recipient is a separate relationship, and each may need to prove their
@@ -566,7 +551,7 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ submitting: true, error: null })
     try {
       const actions = buildShield(TOKENS[input.token].address, input.amount)
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -616,7 +601,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       // withdraw to is the splitter itself.
       assertNeverUnshields(actions, { contracts: [SPLITTER_ADDRESS] })
 
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -652,7 +637,7 @@ export const useLumen = create<LumenState>((set, get) => ({
         input.amount,
         input.recipient,
       )
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -711,7 +696,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       })
       assertNeverUnshields(actions, { contracts: [ESCROW_ADDRESS] })
 
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const minted = drafted.map((leg) => {
         addLink(address, {
@@ -782,7 +767,7 @@ export const useLumen = create<LumenState>((set, get) => ({
       // withdraw the app is allowed to produce. Enforced, not assumed.
       assertNeverUnshields(actions, { contracts: [ESCROW_ADDRESS] })
 
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const link = addLink(address, {
         claimSecret,
@@ -889,17 +874,17 @@ export const useLumen = create<LumenState>((set, get) => ({
       })
       // A plain Starknet invoke, deliberately not `strk20InvokeTransaction`:
       // nothing about this touches the pool.
-      const submitted = await withWalletTimeout(account.execute([call]))
-      if (!submitted) {
-        if (await claimSettled(input.secret)) {
-          set({ submitting: false, error: null })
-          return ''
-        }
-        throw new Error(
-          'Your wallet did not answer. Check it — if the transaction went through, this link is ' +
-            'already claimed and refreshing will show it.',
-        )
+      const submitted = await raceTheChain(
+        walletRequest(() => account.execute([call])),
+        () => claimSettled(input.secret),
+      )
+      // The chain got there first: the money moved, we just never heard the
+      // wallet say so. That is a success with no hash to show for it.
+      if (submitted === 'settled') {
+        set({ submitting: false, error: null })
+        return ''
       }
+      if (!submitted) throw new Error(WALLET_SILENT_MESSAGE)
       const { transaction_hash } = submitted
 
       const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
@@ -924,18 +909,15 @@ export const useLumen = create<LumenState>((set, get) => ({
         recipient: address,
         secret: payload.s,
       })
-      const submitted = await withWalletTimeout(account.strk20InvokeTransaction(actions))
-      if (!submitted) {
-        // The wallet stopped answering. The chain still knows the truth.
-        if (await claimSettled(payload.s)) {
-          set({ submitting: false, error: null })
-          return ''
-        }
-        throw new Error(
-          'Your wallet did not answer. Check it — if the transaction went through, this link is ' +
-            'already claimed and refreshing will show it.',
-        )
+      const submitted = await raceTheChain(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        () => claimSettled(payload.s),
+      )
+      if (submitted === 'settled') {
+        set({ submitting: false, error: null })
+        return ''
       }
+      if (!submitted) throw new Error(WALLET_SILENT_MESSAGE)
       const { transaction_hash } = submitted
 
       const token = tokenByAddress(payload.t)
@@ -975,7 +957,7 @@ export const useLumen = create<LumenState>((set, get) => ({
         recipient: address,
         secret: link.refundSecret,
       })
-      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),

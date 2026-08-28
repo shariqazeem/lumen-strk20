@@ -9,13 +9,13 @@
     {
       "hash": "0x423c246aa3ee4d47718f8c8a2b65733074a08cca765dcacd88ff00bbffff6f",
       "network": "mainnet",
-      "what": "LumenEscrow deployed with claim_to_address \u2014 the second door. A claim can now be collected straight to a public address by someone who has never joined the privacy pool, has no shielded balance, and cannot pay the pool's flat fee."
+      "what": "LumenEscrow deployed with claim_to_address — the second door. A claim can now be collected straight to a public address by someone who has never joined the privacy pool, has no shielded balance, and cannot pay the pool's flat fee."
     },
     {
       "hash": "0x3af9f5cdd408a9d92e38caaf4071895474a0d1d9790a96a3c798de23d57b20b",
       "network": "mainnet",
       "block": 14013048,
-      "what": "Claim relayed to a wallet that had never joined the privacy pool, held no shielded balance, had no gas, and whose account contract was not deployed \u2014 and still is not. The recipient performed no action. A third party submitted claim_to_address; the Poseidon preimage was the only authority."
+      "what": "Claim relayed to a wallet that had never joined the privacy pool, held no shielded balance, had no gas, and whose account contract was not deployed — and still is not. The recipient performed no action. A third party submitted claim_to_address; the Poseidon preimage was the only authority."
     },
     {
       "hash": "0x27c52c631a9f036b4749bb736e305c8d742ce66f9b54cdebb40c267c81519d9",
@@ -27,7 +27,13 @@
       "hash": "0x535cc6d39343a65ea22d26bdef83ebd0ab3f778c8f5690905b3b77354d75123",
       "network": "mainnet",
       "block": 14013837,
-      "what": "The same link collected through the private door: the pool credits an open note, so the arrival is shielded and nothing about the recipient is published. Compare with 0x3af9f5cd, which is the public door \u2014 one link shape, two landings."
+      "what": "The same link collected through the private door: the pool credits an open note, so the arrival is shielded and nothing about the recipient is published. Compare with 0x3af9f5cd, which is the public door — one link shape, two landings."
+    },
+    {
+      "hash": "0x1056fd098f3459be36fec57ca5ba6dcb09c4ab1f04810c49072d495c1bc5f5a",
+      "network": "mainnet",
+      "block": 14014301,
+      "what": "Three people paid in one operation via DepositMany: 2.8 STRK split into 0.933333 STRK links, three Deposited events and one BatchDeposited under a single pool fee. Sequentially the same payout costs the flat fee three times, so batching is a 3x cost argument here and a 50x one for an agent paying a payroll — and an observer sees one operation, not three."
     }
   ],
   "contracts": [
