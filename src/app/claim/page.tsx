@@ -21,6 +21,7 @@ import {
   type EscrowEntryState,
 } from '@/lib/strk20/escrow'
 import { formatUnits, listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
+import { STRK20_ERRORS } from '@/lib/strk20/actions'
 import { markInboxClaimed, reconcileInbox, rememberLink } from '@/lib/lumen/inbox'
 import { useLumen } from '@/lib/lumen/store'
 import { ErrorNote, SuccessMark, TxLink } from '@/components/lumen/bits'
@@ -31,6 +32,12 @@ type PageState =
   | { kind: 'invalid' }
   | { kind: 'ready'; payload: ClaimLinkPayload; entry: EscrowEntryState | null }
   | { kind: 'claimed-by-me'; payload: ClaimLinkPayload; txHash: string }
+  /**
+   * The claim was refused because this wallet has never joined the pool.
+   * Distinct from a generic failure: the money is provably still there, and
+   * there is exactly one thing to do about it.
+   */
+  | { kind: 'needs-wallet-step'; payload: ClaimLinkPayload }
 
 export default function ClaimPage() {
   const { status, connect, claimFromLink, submitting, error, clearError, lastTx } = useLumen()
@@ -82,18 +89,34 @@ export default function ClaimPage() {
       const txHash = await claimFromLink(payload)
       markInboxClaimed(payload.s, txHash)
       setState({ kind: 'claimed-by-me', payload, txHash })
-    } catch {
-      // The store surfaced the wallet's explanation.
+    } catch (failure) {
+      // 118 is not a generic failure and must not read like one: the money is
+      // untouched, the link is still good, and one wallet-side step fixes it.
+      // Every other error keeps the store's own explanation.
+      const code =
+        typeof failure === 'object' && failure !== null && 'code' in failure
+          ? Number((failure as { code: unknown }).code)
+          : undefined
+      if (code === STRK20_ERRORS.NOT_REGISTERED) {
+        clearError()
+        setState({ kind: 'needs-wallet-step', payload })
+      }
     }
   }
 
   const ready = wallets.filter(supportsStrk20)
   const connected = status === 'connected'
 
-  const token = state.kind === 'ready' || state.kind === 'claimed-by-me' ? tokenForClaim(state.payload) : undefined
+  // Every state that holds a payload can name the amount, including the one
+  // that has to tell someone their money is still there.
+  const withPayload =
+    state.kind === 'ready' || state.kind === 'claimed-by-me' || state.kind === 'needs-wallet-step'
+      ? state.payload
+      : null
+  const token = withPayload ? tokenForClaim(withPayload) : undefined
   const amountText =
-    token && (state.kind === 'ready' || state.kind === 'claimed-by-me')
-      ? `${formatUnits(BigInt(state.payload.a), token.decimals, 6)} ${token.symbol}`
+    token && withPayload
+      ? `${formatUnits(BigInt(withPayload.a), token.decimals, 6)} ${token.symbol}`
       : null
 
   return (
@@ -249,7 +272,40 @@ export default function ClaimPage() {
           </div>
         ) : null}
 
-        {state.kind === 'claimed-by-me' ? (
+        {state.kind === 'needs-wallet-step' ? (
+        <div className="rise">
+          <div className="glass px-7 py-7">
+            <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em] text-glass-faint">
+              Still yours
+            </p>
+            <h1 className="mt-4 text-[26px] font-semibold leading-[1.15] tracking-[-0.025em] text-glass-ink">
+              The money is waiting. Your wallet needs one step first.
+            </h1>
+            <p className="mt-4 text-[15px] leading-relaxed text-glass-muted">
+              {amountText} is held by the escrow contract behind the secret in your link. Nothing
+              about that changed just now, and nothing about it expires — the claim stays valid
+              until you use it.
+            </p>
+            <p className="mt-3 text-[15px] leading-relaxed text-glass-muted">
+              Starknet requires a wallet to join the privacy pool before it can hold a private
+              balance, and no website can do that for you. Open your wallet, shield any small
+              amount there once, then come back to this link.
+            </p>
+            <button
+              onClick={() => setState({ kind: 'ready', payload: state.payload, entry: null })}
+              className="btn mt-6 w-full bg-white text-ink hover:bg-white/90"
+            >
+              I have done that — try again
+            </button>
+          </div>
+          <p className="mt-4 px-1 text-[12.5px] leading-relaxed text-ink-faint">
+            Keep this link. It is the only thing that can open this money, and it works from any
+            device.
+          </p>
+        </div>
+      ) : null}
+
+      {state.kind === 'claimed-by-me' ? (
           <div className="rise text-center">
             <SuccessMark />
             <p className="mt-5 text-[24px] font-semibold tracking-[-0.02em]">
