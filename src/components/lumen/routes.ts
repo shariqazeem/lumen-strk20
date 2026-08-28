@@ -18,3 +18,4 @@ export type SheetRoute =
   | { kind: 'journal' }
   | { kind: 'split' }
   | { kind: 'activity' }
+  | { kind: 'mirror' }

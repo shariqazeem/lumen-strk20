@@ -30,6 +30,7 @@ import { ConvertSheet } from '@/components/lumen/convert-sheet'
 import { JournalSheet } from '@/components/lumen/journal-sheet'
 import { SplitSheet } from '@/components/lumen/split-sheet'
 import { ActivitySheet } from '@/components/lumen/activity-sheet'
+import { MirrorSheet } from '@/components/lumen/mirror-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
@@ -87,6 +88,7 @@ export default function AppPage() {
           <ObserverPanel
             publicEntries={publicEntries}
             privateCount={ledger.length - publicEntries.length}
+            onMirror={() => open({ kind: 'mirror' })}
           />
         }
       >
@@ -115,6 +117,8 @@ export default function AppPage() {
       <ConvertSheet open={route?.kind === 'convert'} onClose={close} />
       <JournalSheet open={route?.kind === 'journal'} onClose={close} />
       <SplitSheet open={route?.kind === 'split'} onClose={close} />
+      <MirrorSheet open={route?.kind === 'mirror'} onClose={close} />
+
       <ActivitySheet
         open={route?.kind === 'activity'}
         onClose={close}

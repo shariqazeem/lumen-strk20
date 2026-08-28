@@ -67,10 +67,13 @@ export function ObserverPanel({
   publicEntries,
   privateCount,
   onBack,
+  onMirror,
 }: {
   publicEntries: LedgerEntry[]
   privateCount: number
   onBack?: () => void
+  /** Opens the self-only reading of the account's own public address. */
+  onMirror?: () => void
 }) {
   return (
     <div className="unblur">
@@ -93,6 +96,18 @@ export function ObserverPanel({
           This is your account as any explorer, indexer or analyst sees it — forever.
         </p>
       </section>
+
+      {/* The same reading, run against the address that is not private, so
+          the contrast is measured rather than asserted. */}
+      {onMirror ? (
+        <button onClick={onMirror} className="card card-press mt-4 w-full px-5 py-4 text-left">
+          <p className="text-[14px] font-semibold">Now read your public address</p>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-muted">
+            The same heuristics, pointed at the wallet you already had. Only yours, only what
+            is already published.
+          </p>
+        </button>
+      ) : null}
 
       <section className="mt-5">
         <SectionLabel>Visible on-chain</SectionLabel>
@@ -235,6 +250,7 @@ export function Home({
             publicEntries={publicEntries}
             privateCount={privateCount}
             onBack={() => onObserver(false)}
+            onMirror={() => open({ kind: 'mirror' })}
           />
         </div>
       ) : (
