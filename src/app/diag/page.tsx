@@ -69,7 +69,7 @@ const CANDIDATES: { name: string; actions: STRK20_ACTION[] }[] = [
 ]
 
 export default function DiagPage() {
-  const { account, status, connect } = useLumen()
+  const { account, status, connect, walletName } = useLumen()
   const [lines, setLines] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
 
@@ -77,10 +77,12 @@ export default function DiagPage() {
     if (!account) return
     setBusy(true)
     const me = walletFelt(account.address)
-    // What the wallet advertises, next to what it actually accepts. If it
-    // claims an API version whose spec includes `invoke` and rejects `invoke`,
-    // that is a wallet gap and not our payload.
-    const wallet = listWallets().find((w) => supportsStrk20(w))
+    // The *connected* wallet, matched by name. Taking the first STRK20-capable
+    // wallet instead reported Xverse's metadata while the dry-runs ran against
+    // Ready — a header that quietly described the wrong program.
+    const wallet =
+      listWallets().find((w) => w.name === walletName) ??
+      listWallets().find((w) => supportsStrk20(w))
     const feature = wallet?.features['starknet:walletApi'] as
       | { version?: string; supportedApiVersions?: string[] }
       | undefined
@@ -88,7 +90,7 @@ export default function DiagPage() {
       `escrow ${ESCROW_ADDRESS}`,
       `token  ${walletFelt(TOKENS.STRK.address)}`,
       `self   ${me}`,
-      `wallet ${wallet?.name ?? '?'}`,
+      `wallet ${wallet?.name ?? '?'}${wallet?.name === walletName ? '' : '  (NOT the connected one)'}`,
       `api    ${(feature?.supportedApiVersions ?? [feature?.version ?? '?']).join(', ')}`,
       `feats  ${Object.keys(wallet?.features ?? {}).join(', ')}`,
       '',
