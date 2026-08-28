@@ -5,19 +5,24 @@
       "network": "mainnet",
       "what": "Claim link minted: 2 STRK withdrawn from the pool into LumenEscrow behind a Poseidon commitment. Claimable by whoever holds the secret, with no wallet or pool registration needed until they open it.",
       "block": 14011191
+    },
+    {
+      "hash": "0x423c246aa3ee4d47718f8c8a2b65733074a08cca765dcacd88ff00bbffff6f",
+      "network": "mainnet",
+      "what": "LumenEscrow deployed with claim_to_address \u2014 the second door. A claim can now be collected straight to a public address by someone who has never joined the privacy pool, has no shielded balance, and cannot pay the pool's flat fee."
     }
   ],
   "contracts": [
     {
-      "name": "LumenEscrow",
-      "address": "0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288",
-      "class_hash": "0x776cb0e6a3f94b572f6d3bf54be4270429b15a6bc3b43b598c5236a438f7981",
-      "network": "mainnet"
-    },
-    {
       "name": "LumenSplitter",
       "address": "0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0",
       "class_hash": "0x1de1ef961ed84c9657414693490f50f500d155c9baca07795bb6d80644bc06d",
+      "network": "mainnet"
+    },
+    {
+      "name": "LumenEscrow",
+      "address": "0x6c96b86d5f1eaee16be18ca4f346edb20c098f1106648cef3845b34723df272",
+      "class_hash": "0x5a8b231a34692588ba7524a126b87d7db762ab72579265664449720a1785d44",
       "network": "mainnet"
     }
   ],
