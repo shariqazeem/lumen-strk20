@@ -18,12 +18,13 @@ import { useLumen, portfolioUsd } from '@/lib/lumen/store'
 import { loadInbox, waitingLinks, type InboxLink } from '@/lib/lumen/inbox'
 import { summarize } from '@/lib/lumen/journal'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
+import type { Receipt } from '@/lib/lumen/receipts'
+import { SendComposer } from './send'
 import type { LedgerEntry } from '@/lib/history'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { explorerTx, TOKENS } from '@/lib/strk20/config'
 import {
   ArrowDown,
-  ArrowUpRight,
   Eye,
   Globe,
   LinkIcon,
@@ -170,10 +171,12 @@ export function Home({
   open,
   observer,
   onObserver,
+  onReceipt,
 }: {
   open: (route: SheetRoute) => void
   observer: boolean
   onObserver: (next: boolean) => void
+  onReceipt: (receipt: Receipt) => void
 }) {
   const {
     balances,
@@ -236,6 +239,103 @@ export function Home({
         </div>
       ) : (
         <>
+          {/* Send is the product — first, and not behind a button. */}
+          <div className="mt-1">
+            <SendComposer onObserver={() => onObserver(true)} onReceipt={onReceipt} />
+          </div>
+
+          {/* the balance — an object here, not the brand */}
+          <section className="rise rise-3 mt-6">
+            <div className="glass px-6 pb-6 pt-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] font-medium text-glass-muted">Your money</p>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 py-1 pl-2 pr-2.5 text-[11.5px] font-semibold text-glass-ink">
+                  <ShieldCheck size={12} />
+                  Private
+                </span>
+              </div>
+
+              {revealed ? (
+                <div className="unblur">
+                  <div className="mt-3">
+                    {totalUsd !== null ? (
+                      <MoneyDisplay
+                        value={totalUsd}
+                        className="text-[42px] font-semibold leading-none tracking-[-0.03em]"
+                      />
+                    ) : nonZero.length > 0 ? (
+                      <p className="text-[32px] font-semibold leading-none tracking-[-0.02em]">
+                        {formatUnits(nonZero[0].raw, nonZero[0].decimals, 4)}{' '}
+                        <span className="text-[19px] text-glass-muted">{nonZero[0].symbol}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[32px] font-semibold leading-none tracking-[-0.02em]">
+                        $0<span className="text-glass-muted">.00</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {nonZero.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {nonZero.map((balance) => (
+                        <span
+                          key={balance.symbol}
+                          className="tabular rounded-full bg-white/8 px-2.5 py-1 text-[12px] font-medium text-glass-muted"
+                        >
+                          {formatUnits(balance.raw, balance.decimals, 4)} {balance.symbol}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[13.5px] leading-relaxed text-glass-muted">
+                      Nothing here yet.
+                      {registered === false
+                        ? ' Your private account activates the first time money moves — a deposit, or claiming a link someone sent you.'
+                        : ''}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-[12px] text-glass-faint">Only you can see this.</p>
+                    <span className="flex items-center gap-3">
+                      {nonZero.length > 0 ? (
+                        <button
+                          onClick={() => open({ kind: 'convert' })}
+                          className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline"
+                        >
+                          Convert
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => revealBalances()}
+                        disabled={balancesLoading}
+                        className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline disabled:opacity-50"
+                      >
+                        {balancesLoading ? 'Checking…' : 'Refresh'}
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => revealBalances()}
+                  disabled={balancesLoading}
+                  className="mt-3 block w-full text-left"
+                >
+                  <span className="text-[42px] font-semibold leading-none tracking-[0.1em] text-glass-ink/90">
+                    ••••••
+                  </span>
+                  <span className="mt-4 flex items-center gap-1.5 text-[13.5px] text-glass-muted">
+                    <Eye size={15} />
+                    {balancesLoading
+                      ? 'Asking your wallet…'
+                      : 'Tap to reveal — your wallet will ask first'}
+                  </span>
+                </button>
+              )}
+            </div>
+          </section>
+
           {/* waiting for you — the heartbeat */}
           {waiting.length > 0 ? (
             <section className="rise rise-2 mt-5">
@@ -338,108 +438,10 @@ export function Home({
             </section>
           ) : null}
 
-          {/* the balance — an object here, not the brand */}
-          <section className="rise rise-3 mt-6">
-            <div className="glass px-6 pb-6 pt-5">
-              <div className="flex items-center justify-between">
-                <p className="text-[13px] font-medium text-glass-muted">Your money</p>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 py-1 pl-2 pr-2.5 text-[11.5px] font-semibold text-glass-ink">
-                  <ShieldCheck size={12} />
-                  Private
-                </span>
-              </div>
-
-              {revealed ? (
-                <div className="unblur">
-                  <div className="mt-3">
-                    {totalUsd !== null ? (
-                      <MoneyDisplay
-                        value={totalUsd}
-                        className="text-[42px] font-semibold leading-none tracking-[-0.03em]"
-                      />
-                    ) : nonZero.length > 0 ? (
-                      <p className="text-[32px] font-semibold leading-none tracking-[-0.02em]">
-                        {formatUnits(nonZero[0].raw, nonZero[0].decimals, 4)}{' '}
-                        <span className="text-[19px] text-glass-muted">{nonZero[0].symbol}</span>
-                      </p>
-                    ) : (
-                      <p className="text-[32px] font-semibold leading-none tracking-[-0.02em]">
-                        $0<span className="text-glass-muted">.00</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {nonZero.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {nonZero.map((balance) => (
-                        <span
-                          key={balance.symbol}
-                          className="tabular rounded-full bg-white/8 px-2.5 py-1 text-[12px] font-medium text-glass-muted"
-                        >
-                          {formatUnits(balance.raw, balance.decimals, 4)} {balance.symbol}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-[13.5px] leading-relaxed text-glass-muted">
-                      Nothing here yet.
-                      {registered === false
-                        ? ' Your private account activates the first time money moves — a deposit, or claiming a link someone sent you.'
-                        : ''}
-                    </p>
-                  )}
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-[12px] text-glass-faint">Only you can see this.</p>
-                    <span className="flex items-center gap-3">
-                      {nonZero.length > 0 ? (
-                        <button
-                          onClick={() => open({ kind: 'convert' })}
-                          className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline"
-                        >
-                          Convert
-                        </button>
-                      ) : null}
-                      <button
-                        onClick={() => revealBalances()}
-                        disabled={balancesLoading}
-                        className="text-[12px] font-semibold text-glass-muted underline-offset-2 hover:underline disabled:opacity-50"
-                      >
-                        {balancesLoading ? 'Checking…' : 'Refresh'}
-                      </button>
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => revealBalances()}
-                  disabled={balancesLoading}
-                  className="mt-3 block w-full text-left"
-                >
-                  <span className="text-[42px] font-semibold leading-none tracking-[0.1em] text-glass-ink/90">
-                    ••••••
-                  </span>
-                  <span className="mt-4 flex items-center gap-1.5 text-[13.5px] text-glass-muted">
-                    <Eye size={15} />
-                    {balancesLoading
-                      ? 'Asking your wallet…'
-                      : 'Tap to reveal — your wallet will ask first'}
-                  </span>
-                </button>
-              )}
-            </div>
-          </section>
-
-          {/* the verbs, weighted — paying is the frequent one */}
+          {/* Everything else is utility now — Send is above, and it is the
+              product. These stay quiet and equal. */}
           <section className="rise rise-4 mt-4">
-            <button
-              onClick={() => open({ kind: 'pay' })}
-              className="btn btn-ink w-full !h-[58px] !text-[16.5px]"
-            >
-              <ArrowUpRight size={19} />
-              Pay someone
-            </button>
-            <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => open({ kind: 'my-page' })}
                 className="card card-press flex items-center gap-2.5 px-4 py-3.5"

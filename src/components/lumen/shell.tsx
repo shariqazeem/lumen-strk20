@@ -19,7 +19,6 @@ import type { ReactNode } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { shortAddress } from '@/lib/lumen/people'
 import {
-  ArrowDown,
   ArrowUpRight,
   Clock,
   Eye,
@@ -49,10 +48,11 @@ export interface NavItem {
  * The primary navigation. Money in, money out, then the two surfaces that are
  * the product's own argument — what it did, and what it did not publish.
  */
-export function navItems(waiting: number): NavItem[] {
+export function navItems(): NavItem[] {
   return [
-    { id: 'home', label: 'Incoming', short: 'Incoming', icon: <ArrowDown size={17} />, badge: waiting },
-    { id: 'pay', label: 'Pay', short: 'Pay', icon: <ArrowUpRight size={17} />, route: { kind: 'pay' } },
+    // Send leads because Send is the product; everything under it is support.
+    { id: 'home', label: 'Send', short: 'Send', icon: <ArrowUpRight size={17} /> },
+    { id: 'pay', label: 'Send a link', short: 'Link', icon: <LinkIcon size={17} />, route: { kind: 'pay' } },
     {
       id: 'my-page',
       label: 'Get paid',
@@ -113,7 +113,6 @@ export function AppShell({
   children,
   rail,
   activeId,
-  waiting,
   observer,
   onObserver,
   open,
@@ -122,13 +121,12 @@ export function AppShell({
   /** The observer panel, rendered in the right rail on wide screens. */
   rail: ReactNode
   activeId: string
-  waiting: number
   observer: boolean
   onObserver: (next: boolean) => void
   open: (route: SheetRoute) => void
 }) {
   const { address, walletName, registered } = useLumen()
-  const items = navItems(waiting)
+  const items = navItems()
 
   const select = (item: NavItem) => {
     if (item.route) open(item.route)
