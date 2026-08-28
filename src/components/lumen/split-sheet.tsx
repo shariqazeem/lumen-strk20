@@ -15,10 +15,12 @@
 import { useMemo, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { reviewPay } from '@/lib/lumen/guard'
+import { DEFAULT_REFUND_WINDOW_S } from '@/lib/strk20/escrow'
 import { looksLikeStarknetAddress, shortAddress, type Person } from '@/lib/lumen/people'
 import { formatUnits, parseUnits } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
+import { ShareLink } from './share-link'
 import {
   Avatar,
   ErrorNote,
@@ -49,6 +51,7 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
     error,
     clearError,
     lastTx,
+    sendClaimLinks,
   } = useLumen()
 
   const [token, setToken] = useState<TokenSymbol>('USDC')
@@ -57,6 +60,13 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const [totalText, setTotalText] = useState('')
   const [note, setNote] = useState('')
   const [done, setDone] = useState<{ count: number; total: bigint } | null>(null)
+  // Two ways to pay several people: to addresses they already have, or as
+  // links for people who have no wallet at all. Same operation count either
+  // way — one.
+  const [mode, setMode] = useState<'addresses' | 'links'>('addresses')
+  const [minted, setMinted] = useState<{ amount: bigint; name?: string; url: string }[] | null>(
+    null,
+  )
 
   const decimals = TOKENS[token].decimals
   const balance = balances.find((b) => b.symbol === token)
@@ -132,7 +142,20 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const submit = async () => {
     if (recipients.length === 0 || !enough) return
     try {
-      await paySplit({ token, recipients, ...(note.trim() ? { note: note.trim() } : {}) })
+      if (mode === 'links') {
+        const links = await sendClaimLinks({
+          token,
+          refundAfterS: DEFAULT_REFUND_WINDOW_S,
+          legs: recipients.map((r) => ({
+            amount: r.amount,
+            ...(r.name ? { name: r.name } : {}),
+            ...(note.trim() ? { note: note.trim() } : {}),
+          })),
+        })
+        setMinted(links)
+      } else {
+        await paySplit({ token, recipients, ...(note.trim() ? { note: note.trim() } : {}) })
+      }
       if (report) noteDecision({ action: 'pay', report })
       setDone({ count: recipients.length, total })
     } catch {
@@ -151,7 +174,33 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
     >
       {!done ? (
         <div>
-          <div className="flex gap-1.5 overflow-x-auto">
+          {/* Who they are decides the rail: an address takes a private
+              transfer, no address takes a hash-locked link. */}
+          <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-sunk p-1.5">
+            {(
+              [
+                { id: 'addresses', label: 'To addresses' },
+                { id: 'links', label: 'As links' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setMode(tab.id)}
+                className={`h-9 rounded-xl text-[13.5px] font-semibold transition-colors ${
+                  mode === tab.id ? 'bg-card shadow-[0_1px_2px_rgba(18,18,20,0.08)]' : 'text-ink-muted'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <p className="mb-4 mt-2.5 px-1 text-[12.5px] leading-relaxed text-ink-faint">
+            {mode === 'links'
+              ? 'For people with no wallet. Everyone gets their own link and their own refund path, funded together — one operation, one fee, nothing in the timing to line up.'
+              : 'Straight to addresses they already have. One operation, and nobody sees what anyone else got.'}
+          </p>
+
+          <div className="flex flex-wrap gap-1.5">
             {TOKEN_LIST.map((t) => t.symbol).map((symbol) => (
               <button
                 key={symbol}
@@ -165,14 +214,33 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
             ))}
           </div>
 
+          {mode === 'links' ? (
+            <button
+              onClick={() =>
+                setLines((current) => [
+                  ...current,
+                  { key: `link-${current.length}-${current.length + 1}`, address: '', amountText: '' },
+                ])
+              }
+              className="btn btn-quiet mt-4 w-full"
+            >
+              <Plus size={16} />
+              Add a recipient
+            </button>
+          ) : null}
+
           {lines.length > 0 ? (
             <div className="card mt-4 divide-y divide-rule">
               {lines.map((line) => (
                 <div key={line.key} className="flex items-center gap-3 px-4 py-3">
-                  <Avatar name={line.person?.name ?? line.address} size={36} />
+                  <Avatar
+                    name={line.person?.name ?? line.address ?? ''}
+                    size={36}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] font-semibold">
-                      {line.person?.name ?? shortAddress(line.address)}
+                      {line.person?.name ??
+                        (line.address ? shortAddress(line.address) : 'A link')}
                     </span>
                   </span>
                   <input
@@ -314,16 +382,42 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
           <p className="mt-5 text-[22px] font-semibold tracking-[-0.02em]">
             {done.count} {done.count === 1 ? 'person' : 'people'} paid
           </p>
-          <p className="mx-auto mt-2 max-w-[310px] text-[14px] leading-relaxed text-ink-muted">
-            {formatUnits(done.total, decimals, 6)} {token} went out as a single private
-            operation. Each person got their own receipt; none of them can see the others.
+          <p className="mx-auto mt-2 max-w-[330px] text-[14px] leading-relaxed text-ink-muted">
+            {formatUnits(done.total, decimals, 6)} {token}{' '}
+            {minted
+              ? 'was locked into one link each, in a single operation. Nobody needs a wallet to open one, and none of them can see the others.'
+              : 'went out as a single private operation. Each person got their own receipt; none of them can see the others.'}
           </p>
           {lastTx ? (
             <p className="mt-3">
               <TxLink hash={lastTx.hash} />
             </p>
           ) : null}
-          <WorldSaw kind="private" />
+
+          {minted ? (
+            <div className="mt-5 space-y-2.5 text-left">
+              {minted.map((link, index) => (
+                <div key={link.url} className="card px-4 py-3.5">
+                  <p className="flex items-baseline justify-between gap-3">
+                    <span className="text-[13.5px] font-semibold">
+                      {link.name ?? `Link ${index + 1}`}
+                    </span>
+                    <span className="tabular flex-none text-[13.5px] font-semibold">
+                      {formatUnits(link.amount, decimals, 6)} {token}
+                    </span>
+                  </p>
+                  <ShareLink
+                    url={link.url}
+                    shareText="I sent you money on Lumen"
+                    privateLabel="the claim secret — this is the money"
+                    className="mt-2.5"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <WorldSaw kind={minted ? 'claim' : 'private'} />
           <button onClick={onClose} className="btn btn-ink mt-7 w-full">
             <Check size={17} />
             Done

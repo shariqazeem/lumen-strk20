@@ -33,6 +33,7 @@ import {
 import {
   buildEscrowClaim,
   buildEscrowFund,
+  buildEscrowFundMany,
   buildEscrowRefund,
   encodeClaimLink,
   ESCROW_ADDRESS,
@@ -137,6 +138,12 @@ interface LumenState {
   }) => Promise<Receipt[]>
 
   /** Fund a claim link; returns the record plus the shareable URL. */
+  sendClaimLinks: (input: {
+    token: TokenSymbol
+    legs: readonly { amount: bigint; name?: string; note?: string }[]
+    refundAfterS: number
+    fromName?: string
+  }) => Promise<{ amount: bigint; name?: string; url: string }[]>
   sendClaimLink: (input: {
     token: TokenSymbol
     amount: bigint
@@ -540,6 +547,89 @@ export const useLumen = create<LumenState>((set, get) => ({
         set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
       )
       return transaction_hash
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  /**
+   * N claim links, one pool operation.
+   *
+   * Every recipient gets their own secret and their own refund path, so the
+   * links are independent afterwards — but they are funded together, which is
+   * the point: one fee, one timestamp, and nothing in the sizes or the spacing
+   * for an observer to line up. Minting them one at a time would publish the
+   * whole payout as a sequence.
+   */
+  async sendClaimLinks(input) {
+    const { account, address } = requireAccount(get, set)
+    set({ submitting: true, error: null })
+    try {
+      const expiry =
+        Math.floor(Date.now() / 1000) + Math.max(MIN_REFUND_WINDOW_S, input.refundAfterS)
+
+      const drafted = input.legs.map((leg) => ({
+        ...leg,
+        claimSecret: generateSecret(),
+        refundSecret: generateSecret(),
+      }))
+
+      const actions = buildEscrowFundMany({
+        token: TOKENS[input.token].address,
+        expiry,
+        legs: drafted.map((leg) => ({
+          amount: leg.amount,
+          claimSecret: leg.claimSecret,
+          refundSecret: leg.refundSecret,
+        })),
+      })
+      assertNeverUnshields(actions, { contracts: [ESCROW_ADDRESS] })
+
+      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+
+      const minted = drafted.map((leg) => {
+        addLink(address, {
+          claimSecret: leg.claimSecret,
+          refundSecret: leg.refundSecret,
+          token: input.token,
+          amountRaw: leg.amount.toString(),
+          expiry,
+          createdAt: Date.now(),
+          txHash: transaction_hash,
+          ...(leg.note ? { note: leg.note } : {}),
+        })
+        return {
+          amount: leg.amount,
+          ...(leg.name ? { name: leg.name } : {}),
+          url: encodeClaimLink(window.location.origin, {
+            v: 1,
+            s: leg.claimSecret,
+            t: TOKENS[input.token].address,
+            a: leg.amount.toString(),
+            ...(input.fromName ? { f: input.fromName } : {}),
+            ...(leg.note ? { n: leg.note } : {}),
+          }),
+        }
+      })
+
+      const total = drafted.reduce((sum, leg) => sum + leg.amount, 0n)
+      const ledger = appendLedger(address, {
+        timestamp: Date.now(),
+        type: 'LINK',
+        asset: input.token,
+        amount: total,
+        route: 'DIRECT',
+        txHash: transaction_hash,
+        observer: `escrow · ${drafted.length} links · public total`,
+      })
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'link', status: 'submitted' }
+      set({ submitting: false, ledger, links: loadLinks(address), lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return minted
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
       throw error
