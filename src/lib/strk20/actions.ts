@@ -323,7 +323,12 @@ export function explainWalletError(error: unknown): string {
 
   switch (code) {
     case STRK20_ERRORS.NOT_REGISTERED:
-      return 'This account is not registered with the pool yet. The wallet registers you on first use — approve that step and retry.'
+      // Confirmed against Ready on mainnet, 28 Aug 2026: a wallet does not
+      // register an account on a *dapp-initiated* shield. The Wallet API has
+      // no register method — only balances, prepare and invoke — so no dapp
+      // can do this for you. Shielding once inside the wallet's own screen
+      // registers the account, and everything here works afterwards.
+      return 'Your wallet has not joined the privacy pool yet, and an app cannot do it for you. Open your wallet, shield any small amount there once, then come back — everything here will work.'
     case STRK20_ERRORS.INSUFFICIENT_PRIVATE_BALANCE:
       return 'Not enough shielded balance for this action once the pool fee is included. Shield more, or reduce the amount.'
     case STRK20_ERRORS.PRIVACY_LEAK:

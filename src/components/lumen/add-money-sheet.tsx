@@ -27,7 +27,18 @@ import {
 import { Clock } from './icons'
 
 export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { address, prices, ledger, submitting, addMoney, noteDecision, error, clearError, lastTx } =
+  const {
+    address,
+    prices,
+    ledger,
+    registered,
+    submitting,
+    addMoney,
+    noteDecision,
+    error,
+    clearError,
+    lastTx,
+  } =
     useLumen()
 
   const [token, setToken] = useState<TokenSymbol>('USDC')
@@ -82,7 +93,19 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
     <Sheet open={open} onClose={onClose} locked={submitting} title={done ? 'Added' : 'Add money'}>
       {!done ? (
         <div>
-          <AmountField
+          {registered === false ? (
+        <div className="mb-5 rounded-2xl bg-glass px-5 py-4 text-glass-ink">
+          <p className="text-[14px] font-semibold">One step happens in your wallet first</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-glass-muted">
+            Your account has not joined the privacy pool yet, and no app can join it for you —
+            the wallet API has no such method. Open your wallet, shield any small amount there
+            once, and come back. After that everything here works, and you will never see this
+            again.
+          </p>
+        </div>
+      ) : null}
+
+      <AmountField
             value={amountText}
             onChange={(next) => {
               setAmountText(next)
