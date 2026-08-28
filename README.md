@@ -1,14 +1,34 @@
 # Lumen
 
-**Your payments shouldn't become a map of your life.**
+**Your Bitcoin shouldn't become a map of your life.**
 
-Money reaches you from more than one place — a claim link, your page, a team
-split, another app entirely. Each of those can be private on its own. Together
-they are exactly how a public profile of you gets built.
+Lumen is the private account for Bitcoin on Starknet. Name, amount, Send —
+that is the whole interaction. There is no shielding step, no privacy mode and
+no toggle, because the reason people do not use private transfers is not that
+they dislike privacy: it is that the private path is a *different workflow*
+from the normal one, and a second workflow loses every time. So Lumen does not
+have one.
 
-Lumen is the account those arrivals land in, and the thing that stops them
-lining up. It is not a wallet: a wallet holds a balance and waits. This holds
-your *unlinkability* — across every counterparty, and across time.
+Underneath, every send is an [STRK20](https://strk20-by-example.org) private
+transfer, and the flagship asset is
+[strkBTC](https://www.starknet.io/blog/strkbtc-is-live-private-bitcoin-arrives-on-starknet/) —
+the first asset built on STRK20, backed 1:1 by BTC locked on the Bitcoin base
+layer.
+
+**Where this fits.** StarkWare spent 2026 completing three sides of a triangle:
+STRK20 made privacy native to any Starknet asset, strkBTC made Bitcoin the
+first of them, and in August a StarkWare researcher mined
+[the first quantum-safe Bitcoin transaction](https://starkware.co/blog/the-first-quantum-safe-bitcoin-transaction-has-been-mined/)
+using hash-based rather than curve-based constructions. All three exist at the
+infrastructure level. None of them has a consumer surface. Lumen is that
+surface — and its claim links are already hash locks, Poseidon preimages with
+no elliptic curve in the path (see [What Lumen does not claim](#what-lumen-does-not-claim)).
+
+Money also arrives from more than one place — a claim link, your page, a team
+split, another app entirely. Each of those is private on its own. Together they
+are exactly how a public profile of you gets built. Lumen is the account they
+land in, and the thing that stops them lining up: it holds your
+*unlinkability*, across every counterparty and across time.
 
 Built on the live [STRK20](https://strk20-by-example.org) privacy pool,
 Starknet **mainnet**. Non-custodial: the user's privacy-enabled wallet holds
@@ -19,6 +39,26 @@ private state and never asks for a viewing key.
 `LumenEscrow` is deployed on mainnet at
 [`0x293c8a95…8cd8`](https://voyager.online/contract/0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8),
 so claim links are live. Nothing in the product is sample data.
+
+## What Lumen does not claim
+
+Lumen is **not a quantum-safe product**, and Starknet is not quantum-ready
+today. Three things are true and are the only three claimed:
+
+1. **The claim link is a hash lock.** `LumenEscrow` stores
+   `poseidon(LUMEN_ESCROW_CLAIM:V1, secret)` and never the secret or any public
+   key, so there is no elliptic curve between minting a link and the money
+   moving.
+2. **The pool's integrity rests on STARKs**, which have never depended on
+   elliptic-curve assumptions.
+3. **The account signature is rotatable.** Native account abstraction lets a
+   Starknet account change its signature scheme without a protocol change, and
+   post-quantum signers already run on mainnet.
+
+What is *not* covered: the account signature that authorises a transaction is
+still elliptic-curve, and so is the bridge. Naming that here is deliberate —
+the people scoring this sprint wrote the quantum-safe Bitcoin work, and a
+privacy product that overclaims is worse than one that underclaims.
 
 ## Why this is not the other private-payment projects
 

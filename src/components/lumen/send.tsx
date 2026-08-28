@@ -23,7 +23,7 @@ import { useLumen } from '@/lib/lumen/store'
 import { reviewPay } from '@/lib/lumen/guard'
 import { looksLikeStarknetAddress, shortAddress, type Person } from '@/lib/lumen/people'
 import { formatUnits } from '@/lib/strk20/wallet'
-import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
+import { preferredToken, TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import type { Receipt } from '@/lib/lumen/receipts'
 import { AmountField, Avatar, ErrorNote, parseAmount, SuccessMark, TxLink } from './bits'
 import { ArrowRight, ArrowUpRight, Check, Globe, ShieldCheck } from './icons'
@@ -57,12 +57,15 @@ export function SendComposer({
   const [query, setQuery] = useState('')
   const [target, setTarget] = useState<Target | null>(null)
   const [amountText, setAmountText] = useState('')
-  const [token, setToken] = useState<TokenSymbol>('USDC')
+  const [token, setToken] = useState<TokenSymbol | null>(null)
   const [sent, setSent] = useState<Receipt | null>(null)
   const amountRef = useRef<HTMLDivElement>(null)
 
-  const amount = parseAmount(amountText, token)
-  const balance = balances.find((b) => b.symbol === token)
+  // Null until balances land, so the composer never opens on an asset the
+  // account cannot spend and then silently changes under the user's fingers.
+  const active = token ?? preferredToken(balances)
+  const amount = parseAmount(amountText, active)
+  const balance = balances.find((b) => b.symbol === active)
   const enough = balance === undefined || amount <= balance.raw
 
   /** Contacts matching what has been typed — never more than four. */
@@ -94,15 +97,15 @@ export function SendComposer({
     // Nobody opened a privacy app; they are paying someone.
     const report = reviewPay({
       amount,
-      decimals: TOKENS[token].decimals,
-      token,
+      decimals: TOKENS[active].decimals,
+      token: active,
       recipient: target.address,
       ledger,
       now: Date.now(),
     })
     try {
       const receipt = await pay({
-        token,
+        token: active,
         amount,
         recipient: target.address,
         ...(target.name ? { recipientName: target.name } : {}),
@@ -119,6 +122,7 @@ export function SendComposer({
     setTarget(null)
     setQuery('')
     setAmountText('')
+    setToken(null)
   }
 
   /* ---------------------------------------------------------------- */
@@ -264,7 +268,7 @@ export function SendComposer({
             <AmountField
               value={amountText}
               onChange={setAmountText}
-              token={token}
+              token={active}
               onToken={setToken}
               tokens={TOKEN_LIST.map((t) => t.symbol)}
               prices={prices}

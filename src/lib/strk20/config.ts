@@ -185,3 +185,27 @@ export function explorerTx(hash: string): string {
 export function explorerContract(address: string): string {
   return `https://voyager.online/contract/${address}`
 }
+
+/**
+ * Which asset a composer should open on.
+ *
+ * strkBTC is the flagship — the first asset built on STRK20, backed 1:1 by BTC
+ * locked on the Bitcoin base layer — so it leads whenever there is any of it.
+ * But opening on an asset the account does not hold means opening on a screen
+ * that cannot send, so a real balance always wins over the flagship, and the
+ * flagship only wins over an empty account.
+ */
+export function preferredToken(
+  balances: readonly { symbol: TokenSymbol; raw: bigint }[],
+): TokenSymbol {
+  const held = balances.filter((balance) => balance.raw > 0n)
+  if (held.length === 0) return FLAGSHIP
+  const flagship = held.find((balance) => balance.symbol === FLAGSHIP)
+  if (flagship) return FLAGSHIP
+  // Otherwise whatever they actually have most of, by list order as a
+  // tiebreak — never a token with a zero balance.
+  return held[0].symbol
+}
+
+/** The asset Lumen leads with. */
+export const FLAGSHIP: TokenSymbol = 'strkBTC'

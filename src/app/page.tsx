@@ -58,7 +58,7 @@ const FILM_BEATS: Beat[] = [
           <LumenMark size={28} />
         </span>
         <Line>
-          Your payments shouldn&rsquo;t become{' '}
+          Your Bitcoin shouldn&rsquo;t become{' '}
           <span className="stroke-text">a map of your life.</span>
         </Line>
         <p className="mt-10 flex items-center gap-2 text-[12.5px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
@@ -484,6 +484,65 @@ export default function Landing() {
                 ))}
               </div>
             </div>
+          </Reveal>
+        </section>
+
+        {/* the cryptography, claimed exactly and no further */}
+        <section className="border-t border-rule py-28">
+          <Reveal>
+            <p className="chapter mx-auto w-fit">The rail</p>
+            <h2 className="mt-5 text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
+              Locked with hashes.
+              <br />
+              <span className="stroke-text">Proven with hashes.</span>
+            </h2>
+            <p className="mx-auto mt-5 max-w-[56ch] text-center text-[15.5px] leading-relaxed text-ink-muted">
+              A Lumen claim link is a Poseidon preimage. There is no elliptic curve anywhere in
+              the path between minting that link and the money moving — the same hash-based class
+              StarkWare used in August to mine{' '}
+              <a
+                href="https://starkware.co/blog/the-first-quantum-safe-bitcoin-transaction-has-been-mined/"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-ink underline decoration-rule-strong underline-offset-2"
+              >
+                the first quantum-safe Bitcoin transaction
+              </a>
+              , and the class Shor&rsquo;s algorithm cannot break.
+            </p>
+          </Reveal>
+
+          <Reveal stagger className="mx-auto mt-14 grid max-w-[900px] gap-5 sm:grid-cols-3">
+            {[
+              {
+                head: 'The claim is a hash lock',
+                body: 'Whoever holds the secret can open the escrow. The contract stores only poseidon(tag, secret) — never the secret, never a public key.',
+              },
+              {
+                head: 'The proofs are STARKs',
+                body: 'Integrity in the pool rests on hash functions, not on discrete logarithms. That has been true of STARKs since before anyone was asking.',
+              },
+              {
+                head: 'The signature is rotatable',
+                body: 'Native account abstraction lets a Starknet account change its signature scheme without a fork. Post-quantum signers already run on mainnet.',
+              },
+            ].map((item) => (
+              <div key={item.head} className="card px-6 py-6">
+                <p className="text-[15px] font-semibold tracking-[-0.01em]">{item.head}</p>
+                <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-muted">{item.body}</p>
+              </div>
+            ))}
+          </Reveal>
+
+          {/* The claim we do not make. Stating it is the point. */}
+          <Reveal className="mx-auto mt-8 max-w-[62ch]">
+            <p className="rounded-2xl border border-dashed border-rule-strong px-6 py-5 text-[13.5px] leading-relaxed text-ink-muted">
+              <span className="font-semibold text-ink">What Lumen does not claim.</span> This is
+              not a quantum-safe product, and Starknet is not quantum-ready today — the account
+              signature that authorises a transaction is still elliptic-curve, and so is the
+              bridge. What is hash-based is hash-based; the rest is named here rather than left
+              for someone to discover.
+            </p>
           </Reveal>
         </section>
 
