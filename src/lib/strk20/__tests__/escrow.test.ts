@@ -111,6 +111,33 @@ describe('action builders', () => {
     if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
     expect(invoke.calldata?.[0]).toBe('0x2')
   })
+
+  /**
+   * An escrow is superseded, never emptied. A link minted before a redeploy is
+   * still sitting in the older one, and an exit built against the current
+   * address finds no entry and reverts — which is what happened on mainnet to
+   * a 2 STRK link left in the second escrow.
+   */
+  it('exits against the escrow that holds the entry, not the newest one', async () => {
+    const { buildEscrowRefund, buildEscrowClaim } = await lib()
+    const older = '0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288'
+
+    for (const actions of [
+      buildEscrowRefund({ token: '0xt', recipient: '0xme', secret: '0xr', escrowAddress: older }),
+      buildEscrowClaim({ token: '0xt', recipient: '0xme', secret: '0xs', escrowAddress: older }),
+    ]) {
+      const invoke = actions[1]
+      if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+      expect(invoke.contract).toBe(older)
+    }
+  })
+
+  it('still defaults to the current escrow when no holder is named', async () => {
+    const { buildEscrowRefund } = await lib()
+    const invoke = buildEscrowRefund({ token: '0xt', recipient: '0xme', secret: '0xr' })[1]
+    if (invoke.type !== 'invoke') throw new Error('second action must be invoke')
+    expect(invoke.contract).toBe(ESCROW_SENT)
+  })
 })
 
 describe('link codec', () => {

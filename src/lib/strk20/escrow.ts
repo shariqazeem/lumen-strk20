@@ -238,9 +238,19 @@ export function buildEscrowFundMany(input: {
  * Claim (or refund) a link: open a note for the value, then invoke with the
  * secret. The wallet resolves `${openNoteIds[0]}` to the freshly opened note.
  */
+/**
+ * Build a claim or a refund against the escrow that actually holds the entry.
+ *
+ * `escrowAddress` is not optional decoration. Escrows are superseded but never
+ * emptied, so a link minted last week can be sitting in an older one while the
+ * app has moved on — and an exit built against the current address finds no
+ * entry and reverts with nothing to explain itself. Callers resolve the holder
+ * with `findEscrowHolding` and pass it in. Every deployed version shares this
+ * nine-felt `privacy_invoke` shape, so only the address differs.
+ */
 function buildEscrowExit(
   operation: (typeof OP)['CLAIM' | 'REFUND'],
-  input: { token: string; recipient: string; secret: string },
+  input: { token: string; recipient: string; secret: string; escrowAddress?: string },
 ): STRK20_ACTION[] {
   if (!escrowEnabled()) throw new Error('Claim links are not enabled on this deployment yet.')
   return [
@@ -252,7 +262,7 @@ function buildEscrowExit(
     },
     {
       type: 'invoke',
-      contract: ESCROW_ADDRESS,
+      contract: input.escrowAddress ?? ESCROW_ADDRESS,
       calldata: [
         operation,
         '0x0',
@@ -273,6 +283,7 @@ export function buildEscrowClaim(input: {
   token: string
   recipient: string
   secret: string
+  escrowAddress?: string
 }): STRK20_ACTION[] {
   return buildEscrowExit(OP.CLAIM, input)
 }
@@ -281,6 +292,7 @@ export function buildEscrowRefund(input: {
   token: string
   recipient: string
   secret: string
+  escrowAddress?: string
 }): STRK20_ACTION[] {
   return buildEscrowExit(OP.REFUND, input)
 }

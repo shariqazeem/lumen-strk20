@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import {
   decodeClaimLink,
-  readEscrowEntry,
+  findEscrowHolding,
   tokenForClaim,
   type ClaimLinkPayload,
   type EscrowEntryState,
@@ -78,7 +78,10 @@ export default function ClaimPage() {
 
   const refresh = useCallback(async (payload: ClaimLinkPayload) => {
     setChecking(true)
-    const entry = await readEscrowEntry(payload.s)
+    // Across every escrow Lumen has deployed, not just the current one. A link
+    // minted before the last deploy still lives in the older escrow, and
+    // reading only the newest would tell its holder the money does not exist.
+    const entry = (await findEscrowHolding(payload.s))?.entry ?? null
     // The chain is the truth: if it was claimed elsewhere, stop showing it as
     // waiting in this device's inbox.
     if (entry?.claimed) reconcileInbox(payload.s, true)

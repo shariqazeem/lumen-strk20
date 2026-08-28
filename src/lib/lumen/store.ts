@@ -49,7 +49,6 @@ import {
   ESCROW_ADDRESS,
   generateSecret,
   MIN_REFUND_WINDOW_S,
-  readEscrowEntry,
   type ClaimLinkPayload,
 } from '@/lib/strk20/escrow'
 import { addLink, loadLinks, updateLinkStatus, type SentLink } from './links'
@@ -904,10 +903,14 @@ export const useLumen = create<LumenState>((set, get) => ({
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
+      // Same reason as the refund path: claim against whichever escrow holds
+      // it, not whichever one this build was compiled against.
+      const holder = await findEscrowHolding(payload.s)
       const actions = buildEscrowClaim({
         token: payload.t,
         recipient: address,
         secret: payload.s,
+        ...(holder ? { escrowAddress: holder.address } : {}),
       })
       const submitted = await raceTheChain(
         walletRequest(() => account.strk20InvokeTransaction(actions)),
@@ -952,10 +955,33 @@ export const useLumen = create<LumenState>((set, get) => ({
     if (!link) throw new Error('That link is not in this device’s records.')
     set({ submitting: true, error: null })
     try {
+      // Ask the chain who is holding this before asking the wallet to sign.
+      // An escrow is superseded, never emptied, so a link minted before the
+      // last deploy still lives in the older one — and a refund built against
+      // the current address finds no entry and reverts, which reaches the user
+      // as a bare execution error with nothing in it to act on.
+      const holder = await findEscrowHolding(link.claimSecret)
+      if (!holder) {
+        throw new Error(
+          'No escrow this app knows about is holding that link. Nothing was sent to your wallet.',
+        )
+      }
+      if (holder.entry.claimed) {
+        // Already collected. Say so and correct the record rather than
+        // spending a fee to be told the same thing by the contract.
+        set({
+          submitting: false,
+          links: updateLinkStatus(address, id, 'claimed'),
+          error: 'Someone already collected that link, so there is nothing left to take back.',
+        })
+        return ''
+      }
+
       const actions = buildEscrowRefund({
         token: TOKENS[link.token].address,
         recipient: address,
         secret: link.refundSecret,
+        escrowAddress: holder.address,
       })
       const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
 
@@ -1022,8 +1048,11 @@ export const useLumen = create<LumenState>((set, get) => ({
     if (!address) return
     for (const link of links) {
       if (link.status !== 'open') continue
-      const entry = await readEscrowEntry(link.claimSecret)
-      if (entry?.claimed) updateLinkStatus(address, link.id, 'claimed')
+      // Across every known escrow: a link older than the last deploy reads as
+      // "not found" against the current one, which left it showing Reclaimable
+      // for ever and offered a button that could only revert.
+      const holder = await findEscrowHolding(link.claimSecret)
+      if (holder?.entry.claimed) updateLinkStatus(address, link.id, 'claimed')
     }
     set({ links: loadLinks(address) })
   },

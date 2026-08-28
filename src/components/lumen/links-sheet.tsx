@@ -8,7 +8,7 @@
  * once the link's refund window passes and it is still unclaimed.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
 import type { SentLink } from '@/lib/lumen/links'
@@ -51,6 +51,22 @@ export function LinksSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const { links, refundLink, syncLinks, submitting, error, clearError } = useLumen()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
+
+  // Reconcile on open, not on a button nobody knows to press. Every status
+  // here is a local cache, and a stale one offers "Take it back" on money
+  // somebody already collected — a transaction that can only revert, after a
+  // wallet prompt and a fee.
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    setSyncing(true)
+    void syncLinks().finally(() => {
+      if (live) setSyncing(false)
+    })
+    return () => {
+      live = false
+    }
+  }, [open, syncLinks])
 
   const copy = async (link: SentLink) => {
     try {
