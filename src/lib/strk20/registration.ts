@@ -71,3 +71,36 @@ export async function readRegistration(address: string): Promise<Registration> {
     return 'unknown'
   }
 }
+
+/**
+ * Has this account contract actually been deployed?
+ *
+ * A Starknet account address exists before its contract does — it is derived
+ * from the public key, and the deployment happens on first use. An undeployed
+ * account can *receive* an ERC-20 perfectly well but cannot *send* anything,
+ * which is a confusing failure for someone whose wallet shows a balance and a
+ * green tick.
+ *
+ * It matters most on the public claim path, which is aimed squarely at people
+ * whose wallet is minutes old.
+ */
+export async function isAccountDeployed(address: string): Promise<boolean | null> {
+  try {
+    const response = await fetch(RPC_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'starknet_getClassHashAt',
+        params: ['latest', address],
+      }),
+    })
+    const body = (await response.json()) as { result?: string; error?: unknown }
+    if (body.error) return false
+    return typeof body.result === 'string' && BigInt(body.result) !== 0n
+  } catch {
+    // Unknown, and the caller must not turn that into a claim either way.
+    return null
+  }
+}

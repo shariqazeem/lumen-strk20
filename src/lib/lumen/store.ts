@@ -66,7 +66,7 @@ import { loadArrivals, syncArrivals, type Arrival } from './arrivals'
 import type { GuardReport } from './guard'
 import { guardSeed } from './guard'
 import { scatterPlan, SPLITTER_ADDRESS } from './scatter'
-import { readRegistration } from '@/lib/strk20/registration'
+import { isAccountDeployed, readRegistration } from '@/lib/strk20/registration'
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -801,6 +801,17 @@ export const useLumen = create<LumenState>((set, get) => ({
     try {
       const holder = await findEscrowHolding(input.secret)
       if (!holder) throw new Error('No escrow is holding this link. It may already be claimed.')
+
+      // A wallet minutes old has an address but not yet a deployed account
+      // contract. It can receive tokens and cannot send a transaction, which
+      // otherwise surfaces as an unexplained "transaction failed".
+      if ((await isAccountDeployed(input.recipient)) === false) {
+        throw new Error(
+          'This wallet has not been activated on Starknet yet — it has an address but no account ' +
+            'contract. Wallets deploy it on their first transaction, so send any small amount ' +
+            'into it, or make one transaction from it, then come back to this link.',
+        )
+      }
 
       const call = buildPublicClaim({
         escrowAddress: holder.address,
