@@ -10,6 +10,12 @@
       "hash": "0x423c246aa3ee4d47718f8c8a2b65733074a08cca765dcacd88ff00bbffff6f",
       "network": "mainnet",
       "what": "LumenEscrow deployed with claim_to_address \u2014 the second door. A claim can now be collected straight to a public address by someone who has never joined the privacy pool, has no shielded balance, and cannot pay the pool's flat fee."
+    },
+    {
+      "hash": "0x3af9f5cdd408a9d92e38caaf4071895474a0d1d9790a96a3c798de23d57b20b",
+      "network": "mainnet",
+      "block": 14013048,
+      "what": "Claim relayed to a wallet that had never joined the privacy pool, held no shielded balance, had no gas, and whose account contract was not deployed \u2014 and still is not. The recipient performed no action. A third party submitted claim_to_address; the Poseidon preimage was the only authority."
     }
   ],
   "contracts": [

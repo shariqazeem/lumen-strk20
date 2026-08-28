@@ -148,8 +148,37 @@ a valid link holding 2 STRK and was refused with 118 NOT_REGISTERED. The
 escrow kept the money — the commitment is untouched and the claim stays valid
 — but the claimant has to join the pool in their own wallet before collecting.
 
-So the strong version of the sentence is dead. The recipient does not "need
-nothing, ever". Here is what survives, and it is still unmatched on the board:
+**And then, the same evening, it came back.** The failure was not a limit of
+the primitive, it was the primitive being half built. `claim_to_address` pays
+out of the escrow's own ERC-20 balance, outside the pool gate, and it is
+deliberately ungated — the preimage authorises, not the caller. So a third
+party can collect *for* someone.
+
+Proved on mainnet, block 14013048, tx `0x3af9f5cd…d57b20b`: 1.969194 STRK
+delivered to a wallet with no pool registration, no shielded balance, no gas,
+and **no deployed account contract**. It still has none. The recipient
+performed no action whatsoever. A Starknet address can hold an ERC-20 before
+its account exists; deployment is only needed to *send*.
+
+So the strong sentence is true after all, and now it is precise:
+
+> You can pay someone who has nothing — not an account, not gas, not a wallet
+> they have opened. Someone else delivers it, and the secret is the only
+> authority.
+
+Independent corroboration arrived from Ready the same hour. Asked to send
+shielded tokens to that address, it answered: *"Private send unavailable.
+Recipient isn't registered for private transfers."* Its only fallback is a
+public send from the sender's own public balance — which names **both** ends.
+The second door names one: the recipient. The payer was a pool withdrawal, and
+the pool names nobody.
+
+That distinction is the whole product for a payouts service. An agent paying
+fifty testers with direct transfers appears fifty times. An agent funding one
+`DepositMany` and relaying fifty collections appears **once**, as a withdrawal
+of an unremarkable total, at one timestamp.
+
+The intermediate finding, for the record — the private door alone:
 
 > You can pay someone who is not set up yet. They set up when they collect,
 > not before you send.
