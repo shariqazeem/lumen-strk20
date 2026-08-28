@@ -37,36 +37,44 @@ const depositCalldata = () => [
 ]
 
 const CANDIDATES: { name: string; actions: STRK20_ACTION[] }[] = [
+  // Controls first. If these fail, nothing about the escrow is the problem.
   {
-    name: 'A — withdraw then invoke (what we ship today)',
+    name: '1 — deposit 0.1 STRK (shield; no recipient, no invoke)',
+    actions: [{ type: 'deposit', token: STRK, amount: hex(100_000_000_000_000_000n) }],
+  },
+  {
+    name: '2 — private transfer to SELF (a registered recipient)',
+    actions: [{ type: 'transfer', token: STRK, amount: hex(AMOUNT), recipient: 'SELF' }],
+  },
+  {
+    name: '3 — open note alone, no invoke',
+    actions: [{ type: 'transfer', token: STRK, amount: 'OPEN', recipient: 'SELF' }],
+  },
+  {
+    name: '4 — withdraw to SELF (a real public unshield shape)',
+    actions: [{ type: 'withdraw', token: STRK, amount: hex(AMOUNT), recipient: 'SELF' }],
+  },
+  // Now isolate `invoke`, from the smallest possible shape upward.
+  {
+    name: '5 — invoke with EMPTY calldata',
+    actions: [{ type: 'invoke', contract: ESCROW_ADDRESS, calldata: [] }],
+  },
+  {
+    name: '6 — invoke with one felt',
+    actions: [{ type: 'invoke', contract: ESCROW_ADDRESS, calldata: ['0x0'] }],
+  },
+  {
+    name: '7 — open note + invoke, one felt',
+    actions: [
+      { type: 'transfer', token: STRK, amount: 'OPEN', recipient: 'SELF' },
+      { type: 'invoke', contract: ESCROW_ADDRESS, calldata: ['0x0'] },
+    ],
+  },
+  {
+    name: '8 — our real Deposit: withdraw + invoke (nine felts)',
     actions: [
       { type: 'withdraw', token: STRK, amount: hex(AMOUNT), recipient: ESCROW_ADDRESS },
       { type: 'invoke', contract: ESCROW_ADDRESS, calldata: depositCalldata() },
-    ],
-  },
-  {
-    name: 'B — invoke alone, pool funds the helper implicitly',
-    actions: [{ type: 'invoke', contract: ESCROW_ADDRESS, calldata: depositCalldata() }],
-  },
-  {
-    name: 'C — open note, then invoke (the documented swap shape)',
-    actions: [
-      { type: 'transfer', token: STRK, amount: 'OPEN', recipient: ESCROW_ADDRESS },
-      { type: 'invoke', contract: ESCROW_ADDRESS, calldata: depositCalldata() },
-    ],
-  },
-  {
-    name: 'D — open note, withdraw, invoke (all three phases)',
-    actions: [
-      { type: 'transfer', token: STRK, amount: 'OPEN', recipient: ESCROW_ADDRESS },
-      { type: 'withdraw', token: STRK, amount: hex(AMOUNT), recipient: ESCROW_ADDRESS },
-      { type: 'invoke', contract: ESCROW_ADDRESS, calldata: depositCalldata() },
-    ],
-  },
-  {
-    name: 'E — a plain private transfer (proves the wallet works at all)',
-    actions: [
-      { type: 'transfer', token: STRK, amount: hex(AMOUNT), recipient: padAddress('0x1') },
     ],
   },
 ]
@@ -79,10 +87,17 @@ export default function DiagPage() {
   const run = async () => {
     if (!account) return
     setBusy(true)
-    setLines([`escrow ${ESCROW_ADDRESS}`, `token  ${STRK}`, ''])
+    const me = padAddress(account.address)
+    setLines([`escrow ${ESCROW_ADDRESS}`, `token  ${STRK}`, `self   ${me}`, ''])
     for (const candidate of CANDIDATES) {
+      // Placeholders resolved here so the list can be written declaratively.
+      const actions = candidate.actions.map((action) =>
+        'recipient' in action && action.recipient === 'SELF'
+          ? { ...action, recipient: me }
+          : action,
+      ) as STRK20_ACTION[]
       try {
-        await account.strk20PrepareInvoke(candidate.actions, true)
+        await account.strk20PrepareInvoke(actions, true)
         setLines((l) => [...l, `PASS  ${candidate.name}`])
       } catch (error) {
         const message =
@@ -103,7 +118,9 @@ export default function DiagPage() {
       <p className="mt-3 max-w-[58ch] text-[14.5px] leading-relaxed text-ink-muted">
         Dry-runs each candidate action array through the wallet with{' '}
         <span className="font-mono text-[13px]">simulate = true</span>. Nothing is submitted and
-        nothing is signed — the wallet only says whether it would accept the shape.
+        nothing is signed. The first four are controls — if those fail, the escrow is not the
+        problem. Five to seven isolate the <span className="font-mono text-[13px]">invoke</span>{' '}
+        action from the smallest possible shape upward.
       </p>
 
       {status !== 'connected' ? (
@@ -117,7 +134,7 @@ export default function DiagPage() {
         </div>
       ) : (
         <button onClick={() => void run()} disabled={busy} className="btn btn-ink mt-8">
-          {busy ? 'Asking the wallet…' : 'Run the five candidates'}
+          {busy ? 'Asking the wallet…' : 'Run the eight candidates'}
         </button>
       )}
 
