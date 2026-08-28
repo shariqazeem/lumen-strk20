@@ -751,12 +751,11 @@ at a time. It is a contract change plus a redeploy (one command now).
 
 ## 10. Working agreements with the founder
 
-- **Commit and push after every task, not in batches.** This is built in
-  public: the sprint leaderboard reads commit recency, so a synced-but-idle
-  repo reads as a dead project from outside. Treat the push as the last step
-  of a task, alongside typecheck, lint and tests. When a task produces nothing
-  committable — a review, an investigation, a question answered — say so out
-  loud, because silence looks the same as inactivity from the leaderboard.
+- **A deploy is a push.** The Vercel project is git-integrated — there is no
+  deploy script, no CLI deploy and no Actions workflow, so production builds
+  from whatever is on `origin/main` and can never be ahead of the repo. Ship
+  finished work rather than letting it sit uncommitted; do not pad the log to
+  look busy.
 - **Do not rebuild.** The stack is enough; the miss has always been positioning
   and proof, not code.
 - **Proof outranks features.** An empty `strk20.json` beats any story.
