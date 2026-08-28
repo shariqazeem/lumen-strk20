@@ -141,7 +141,29 @@ board.
 
 ## 5. What is still unknown, and it is the important one
 
-**Does claiming a link activate a never-registered account?**
+**Answered on 29 Aug 2026: no.**
+
+A wallet created fresh for the test, which had never touched the pool, opened
+a valid link holding 2 STRK and was refused with 118 NOT_REGISTERED. The
+escrow kept the money — the commitment is untouched and the claim stays valid
+— but the claimant has to join the pool in their own wallet before collecting.
+
+So the strong version of the sentence is dead. The recipient does not "need
+nothing, ever". Here is what survives, and it is still unmatched on the board:
+
+> You can pay someone who is not set up yet. They set up when they collect,
+> not before you send.
+
+That is a real difference and not a consolation. A private transfer requires
+the recipient to be registered **at the moment you send** — you cannot pay
+someone who has not arrived. A hash-locked claim requires it only at the
+moment they collect, which may be days later, and the sender needs to know
+nothing about them at all: no address, no wallet, no prior contact. Ready
+cannot do this, because a wallet has no escrow. Almoner batches to addresses,
+which presupposes the recipient exists on-chain. Every link project on the
+board mints to someone who still has to complete the same onboarding.
+
+The original question, for the record:
 
 The claimant receives value into an open note credited by the escrow. If the
 wallet registers on that first receive, the wallet-less story holds completely.

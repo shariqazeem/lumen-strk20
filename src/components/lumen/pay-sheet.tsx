@@ -218,7 +218,8 @@ export function PaySheet({
             <span className="flex-1">
               <span className="block text-[14.5px] font-semibold">Pay with a link</span>
               <span className="block text-[13px] leading-snug text-ink-muted">
-                For someone with no wallet yet — they claim it privately, whenever they arrive.
+                For someone who is not set up yet. The money waits behind a hash until they
+                come and collect it, however long that takes.
               </span>
             </span>
             <ChevronRight size={15} className="text-ink-faint" />

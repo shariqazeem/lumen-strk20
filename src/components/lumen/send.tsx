@@ -309,7 +309,7 @@ export function SendComposer({
           <p className="mt-2 text-[13.5px] leading-relaxed text-ink-muted">
             A private transfer needs both sides registered with the pool, so this one cannot
             land. A link can — it holds the money behind a hash until they open it, and they
-            need no wallet at all to do that.
+            can collect it whenever they are ready.
           </p>
           <button onClick={onNeedsLink} className="btn btn-ink mt-4 w-full">
             <LinkIcon size={17} />

@@ -122,10 +122,15 @@ export interface BatchLeg {
  * Fund N claim links in one pool operation.
  *
  * One Withdraw leg carries the whole total to the escrow, and one invoke
- * records every commitment against it — so N people who have never touched
- * Starknet each get money, and the chain sees a single operation with a single
+ * records every commitment against it — so N people who are not set up yet
+ * each have money waiting, and the chain sees a single operation with a single
  * fee and a single timestamp. Paying them one at a time would publish N
  * operations whose sizes and spacing are a pattern in themselves.
+ *
+ * Each recipient still joins the pool in their own wallet before collecting;
+ * verified on mainnet, a never-registered account is refused with 118. What
+ * they do not need is to be set up when the money is *sent*, which is what a
+ * private transfer requires and what nothing else on this board offers.
  *
  * The contract requires `amount` to equal the sum of the legs, so a caller
  * cannot hand out more claims than the pool actually delivered.

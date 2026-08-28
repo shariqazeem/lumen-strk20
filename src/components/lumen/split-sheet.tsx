@@ -196,7 +196,7 @@ export function SplitSheet({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <p className="mb-4 mt-2.5 px-1 text-[12.5px] leading-relaxed text-ink-faint">
             {mode === 'links'
-              ? 'For people with no wallet. Everyone gets their own link and their own refund path, funded together — one operation, one fee, nothing in the timing to line up.'
+              ? 'For people who are not set up yet. Each gets their own link and their own refund path, funded together — one operation, one fee, and nothing in the timing to line up.'
               : 'Straight to addresses they already have. One operation, and nobody sees what anyone else got.'}
           </p>
 

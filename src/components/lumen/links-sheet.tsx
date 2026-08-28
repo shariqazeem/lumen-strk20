@@ -68,7 +68,7 @@ export function LinksSheet({ open, onClose }: { open: boolean; onClose: () => vo
           </span>
           <p className="mt-3 text-[14.5px] font-semibold">No links yet</p>
           <p className="mx-auto mt-1 max-w-[300px] text-[13px] leading-relaxed text-ink-muted">
-            Pay → &ldquo;Pay with a link&rdquo; sends money to someone with no wallet. Every link
+            Pay → &ldquo;Pay with a link&rdquo; sends money to someone who is not set up yet. Every link
             you create lives here, with its reclaim key.
           </p>
         </div>

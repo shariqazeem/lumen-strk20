@@ -183,7 +183,7 @@ function InboxArtifact() {
       </p>
       <div className="mt-3 space-y-2">
         {[
-          { from: 'A claim link', amount: '52.88 USDC', note: 'from someone with no wallet' },
+          { from: 'A claim link', amount: '52.88 USDC', note: 'from someone not set up yet' },
           { from: 'Your page', amount: '800.00 USDC', note: 'a client paid the invoice' },
           { from: 'A team split', amount: '212.47 USDC', note: 'one of four, nobody sees the rest' },
         ].map((row) => (
@@ -416,7 +416,7 @@ export default function Landing() {
                   Money gets in however it needs to.
                 </h3>
                 <p className="mt-5 max-w-[46ch] text-[15.5px] leading-relaxed text-ink-muted">
-                  Send a link to someone with no wallet. Put a page in your bio. Pay four people
+                  Send a link to someone not set up yet. Put a page in your bio. Pay four people
                   at once as a single operation nobody can split apart. The plumbing is ordinary
                   on purpose — what matters is where it lands.
                 </p>
