@@ -24,57 +24,71 @@ const hex = (v: bigint) => `0x${v.toString(16)}`
 const EXPIRY = Math.floor(Date.now() / 1000) + 600
 
 /** The nine-felt Deposit calldata our contract expects. */
-const depositCalldata = () => [
+const depositCalldata = (thinHex = false) => [
   '0x0',
   claimCommitment('0xa11ce'),
   refundCommitment('0xb0b'),
   hex(BigInt(EXPIRY)),
-  STRK,
+  thinHex ? `0x${BigInt(STRK).toString(16)}` : STRK,
   hex(AMOUNT),
   '0x0',
   '0x0',
   '0x0',
 ]
 
+/** Minimal hex, the way `num.toHex` writes it — no zero padding. */
+const thin = (value: string) => `0x${BigInt(value).toString(16)}`
+
+const ESCROW_THIN = thin(ESCROW_ADDRESS)
+const STRK_THIN = thin(STRK)
+
 const CANDIDATES: { name: string; actions: STRK20_ACTION[] }[] = [
-  // Controls first. If these fail, nothing about the escrow is the problem.
+  // Does the hex form of the *recipient* decide whether OPEN is accepted?
   {
-    name: '1 — deposit 0.1 STRK (shield; no recipient, no invoke)',
-    actions: [{ type: 'deposit', token: STRK, amount: hex(100_000_000_000_000_000n) }],
-  },
-  {
-    name: '2 — private transfer to SELF (a registered recipient)',
-    actions: [{ type: 'transfer', token: STRK, amount: hex(AMOUNT), recipient: 'SELF' }],
-  },
-  {
-    name: '3 — open note alone, no invoke',
+    name: '1 — OPEN note, padded recipient',
     actions: [{ type: 'transfer', token: STRK, amount: 'OPEN', recipient: 'SELF' }],
   },
   {
-    name: '4 — withdraw to SELF (a real public unshield shape)',
-    actions: [{ type: 'withdraw', token: STRK, amount: hex(AMOUNT), recipient: 'SELF' }],
+    name: '2 — OPEN note, minimal-hex recipient and token',
+    actions: [{ type: 'transfer', token: STRK_THIN, amount: 'OPEN', recipient: 'SELF_THIN' }],
   },
-  // Now isolate `invoke`, from the smallest possible shape upward.
+  // Does the hex form of the invoke *contract* decide?
   {
-    name: '5 — invoke with EMPTY calldata',
+    name: '3 — invoke, padded contract, empty calldata',
     actions: [{ type: 'invoke', contract: ESCROW_ADDRESS, calldata: [] }],
   },
   {
-    name: '6 — invoke with one felt',
-    actions: [{ type: 'invoke', contract: ESCROW_ADDRESS, calldata: ['0x0'] }],
+    name: '4 — invoke, minimal-hex contract, empty calldata',
+    actions: [{ type: 'invoke', contract: ESCROW_THIN, calldata: [] }],
   },
+  // The starter kit's exact working shape, pointed at our escrow. Order is
+  // withdraw, then OPEN, then invoke — not the order we ship.
   {
-    name: '7 — open note + invoke, one felt',
+    name: '5 — starter-kit shape: withdraw, OPEN, invoke (all minimal hex)',
     actions: [
-      { type: 'transfer', token: STRK, amount: 'OPEN', recipient: 'SELF' },
-      { type: 'invoke', contract: ESCROW_ADDRESS, calldata: ['0x0'] },
+      { type: 'withdraw', token: STRK_THIN, amount: hex(AMOUNT), recipient: ESCROW_THIN },
+      { type: 'transfer', token: STRK_THIN, amount: 'OPEN', recipient: 'SELF_THIN' },
+      {
+        type: 'invoke',
+        contract: ESCROW_THIN,
+        calldata: [STRK_THIN, '${poolAddress}', '${openNoteIds[0]}'],
+      },
+    ],
+  },
+  // Same order and hex form, but our real nine-felt Deposit calldata.
+  {
+    name: '6 — starter-kit order, our Deposit calldata (minimal hex)',
+    actions: [
+      { type: 'withdraw', token: STRK_THIN, amount: hex(AMOUNT), recipient: ESCROW_THIN },
+      { type: 'transfer', token: STRK_THIN, amount: 'OPEN', recipient: 'SELF_THIN' },
+      { type: 'invoke', contract: ESCROW_THIN, calldata: depositCalldata(true) },
     ],
   },
   {
-    name: '8 — our real Deposit: withdraw + invoke (nine felts)',
+    name: '7 — as 6 but no OPEN note (Deposit credits nothing back)',
     actions: [
-      { type: 'withdraw', token: STRK, amount: hex(AMOUNT), recipient: ESCROW_ADDRESS },
-      { type: 'invoke', contract: ESCROW_ADDRESS, calldata: depositCalldata() },
+      { type: 'withdraw', token: STRK_THIN, amount: hex(AMOUNT), recipient: ESCROW_THIN },
+      { type: 'invoke', contract: ESCROW_THIN, calldata: depositCalldata(true) },
     ],
   },
 ]
@@ -106,11 +120,13 @@ export default function DiagPage() {
     ])
     for (const candidate of CANDIDATES) {
       // Placeholders resolved here so the list can be written declaratively.
-      const actions = candidate.actions.map((action) =>
-        'recipient' in action && action.recipient === 'SELF'
-          ? { ...action, recipient: me }
-          : action,
-      ) as STRK20_ACTION[]
+      const meThin = `0x${BigInt(account.address).toString(16)}`
+      const actions = candidate.actions.map((action) => {
+        if (!('recipient' in action)) return action
+        if (action.recipient === 'SELF') return { ...action, recipient: me }
+        if (action.recipient === 'SELF_THIN') return { ...action, recipient: meThin }
+        return action
+      }) as STRK20_ACTION[]
       try {
         await account.strk20PrepareInvoke(actions, true)
         setLines((l) => [...l, `PASS  ${candidate.name}`])
@@ -149,7 +165,7 @@ export default function DiagPage() {
         </div>
       ) : (
         <button onClick={() => void run()} disabled={busy} className="btn btn-ink mt-8">
-          {busy ? 'Asking the wallet…' : 'Run the eight candidates'}
+          {busy ? 'Asking the wallet…' : 'Run the seven candidates'}
         </button>
       )}
 
