@@ -10,6 +10,13 @@ the wallet-connect fix landed. Repo `shariqazeem/lumen-strk20`, branch `main`,
 
 ---
 
+> **Read [WHAT-MAINNET-TAUGHT-US.md](WHAT-MAINNET-TAUGHT-US.md) first if you
+> are picking this up after 28 Aug 2026.** Four constraints surfaced during the
+> first real mainnet session that no amount of reading the docs would have
+> found — an irreducible wallet-side registration step, a flat 6 STRK pool fee,
+> what the wallet already does on its own, and the one thing still untested
+> that the whole pitch rests on. It narrows several claims made below.
+
 ## 0. What changed since the first version of this document
 
 Eight commits. If you read the earlier revision, these are the parts that are
