@@ -751,6 +751,12 @@ at a time. It is a contract change plus a redeploy (one command now).
 
 ## 10. Working agreements with the founder
 
+- **Commit and push after every task, not in batches.** This is built in
+  public: the sprint leaderboard reads commit recency, so a synced-but-idle
+  repo reads as a dead project from outside. Treat the push as the last step
+  of a task, alongside typecheck, lint and tests. When a task produces nothing
+  committable — a review, an investigation, a question answered — say so out
+  loud, because silence looks the same as inactivity from the leaderboard.
 - **Do not rebuild.** The stack is enough; the miss has always been positioning
   and proof, not code.
 - **Proof outranks features.** An empty `strk20.json` beats any story.
