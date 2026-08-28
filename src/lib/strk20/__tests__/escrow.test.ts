@@ -273,3 +273,35 @@ describe('wallet payload shape', () => {
     }
   })
 })
+
+describe('the public door', () => {
+  it('is a plain contract call, not a pool action', async () => {
+    // No shielded balance, no registration, no pool fee — which is the whole
+    // point. It also means the caller can be a relayer paying the gas.
+    const { buildPublicClaim } = await lib()
+    const call = buildPublicClaim({
+      escrowAddress: ESCROW,
+      secret: '0x00abc',
+      recipient: '0x0def',
+    })
+    expect(call.entrypoint).toBe('claim_to_address')
+    expect(call.calldata).toEqual(['0xabc', '0xdef'])
+    expect(call.contractAddress).toBe(`0x${BigInt(ESCROW).toString(16)}`)
+  })
+
+  it('refuses to pay nobody', async () => {
+    const { buildPublicClaim } = await lib()
+    expect(() =>
+      buildPublicClaim({ escrowAddress: ESCROW, secret: '0x1', recipient: '0x0' }),
+    ).toThrow(/needs an address/)
+  })
+
+  it('knows every escrow that has ever held a link', async () => {
+    // A redeploy is a version, not a replacement: a link minted against an
+    // older escrow must still open. Removing one strands money.
+    const { KNOWN_ESCROWS } = await lib()
+    expect(KNOWN_ESCROWS.length).toBeGreaterThanOrEqual(2)
+    const seen = new Set(KNOWN_ESCROWS.map((a) => BigInt(a).toString()))
+    expect(seen.size).toBe(KNOWN_ESCROWS.length)
+  })
+})

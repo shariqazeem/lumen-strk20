@@ -111,6 +111,7 @@ pub mod errors {
     pub const COMMITMENT_NOT_FOUND: felt252 = 'COMMITMENT_NOT_FOUND';
     pub const ALREADY_CLAIMED: felt252 = 'ALREADY_CLAIMED';
     pub const NOT_EXPIRED: felt252 = 'NOT_EXPIRED';
+    pub const ZERO_RECIPIENT: felt252 = 'ZERO_RECIPIENT';
     pub const EMPTY_BATCH: felt252 = 'EMPTY_BATCH';
     pub const BATCH_TOO_LARGE: felt252 = 'BATCH_TOO_LARGE';
     pub const BATCH_AMOUNT_MISMATCH: felt252 = 'BATCH_AMOUNT_MISMATCH';
@@ -162,6 +163,30 @@ pub trait ILumenEscrow<T> {
         note_id: felt252,
         legs: Span<EscrowLeg>,
     ) -> Span<OpenNoteDeposit>;
+
+    /// Collect a claim **without joining the privacy pool**.
+    ///
+    /// The pool's boundary is one-way: money inside can be addressed to a
+    /// stranger, but a stranger cannot step inside to collect it without
+    /// funds, a registration and the pool's flat fee. Verified on mainnet — a
+    /// never-registered account opening a valid link is refused with 118.
+    ///
+    /// This escrow holds real ERC-20s outside the pool gate, so it can simply
+    /// pay out. The commitment is unchanged: knowledge of the preimage is
+    /// still the only thing that owns the money. What changes is where it
+    /// lands.
+    ///
+    /// **Deliberately ungated.** The secret authorises, not the caller, so a
+    /// paymaster or relayer can submit this on behalf of a recipient who has
+    /// no gas — which is what makes "no setup" true rather than nearly true.
+    ///
+    /// **The trade.** This is an ordinary public transfer: the recipient's
+    /// address and the amount become visible. The *sender* does not — the
+    /// escrow was funded by a pool withdrawal that names nobody. And the
+    /// secret travels in calldata, where the private path keeps it inside a
+    /// proof; Starknet has no public mempool today, but that is a property of
+    /// today's sequencer rather than a guarantee.
+    fn claim_to_address(ref self: T, secret: felt252, recipient: ContractAddress);
 }
 
 #[starknet::contract]
@@ -197,6 +222,7 @@ pub mod LumenEscrow {
         Deposited: Deposited,
         DepositedMany: DepositedMany,
         Claimed: Claimed,
+        ClaimedToAddress: ClaimedToAddress,
         Refunded: Refunded,
     }
 
@@ -216,6 +242,16 @@ pub mod LumenEscrow {
     #[derive(Drop, starknet::Event)]
     pub struct DepositedMany {
         pub count: u32,
+        pub token: ContractAddress,
+        pub amount: u128,
+    }
+
+    /// A collection through the public door. The recipient is named because
+    /// this leg genuinely is public; the sender still is not.
+    #[derive(Drop, starknet::Event)]
+    pub struct ClaimedToAddress {
+        #[key]
+        pub recipient: ContractAddress,
         pub token: ContractAddress,
         pub amount: u128,
     }
@@ -294,7 +330,21 @@ pub mod LumenEscrow {
                 },
             }
         }
+
+        fn claim_to_address(
+            ref self: ContractState, secret: felt252, recipient: ContractAddress,
+        ) {
+            assert(recipient.is_non_zero(), errors::ZERO_RECIPIENT);
+            // No pool gate and no caller check: the preimage is the authority.
+            // `take_entry` still asserts the entry is live and unclaimed, so a
+            // link cannot be collected through both doors.
+            let entry = self.take_entry(compute_claim_commitment(secret));
+            IErc20Dispatcher { contract_address: entry.token }
+                .transfer(recipient, entry.amount.into());
+            self.emit(ClaimedToAddress { recipient, token: entry.token, amount: entry.amount });
+        }
     }
+
 
     #[generate_trait]
     impl Internal of InternalTrait {

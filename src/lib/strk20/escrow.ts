@@ -29,6 +29,54 @@ const RAW_ESCROW_ADDRESS = process.env.NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS ?? ''
  */
 export const ESCROW_ADDRESS = RAW_ESCROW_ADDRESS ? walletFelt(RAW_ESCROW_ADDRESS) : ''
 
+/**
+ * Escrows that have ever held a Lumen link, newest first.
+ *
+ * A redeploy is a version, not a replacement. Links already in the world name
+ * no escrow — they carry a secret — so the app finds the one holding the
+ * commitment rather than assuming the current address. A dead link is money
+ * somebody cannot reach, and nothing minted here is allowed to become one.
+ *
+ * Append superseded addresses; never remove one.
+ */
+export const KNOWN_ESCROWS: string[] = [
+  ESCROW_ADDRESS,
+  // First mainnet escrow. Eight-argument `privacy_invoke`, no batch, no public
+  // claim. Superseded 2026-08-28; still holds anything minted against it.
+  '0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8',
+  // Second. Nine arguments and DepositMany; superseded by the public-claim
+  // version.
+  '0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288',
+].filter((address, index, all) => {
+  if (!address) return false
+  try {
+    return all.findIndex((other) => other && BigInt(other) === BigInt(address)) === index
+  } catch {
+    return false
+  }
+})
+
+/**
+ * Which escrow is holding this claim, if any.
+ *
+ * Asks each known escrow for the entry and takes the first that owns it. A
+ * commitment can only live in one, because minting writes it to exactly one.
+ */
+export async function findEscrowHolding(
+  claimSecret: string,
+): Promise<{ address: string; entry: EscrowEntryState } | null> {
+  const commitment = claimCommitment(claimSecret)
+  for (const address of KNOWN_ESCROWS) {
+    try {
+      const entry = await readEscrowEntryAt(address, commitment)
+      if (entry && entry.exists) return { address, entry }
+    } catch {
+      // An escrow that cannot be read is not the one holding this link.
+    }
+  }
+  return null
+}
+
 export function escrowEnabled(): boolean {
   return ESCROW_ADDRESS.length > 0
 }
@@ -323,6 +371,34 @@ export function tokenForClaim(payload: ClaimLinkPayload): TokenConfig | undefine
 /* on-chain status                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The public door: collect a claim straight to an address.
+ *
+ * This is an ordinary Starknet call, not a pool action — no shielded balance,
+ * no registration, no pool fee. Returned as a plain call so the caller decides
+ * how it is submitted: by the recipient's own wallet, or by a relayer or
+ * paymaster on behalf of someone who has no gas at all.
+ *
+ * Honest about the trade, everywhere it is offered: the recipient's address
+ * and the amount become public, and the secret travels in calldata rather than
+ * inside a proof. The sender stays hidden either way — the escrow was funded
+ * by a pool withdrawal that names nobody.
+ */
+export function buildPublicClaim(input: {
+  escrowAddress: string
+  secret: string
+  recipient: string
+}): { contractAddress: string; entrypoint: string; calldata: string[] } {
+  if (!input.recipient || BigInt(input.recipient) === 0n) {
+    throw new Error('A public claim needs an address to pay.')
+  }
+  return {
+    contractAddress: walletFelt(input.escrowAddress),
+    entrypoint: 'claim_to_address',
+    calldata: [walletFelt(input.secret), walletFelt(input.recipient)],
+  }
+}
+
 export interface EscrowEntryState {
   exists: boolean
   claimed: boolean
@@ -335,17 +411,17 @@ export interface EscrowEntryState {
  * Read a link's live status straight from the contract — the claim page uses
  * this to distinguish "waiting for you" from "already claimed".
  */
-export async function readEscrowEntry(
-  claimSecret: string,
+export async function readEscrowEntryAt(
+  escrowAddress: string,
+  commitment: string,
   rpcUrl: string = RPC_URL,
 ): Promise<EscrowEntryState | null> {
-  if (!escrowEnabled()) return null
   try {
     const provider = new RpcProvider({ nodeUrl: rpcUrl })
     const result = await provider.callContract({
-      contractAddress: ESCROW_ADDRESS,
+      contractAddress: escrowAddress,
       entrypoint: 'get_entry',
-      calldata: [claimCommitment(claimSecret)],
+      calldata: [commitment],
     })
     // EscrowEntry { token, amount: u128, refund_commitment, expiry: u64, claimed: bool }
     if (!Array.isArray(result) || result.length < 5) return null
@@ -357,6 +433,14 @@ export async function readEscrowEntry(
   } catch {
     return null
   }
+}
+
+export async function readEscrowEntry(
+  claimSecret: string,
+  rpcUrl: string = RPC_URL,
+): Promise<EscrowEntryState | null> {
+  if (!escrowEnabled()) return null
+  return readEscrowEntryAt(ESCROW_ADDRESS, claimCommitment(claimSecret), rpcUrl)
 }
 
 /** Default refund window: the sender can reclaim after seven days. */

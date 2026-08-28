@@ -36,6 +36,8 @@ import {
   buildEscrowFund,
   buildEscrowFundMany,
   buildEscrowRefund,
+  buildPublicClaim,
+  findEscrowHolding,
   encodeClaimLink,
   ESCROW_ADDRESS,
   generateSecret,
@@ -162,6 +164,7 @@ interface LumenState {
     fromName?: string
   }) => Promise<{ link: SentLink; url: string }>
   /** Claim a link into this account's private balance. */
+  claimToAddress: (input: { secret: string; recipient: string }) => Promise<string>
   claimFromLink: (payload: ClaimLinkPayload) => Promise<string>
   /** Reclaim an expired, unclaimed link back into this private balance. */
   refundLink: (id: string) => Promise<string>
@@ -777,6 +780,43 @@ export const useLumen = create<LumenState>((set, get) => ({
         set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
       )
       return { link, url }
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  /**
+   * Collect a link straight to a public address.
+   *
+   * The second door. Not a pool action — an ordinary contract call — so it
+   * works for someone who has never registered, has no shielded balance and
+   * cannot pay the pool's flat fee. What it costs is publicity: this leg names
+   * the recipient and the amount. The sender is not named by it.
+   */
+  async claimToAddress(input) {
+    requireIdle(get)
+    const { account } = requireAccount(get, set)
+    set({ submitting: true, error: null })
+    try {
+      const holder = await findEscrowHolding(input.secret)
+      if (!holder) throw new Error('No escrow is holding this link. It may already be claimed.')
+
+      const call = buildPublicClaim({
+        escrowAddress: holder.address,
+        secret: input.secret,
+        recipient: input.recipient,
+      })
+      // A plain Starknet invoke, deliberately not `strk20InvokeTransaction`:
+      // nothing about this touches the pool.
+      const { transaction_hash } = await account.execute([call])
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
+      set({ submitting: false, lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
       throw error

@@ -11,6 +11,7 @@ use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp,
     start_cheat_caller_address, stop_cheat_block_timestamp, stop_cheat_caller_address,
 };
+use core::num::traits::Zero;
 use starknet::ContractAddress;
 use crate::escrow::{
     EscrowLeg, EscrowOperation, ILumenEscrowDispatcher, ILumenEscrowDispatcherTrait,
@@ -576,4 +577,106 @@ fn test_batch_legs_can_carry_refunds() {
     stop_cheat_caller_address(escrow.contract_address);
     assert(*refunded.at(0).amount == 55_555, 'refunded the leg');
     stop_cheat_block_timestamp(escrow.contract_address);
+}
+
+// ---------------------------------------------------------------------------
+// claim_to_address — the second door
+// ---------------------------------------------------------------------------
+
+const STRANGER: felt252 = 'STRANGER';
+
+fn stranger() -> ContractAddress {
+    STRANGER.try_into().unwrap()
+}
+
+#[test]
+fn test_public_claim_pays_a_stranger_who_joined_nothing() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    fund_and_deposit(escrow, token, AMOUNT, CLAIM_SECRET, 0, 0);
+
+    // No pool, no registration, no shielded balance — the preimage is enough.
+    start_cheat_caller_address(escrow.contract_address, stranger());
+    escrow.claim_to_address(CLAIM_SECRET, stranger());
+    stop_cheat_caller_address(escrow.contract_address);
+
+    assert(token.balance_of(stranger()) == AMOUNT.into(), 'stranger holds the money');
+    assert(escrow.get_outstanding(token.contract_address) == 0, 'escrow owes nothing now');
+}
+
+#[test]
+fn test_anyone_may_submit_it_so_a_relayer_can_pay_the_gas() {
+    // The secret authorises, not the caller. This is what lets a paymaster
+    // submit for a recipient who has no gas at all.
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    fund_and_deposit(escrow, token, AMOUNT, CLAIM_SECRET, 0, 0);
+
+    start_cheat_caller_address(escrow.contract_address, pool());
+    escrow.claim_to_address(CLAIM_SECRET, stranger());
+    stop_cheat_caller_address(escrow.contract_address);
+
+    assert(token.balance_of(stranger()) == AMOUNT.into(), 'relayed to the recipient');
+}
+
+#[test]
+#[should_panic(expected: 'ALREADY_CLAIMED')]
+fn test_a_link_cannot_be_taken_through_both_doors() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    fund_and_deposit(escrow, token, AMOUNT, CLAIM_SECRET, 0, 0);
+
+    // Private door first.
+    claim(escrow, token, CLAIM_SECRET, NOTE);
+    // Public door second, on the same secret.
+    escrow.claim_to_address(CLAIM_SECRET, stranger());
+}
+
+#[test]
+#[should_panic(expected: 'ALREADY_CLAIMED')]
+fn test_the_public_door_cannot_be_used_twice() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    fund_and_deposit(escrow, token, AMOUNT, CLAIM_SECRET, 0, 0);
+    escrow.claim_to_address(CLAIM_SECRET, stranger());
+    escrow.claim_to_address(CLAIM_SECRET, stranger());
+}
+
+#[test]
+#[should_panic(expected: 'COMMITMENT_NOT_FOUND')]
+fn test_a_wrong_secret_opens_nothing() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    fund_and_deposit(escrow, token, AMOUNT, CLAIM_SECRET, 0, 0);
+    escrow.claim_to_address(OTHER_SECRET, stranger());
+}
+
+#[test]
+#[should_panic(expected: 'ZERO_RECIPIENT')]
+fn test_the_public_door_refuses_to_burn_the_money() {
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    fund_and_deposit(escrow, token, AMOUNT, CLAIM_SECRET, 0, 0);
+    escrow.claim_to_address(CLAIM_SECRET, Zero::zero());
+}
+
+#[test]
+fn test_a_public_claim_leaves_other_links_untouched() {
+    // Batch payouts are the point: one recipient collecting must not disturb
+    // the others, and the escrow must stay solvent for everyone left.
+    let escrow = deploy_escrow();
+    let token = deploy_token();
+    token.mint(escrow.contract_address, batch_total().into());
+    deposit_many(escrow, token, three_legs(), batch_total());
+
+    escrow.claim_to_address(BATCH_SECRET_B, stranger());
+
+    assert(token.balance_of(stranger()) == 8_819_443, 'took only its own leg');
+    assert(
+        escrow.get_outstanding(token.contract_address) == batch_total() - 8_819_443,
+        'the rest is still owed',
+    );
+    // And a sibling still opens, through either door.
+    escrow.claim_to_address(BATCH_SECRET_A, pool());
+    assert(token.balance_of(pool()) == 41_003_117, 'sibling unaffected');
 }

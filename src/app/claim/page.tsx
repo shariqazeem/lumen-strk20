@@ -40,7 +40,17 @@ type PageState =
   | { kind: 'needs-wallet-step'; payload: ClaimLinkPayload }
 
 export default function ClaimPage() {
-  const { status, connect, claimFromLink, submitting, error, clearError, lastTx } = useLumen()
+  const {
+    status,
+    connect,
+    claimFromLink,
+    claimToAddress,
+    address,
+    submitting,
+    error,
+    clearError,
+    lastTx,
+  } = useLumen()
   const [state, setState] = useState<PageState>({ kind: 'reading' })
   const [wallets, setWallets] = useState<readonly WalletWithStarknetFeatures[]>([])
   const [checking, setChecking] = useState(false)
@@ -83,6 +93,18 @@ export default function ClaimPage() {
     }
     void refresh(payload)
   }, [refresh])
+
+  /** The public door. Ordinary transfer, no pool, honest about the trade. */
+  const takePublicly = async (payload: ClaimLinkPayload) => {
+    if (!address) return
+    try {
+      const txHash = await claimToAddress({ secret: payload.s, recipient: address })
+      markInboxClaimed(payload.s, txHash)
+      setState({ kind: 'claimed-by-me', payload, txHash })
+    } catch {
+      // The store surfaced the wallet's explanation.
+    }
+  }
 
   const claim = async (payload: ClaimLinkPayload) => {
     try {
@@ -287,16 +309,33 @@ export default function ClaimPage() {
               until you use it.
             </p>
             <p className="mt-3 text-[15px] leading-relaxed text-glass-muted">
-              Starknet requires a wallet to join the privacy pool before it can hold a private
-              balance, and no website can do that for you. Open your wallet, shield any small
-              amount there once, then come back to this link.
+              Starknet requires a wallet to join the privacy pool before it can hold a{' '}
+              <em>private</em> balance, and no website can do that for you. So there are two ways
+              to take this money, and you pick.
             </p>
-            <button
-              onClick={() => setState({ kind: 'ready', payload: state.payload, entry: null })}
-              className="btn mt-6 w-full bg-white text-ink hover:bg-white/90"
-            >
-              I have done that — try again
-            </button>
+
+            <div className="mt-6 space-y-2.5">
+              <button
+                onClick={() => void takePublicly(state.payload)}
+                disabled={submitting}
+                className="btn w-full bg-white text-ink hover:bg-white/90"
+              >
+                {submitting ? 'Waiting for your wallet…' : 'Send it to my wallet now'}
+              </button>
+              <button
+                onClick={() => setState({ kind: 'ready', payload: state.payload, entry: null })}
+                className="btn w-full border border-white/25 text-glass-ink hover:bg-white/10"
+              >
+                I joined the pool — claim it privately
+              </button>
+            </div>
+
+            <p className="mt-5 border-t border-white/10 pt-4 text-[12.5px] leading-relaxed text-glass-faint">
+              Taking it now is an ordinary transfer: your address and the amount become public,
+              the way any payment to your wallet already is. Whoever sent it stays private either
+              way. Join the pool first and nothing about the arrival is published at all — and
+              you can do that any time, this link is not going anywhere.
+            </p>
           </div>
           <p className="mt-4 px-1 text-[12.5px] leading-relaxed text-ink-faint">
             Keep this link. It is the only thing that can open this money, and it works from any
