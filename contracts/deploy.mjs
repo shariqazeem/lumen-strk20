@@ -1,5 +1,13 @@
 /**
- * LumenEscrow — mainnet deploy, on starknet.js.
+ * Mainnet deploy, on starknet.js.
+ *
+ * Deploys one contract per run, named by `--contract`:
+ *
+ *   node contracts/deploy.mjs                        # LumenEscrow (default)
+ *   node contracts/deploy.mjs --contract splitter    # LumenSplitter
+ *
+ * The private key is decrypted in memory from the keystore, is never written
+ * anywhere, and never leaves this process.
  *
  * Replaces the starkli path, which is unusable today: starkli 0.4.2 is the
  * latest release and still asks for the `pending` block tag, which mainnet
@@ -45,6 +53,32 @@ function arg(name, fallback) {
 }
 
 const expand = (p) => (p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p)
+
+/**
+ * Which contract this run deploys.
+ *
+ * The splitter takes a fee recipient and a cap it can never exceed. Lumen
+ * charges nothing, so the recipient is the zero address and the cap is zero —
+ * a contract that cannot take a fee is a stronger promise than one that
+ * chooses not to.
+ */
+const TARGETS = {
+  escrow: {
+    name: 'LumenEscrow',
+    args: () => [POOL_ADDRESS],
+    describe: () => `pool = ${POOL_ADDRESS}`,
+    env: 'NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS',
+  },
+  splitter: {
+    name: 'LumenSplitter',
+    args: () => [POOL_ADDRESS, '0x0', 0],
+    describe: () => `pool = ${POOL_ADDRESS}, fee_recipient = 0x0, max_fee_bps = 0`,
+    env: 'NEXT_PUBLIC_LUMEN_SPLITTER_ADDRESS',
+  },
+}
+
+const TARGET = TARGETS[arg('contract', 'escrow')]
+if (!TARGET) die(`Unknown --contract. Use one of: ${Object.keys(TARGETS).join(', ')}`)
 
 const KEYSTORE = expand(
   arg('keystore', process.env.STARKNET_KEYSTORE || '~/.starkli-wallets/lumen/keystore.json'),
@@ -128,7 +162,7 @@ const readFelt = (result) => BigInt(Array.isArray(result) ? result[0] : result.r
 
 async function main() {
   console.log()
-  console.log(bold('LumenEscrow — mainnet deploy'))
+  console.log(bold(`${TARGET.name} — mainnet deploy`))
   console.log(dim(`  rpc      ${RPC}`))
   console.log(dim(`  keystore ${KEYSTORE}`))
   console.log()
@@ -139,11 +173,11 @@ async function main() {
 
   const sierraPath = path.join(
     ROOT,
-    'contracts/target/dev/lumen_splitter_LumenEscrow.contract_class.json',
+    `contracts/target/dev/lumen_splitter_${TARGET.name}.contract_class.json`,
   )
   const casmPath = path.join(
     ROOT,
-    'contracts/target/dev/lumen_splitter_LumenEscrow.compiled_contract_class.json',
+    `contracts/target/dev/lumen_splitter_${TARGET.name}.compiled_contract_class.json`,
   )
   for (const file of [sierraPath, casmPath]) {
     if (!fs.existsSync(file)) {
@@ -219,7 +253,7 @@ async function main() {
   }
 
   // --- 1. declare ---------------------------------------------------------
-  console.log(`${bold('1/4  Declaring LumenEscrow')}  (costs gas)`)
+  console.log(`${bold(`1/4  Declaring ${TARGET.name}`)}  (costs gas)`)
   const classHash = hash.computeContractClassHash(sierra)
   console.log(dim(`     class hash ${classHash}`))
 
@@ -240,10 +274,10 @@ async function main() {
 
   // --- 2. deploy an instance ----------------------------------------------
   console.log(`${bold('2/4  Deploying the escrow')}  (costs gas)`)
-  console.log(dim(`     constructor: pool = ${POOL_ADDRESS}`))
+  console.log(dim(`     constructor: ${TARGET.describe()}`))
   const deployment = await account.deployContract({
     classHash,
-    constructorCalldata: CallData.compile([POOL_ADDRESS]),
+    constructorCalldata: CallData.compile(TARGET.args()),
   })
   console.log(dim(`     tx ${deployment.transaction_hash}`))
   await provider.waitForTransaction(deployment.transaction_hash)
@@ -277,9 +311,9 @@ async function main() {
   const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : ''
   const kept = existing
     .split('\n')
-    .filter((line) => line && !line.startsWith('NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS='))
+    .filter((line) => line && !line.startsWith(`${TARGET.env}=`))
     .join('\n')
-  fs.writeFileSync(envPath, `${kept ? `${kept}\n` : ''}NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS=${escrow}\n`)
+  fs.writeFileSync(envPath, `${kept ? `${kept}\n` : ''}${TARGET.env}=${escrow}\n`)
   console.log('     .env.local updated')
 
   const submissionPath = path.join(ROOT, 'strk20.json')
@@ -287,7 +321,7 @@ async function main() {
   submission.contracts = submission.contracts || []
   if (!submission.contracts.some((entry) => (entry.address || entry) === escrow)) {
     submission.contracts.push({
-      name: 'LumenEscrow',
+      name: TARGET.name,
       address: escrow,
       class_hash: classHash,
       network: 'mainnet',
@@ -299,13 +333,13 @@ async function main() {
   console.log()
   console.log(bold('Done.'))
   console.log(`
-  Escrow      ${escrow}
+  ${TARGET.name.padEnd(11)} ${escrow}
   Class hash  ${classHash}
   Explorer    https://voyager.online/contract/${escrow}
 
-  Next: add this to Vercel and redeploy so claim links go live in production —
+  Next: add this to Vercel and redeploy so it goes live in production —
 
-    NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS=${escrow}
+    ${TARGET.env}=${escrow}
 `)
 }
 
