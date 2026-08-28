@@ -88,7 +88,22 @@ export default function DiagPage() {
     if (!account) return
     setBusy(true)
     const me = padAddress(account.address)
-    setLines([`escrow ${ESCROW_ADDRESS}`, `token  ${STRK}`, `self   ${me}`, ''])
+    // What the wallet advertises, next to what it actually accepts. If it
+    // claims an API version whose spec includes `invoke` and rejects `invoke`,
+    // that is a wallet gap and not our payload.
+    const wallet = listWallets().find((w) => supportsStrk20(w))
+    const feature = wallet?.features['starknet:walletApi'] as
+      | { version?: string; supportedApiVersions?: string[] }
+      | undefined
+    setLines([
+      `escrow ${ESCROW_ADDRESS}`,
+      `token  ${STRK}`,
+      `self   ${me}`,
+      `wallet ${wallet?.name ?? '?'}`,
+      `api    ${(feature?.supportedApiVersions ?? [feature?.version ?? '?']).join(', ')}`,
+      `feats  ${Object.keys(wallet?.features ?? {}).join(', ')}`,
+      '',
+    ])
     for (const candidate of CANDIDATES) {
       // Placeholders resolved here so the list can be written declaratively.
       const actions = candidate.actions.map((action) =>
