@@ -3,8 +3,14 @@
   "contracts": [
     {
       "name": "LumenEscrow",
-      "address": "0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8",
-      "class_hash": "0x7455f2335fa2fc44096af7f518b7d8f9e12bd0835ff8b735feb1ccf7e4484e6",
+      "address": "0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288",
+      "class_hash": "0x776cb0e6a3f94b572f6d3bf54be4270429b15a6bc3b43b598c5236a438f7981",
+      "network": "mainnet"
+    },
+    {
+      "name": "LumenSplitter",
+      "address": "0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0",
+      "class_hash": "0x1de1ef961ed84c9657414693490f50f500d155c9baca07795bb6d80644bc06d",
       "network": "mainnet"
     }
   ],

@@ -132,17 +132,20 @@ function ceiling(bounds) {
  * transaction fails after paying.
  */
 function tighten(estimate, headroom = 1.05) {
-  const scale = (value) => `0x${BigInt(Math.ceil(Number(BigInt(value ?? 0)) * headroom)).toString(16)}`
+  const scale = (value) => (BigInt(value ?? 0) * BigInt(Math.round(headroom * 100))) / 100n
   const source = estimate?.resourceBounds ?? {}
   const bounds = {}
   for (const key of ['l1_gas', 'l2_gas', 'l1_data_gas']) {
     const b = source[key]
     if (!b) continue
+    // BigInt throughout: starknet.js multiplies these internally, and a hex
+    // string meeting a BigInt there throws "cannot mix BigInt and other types"
+    // *after* the fee check has already passed.
     bounds[key] = {
       max_amount: scale(b.max_amount),
-      // The price the network quotes is already the price; padding it as well
-      // is what compounds a 1.5x into a 10x.
-      max_price_per_unit: `0x${BigInt(b.max_price_per_unit ?? 0).toString(16)}`,
+      // The price the network quotes already carries starknet.js's headroom;
+      // padding it again is what compounds a 1.4x into a 3x.
+      max_price_per_unit: BigInt(b.max_price_per_unit ?? 0),
     }
   }
   return bounds
@@ -382,19 +385,34 @@ async function main() {
 
   // --- 3. verify ----------------------------------------------------------
   console.log(bold('3/4  Verifying'))
-  const outstanding = await provider
-    .callContract({ contractAddress: escrow, entrypoint: 'get_outstanding', calldata: [STRK] })
-    .then(readFelt)
-    .catch(() => null)
+  const readView = async (entrypoint, calldata = []) =>
+    provider
+      .callContract({ contractAddress: escrow, entrypoint, calldata })
+      .then(readFelt)
+      .catch(() => null)
 
-  if (outstanding === 0n) {
-    console.log('     get_outstanding(STRK) = 0  — a fresh escrow owes nothing')
-  } else {
-    console.log(
-      yellow(
-        `     get_outstanding(STRK) = ${outstanding} — expected 0. Do not route value through this instance.`,
-      ),
+  const check = (label, value, expected, note) => {
+    const ok = value !== null && expected(value)
+    console.log(ok ? `     ${label} — ${note}` : yellow(`     ${label} = ${value} — unexpected`))
+    return ok
+  }
+
+  if (TARGET.name === 'LumenEscrow') {
+    check(
+      'get_outstanding(STRK)',
+      await readView('get_outstanding', [STRK]),
+      (v) => v === 0n,
+      'a fresh escrow owes nothing',
     )
+  } else {
+    check(
+      'pool_address',
+      await readView('pool_address'),
+      (v) => v === BigInt(POOL_ADDRESS),
+      'wired to the real STRK20 pool',
+    )
+    check('fee_recipient', await readView('fee_recipient'), (v) => v === 0n, 'nobody collects')
+    check('max_fee_bps', await readView('max_fee_bps'), (v) => v === 0n, 'cannot ever charge')
   }
 
   // The three ways a deploy silently lands wrong: a stale artifact, a class
@@ -411,9 +429,12 @@ async function main() {
     .getClassAt(escrow)
     .then((c) => (typeof c.abi === 'string' ? JSON.parse(c.abi) : c.abi))
     .catch(() => null)
-  const invoke = deployedAbi?.find?.(
-    (item) => item.type === 'function' && item.name === 'privacy_invoke',
-  )
+  // Cairo 2 ABIs nest functions inside `interface` entries; looking only at
+  // the top level finds nothing and reports "?" as if the deploy were wrong.
+  const flatAbi = Array.isArray(deployedAbi)
+    ? deployedAbi.flatMap((item) => (item.type === 'interface' ? (item.items ?? []) : [item]))
+    : []
+  const invoke = flatAbi.find((item) => item.name === 'privacy_invoke')
   const localArgs = TARGET.name === 'LumenEscrow' ? 9 : null
   if (localArgs === null) {
     // The splitter has its own shape; nothing to compare here.
@@ -441,15 +462,18 @@ async function main() {
 
   const submissionPath = path.join(ROOT, 'strk20.json')
   const submission = JSON.parse(fs.readFileSync(submissionPath, 'utf8'))
-  submission.contracts = submission.contracts || []
-  if (!submission.contracts.some((entry) => (entry.address || entry) === escrow)) {
-    submission.contracts.push({
-      name: TARGET.name,
-      address: escrow,
-      class_hash: classHash,
-      network: 'mainnet',
-    })
-  }
+  // Replace by name rather than append: a redeploy supersedes its predecessor,
+  // and a submission listing two LumenEscrows leaves a judge guessing which one
+  // is live — while the older one now reverts on every call.
+  submission.contracts = (submission.contracts || []).filter(
+    (entry) => entry.name !== TARGET.name,
+  )
+  submission.contracts.push({
+    name: TARGET.name,
+    address: escrow,
+    class_hash: classHash,
+    network: 'mainnet',
+  })
   fs.writeFileSync(submissionPath, `${JSON.stringify(submission, null, 2)}\n`)
   console.log('     strk20.json updated')
 
