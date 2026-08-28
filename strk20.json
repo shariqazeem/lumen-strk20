@@ -9,6 +9,7 @@
     {
       "hash": "0x423c246aa3ee4d47718f8c8a2b65733074a08cca765dcacd88ff00bbffff6f",
       "network": "mainnet",
+      "block": 14012471,
       "what": "LumenEscrow deployed with claim_to_address — the second door. A claim can now be collected straight to a public address by someone who has never joined the privacy pool, has no shielded balance, and cannot pay the pool's flat fee."
     },
     {
