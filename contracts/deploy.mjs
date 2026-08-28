@@ -90,6 +90,76 @@ const RPC = arg('rpc', process.env.STARKNET_RPC || DEFAULT_RPC)
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 /** Read a line from the terminal with echo suppressed. */
+/** The deployer's STRK balance, in wei. Fees are paid in STRK on v3. */
+async function strkBalance(provider, address) {
+  const STRK = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'
+  const result = await provider.callContract({
+    contractAddress: STRK,
+    entrypoint: 'balanceOf',
+    calldata: [address],
+  })
+  const [low, high] = result
+  return BigInt(low ?? 0) + (BigInt(high ?? 0) << 128n)
+}
+
+/** STRK, for humans. */
+function strk(wei) {
+  return `${(Number(wei) / 1e18).toFixed(4)} STRK`
+}
+
+/** What a set of resource bounds could cost at worst. */
+function ceiling(bounds) {
+  let total = 0n
+  for (const key of ['l1_gas', 'l2_gas', 'l1_data_gas']) {
+    const b = bounds?.[key]
+    if (!b) continue
+    total += BigInt(b.max_amount ?? 0) * BigInt(b.max_price_per_unit ?? 0)
+  }
+  return total
+}
+
+/**
+ * Tighten an estimate into bounds the account can actually afford.
+ *
+ * On a v3 transaction the account must be able to cover the *ceiling*, not the
+ * likely cost, so the ceiling is what gets checked against the balance before
+ * anything is signed.
+ *
+ * starknet.js already pads the quoted price (about 1.4x, as protection against
+ * the gas price moving between estimate and inclusion), so padding it again is
+ * what turns a 25 STRK ceiling into 35. Only the gas *amount* gets headroom
+ * here, and only a little: consumption barely varies, and an under-bounded
+ * transaction fails after paying.
+ */
+function tighten(estimate, headroom = 1.05) {
+  const scale = (value) => `0x${BigInt(Math.ceil(Number(BigInt(value ?? 0)) * headroom)).toString(16)}`
+  const source = estimate?.resourceBounds ?? {}
+  const bounds = {}
+  for (const key of ['l1_gas', 'l2_gas', 'l1_data_gas']) {
+    const b = source[key]
+    if (!b) continue
+    bounds[key] = {
+      max_amount: scale(b.max_amount),
+      // The price the network quotes is already the price; padding it as well
+      // is what compounds a 1.5x into a 10x.
+      max_price_per_unit: `0x${BigInt(b.max_price_per_unit ?? 0).toString(16)}`,
+    }
+  }
+  return bounds
+}
+
+/** Refuse before spending rather than after. */
+function affordable(label, bounds, balance) {
+  const worst = ceiling(bounds)
+  console.log(dim(`     ${label} ceiling ${strk(worst)}  ·  balance ${strk(balance)}`))
+  if (worst > balance) {
+    die(
+      `${label} could cost up to ${strk(worst)} but the deployer holds ${strk(balance)}.\n` +
+        `Send at least ${strk(worst - balance)} more STRK to the deployer and run this again.`,
+    )
+  }
+}
+
 function askPassword(prompt) {
   return new Promise((resolve) => {
     process.stdout.write(prompt)
@@ -265,7 +335,17 @@ async function main() {
   if (declared) {
     console.log('     already declared — skipping')
   } else {
-    const result = await account.declare({ contract: sierra, casm })
+    const estimate = await account.estimateDeclareFee({ contract: sierra, casm })
+    if (process.argv.includes('--explain-fee')) {
+      console.log(
+        dim(
+          `     estimate ${JSON.stringify(estimate, (k, v) => (typeof v === 'bigint' ? v.toString() : v))}`,
+        ),
+      )
+    }
+    const resourceBounds = tighten(estimate)
+    affordable('declare', resourceBounds, await strkBalance(provider, address))
+    const result = await account.declare({ contract: sierra, casm }, { resourceBounds })
     console.log(dim(`     tx ${result.transaction_hash}`))
     await provider.waitForTransaction(result.transaction_hash)
     console.log('     declared')
@@ -275,10 +355,11 @@ async function main() {
   // --- 2. deploy an instance ----------------------------------------------
   console.log(`${bold('2/4  Deploying the escrow')}  (costs gas)`)
   console.log(dim(`     constructor: ${TARGET.describe()}`))
-  const deployment = await account.deployContract({
-    classHash,
-    constructorCalldata: CallData.compile(TARGET.args()),
-  })
+  const payload = { classHash, constructorCalldata: CallData.compile(TARGET.args()) }
+  const deployEstimate = await account.estimateDeployFee(payload)
+  const deployBounds = tighten(deployEstimate)
+  affordable('deploy', deployBounds, await strkBalance(provider, address))
+  const deployment = await account.deployContract(payload, { resourceBounds: deployBounds })
   console.log(dim(`     tx ${deployment.transaction_hash}`))
   await provider.waitForTransaction(deployment.transaction_hash)
   const escrow = deployment.contract_address

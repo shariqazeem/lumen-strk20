@@ -16,3 +16,10 @@ casm = true
 
 [scripts]
 test = "snforge test"
+
+# Declaring a class is charged by its Sierra length, and `sierra-replace-ids`
+# embeds human-readable identifiers that inflate it for debugging value that
+# does not exist on mainnet. Test panics come from felt short strings, so
+# snforge is unaffected.
+[cairo]
+sierra-replace-ids = false
