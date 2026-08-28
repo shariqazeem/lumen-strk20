@@ -15,6 +15,7 @@ import { formatUnits } from '@/lib/strk20/wallet'
 import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
 import { AmountField, ErrorNote, GuardPanel, parseAmount, SuccessMark, TxLink } from './bits'
+import { splitterEnabled } from '@/lib/lumen/scatter'
 import { Globe } from './icons'
 
 export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -25,6 +26,7 @@ export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => 
     ledger,
     submitting,
     cashOut,
+    scatterBalance,
     noteDecision,
     error,
     clearError,
@@ -32,6 +34,7 @@ export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => 
   } = useLumen()
 
   const [step, setStep] = useState<'warn' | 'form' | 'done'>('warn')
+  const [scattered, setScattered] = useState<number | null>(null)
   const [token, setToken] = useState<TokenSymbol>('USDC')
   const [amountText, setAmountText] = useState('')
   const [destination, setDestination] = useState('')
@@ -198,10 +201,45 @@ export function CashOutSheet({ open, onClose }: { open: boolean; onClose: () => 
             </p>
           ) : null}
 
+          {/* The engine's other half. The guard already rewrites the exit
+              amount; this changes the shape it is drawn from. */}
+          {splitterEnabled() && balance && balance.raw > 0n ? (
+            <div className="mt-5 rounded-2xl border border-rule bg-card-soft px-5 py-4">
+              <p className="text-[13.5px] font-semibold">Break the balance up first</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-muted">
+                One round note leaving shortly after one round note arrived is what re-links a
+                deposit to a withdrawal. Splitting into several uneven notes first — one
+                operation, nothing public — leaves an observer a worse thing to match against.
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    const legs = await scatterBalance({
+                      token,
+                      amount: balance.raw,
+                      count: 4,
+                    })
+                    setScattered(legs)
+                  } catch {
+                    // The store surfaced the reason.
+                  }
+                }}
+                disabled={submitting}
+                className="btn btn-quiet mt-3 w-full"
+              >
+                {scattered
+                  ? `Split into ${scattered} notes`
+                  : submitting
+                    ? 'Waiting for your wallet…'
+                    : 'Split before leaving'}
+              </button>
+            </div>
+          ) : null}
+
           <button
             onClick={submit}
             disabled={finalAmount <= 0n || !validDestination || submitting || !enough}
-            className="btn btn-quiet mt-5 w-full !text-warn"
+            className="btn btn-quiet mt-3 w-full !text-warn"
           >
             {submitting ? 'Waiting for your wallet…' : 'Cash out publicly'}
           </button>

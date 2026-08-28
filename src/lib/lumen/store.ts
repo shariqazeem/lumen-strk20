@@ -26,6 +26,7 @@ import {
 import {
   assertNeverUnshields,
   buildExplicitUnshield,
+  buildSplit,
   buildPrivateTransfer,
   buildShield,
   explainWalletError,
@@ -61,6 +62,8 @@ import { loadJournal, recordDecision, type JournalEntry } from './journal'
 import { rememberLink } from './inbox'
 import { loadArrivals, syncArrivals, type Arrival } from './arrivals'
 import type { GuardReport } from './guard'
+import { guardSeed } from './guard'
+import { scatterPlan, SPLITTER_ADDRESS } from './scatter'
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -124,6 +127,11 @@ interface LumenState {
     note?: string
   }) => Promise<Receipt>
   addMoney: (input: { token: TokenSymbol; amount: bigint }) => Promise<string>
+  scatterBalance: (input: {
+    token: TokenSymbol
+    amount: bigint
+    count: number
+  }) => Promise<number>
   cashOut: (input: { token: TokenSymbol; amount: bigint; recipient: string }) => Promise<string>
 
   /**
@@ -511,6 +519,55 @@ export const useLumen = create<LumenState>((set, get) => ({
         set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
       )
       return transaction_hash
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  /**
+   * Break the balance into unequal notes before any of it leaves.
+   *
+   * Nothing goes public here: the value is withdrawn to the splitter and
+   * credited straight back into fresh notes owned by the same account, in one
+   * pool operation. What changes is the shape an observer meets at the exit —
+   * several uneven notes instead of one round one.
+   */
+  async scatterBalance(input) {
+    const { account, address } = requireAccount(get, set)
+    const plan = scatterPlan({
+      token: TOKENS[input.token].address,
+      amount: input.amount,
+      count: input.count,
+      seed: guardSeed(address, Date.now()),
+    })
+    if (!plan) throw new Error('That amount is too small to split usefully.')
+
+    set({ submitting: true, error: null })
+    try {
+      const actions = buildSplit(plan)
+      // The split must never become an unshield: the only address it may
+      // withdraw to is the splitter itself.
+      assertNeverUnshields(actions, { contracts: [SPLITTER_ADDRESS] })
+
+      const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+
+      const ledger = appendLedger(address, {
+        timestamp: Date.now(),
+        type: 'TRANSFER',
+        asset: input.token,
+        amount: input.amount,
+        route: 'POOL',
+        txHash: transaction_hash,
+        observer: '—',
+      })
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'pay', status: 'submitted' }
+      set({ submitting: false, ledger, lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return plan.parts.length
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
       throw error
