@@ -28,12 +28,23 @@ function linkUrl(link: SentLink): string {
   })
 }
 
+/**
+ * Time left, in the largest unit that is still true.
+ *
+ * Rounding everything up to whole days read "1d" on a ten-minute window, which
+ * is the one case where the number is about to matter.
+ */
+function untilReclaimable(seconds: number): string {
+  if (seconds >= 86_400) return `${Math.ceil(seconds / 86_400)}d`
+  if (seconds >= 3_600) return `${Math.ceil(seconds / 3_600)}h`
+  return `${Math.max(1, Math.ceil(seconds / 60))}m`
+}
+
 function statusOf(link: SentLink, now: number): { label: string; strong: boolean } {
   if (link.status === 'claimed') return { label: 'Claimed', strong: false }
   if (link.status === 'refunded') return { label: 'Reclaimed', strong: false }
   if (now / 1000 >= link.expiry) return { label: 'Reclaimable', strong: true }
-  const daysLeft = Math.max(1, Math.ceil((link.expiry - now / 1000) / 86_400))
-  return { label: `Waiting · ${daysLeft}d`, strong: false }
+  return { label: `Waiting · ${untilReclaimable(link.expiry - now / 1000)}`, strong: false }
 }
 
 export function LinksSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
