@@ -21,7 +21,6 @@ import {
   type EscrowEntryState,
 } from '@/lib/strk20/escrow'
 import { formatUnits, listWallets, subscribeToWallets, supportsStrk20 } from '@/lib/strk20/wallet'
-import { STRK20_ERRORS } from '@/lib/strk20/actions'
 import { markInboxClaimed, reconcileInbox, rememberLink } from '@/lib/lumen/inbox'
 import { useLumen } from '@/lib/lumen/store'
 import { ErrorNote, SuccessMark, TxLink } from '@/components/lumen/bits'
@@ -43,8 +42,8 @@ export default function ClaimPage() {
   const {
     status,
     connect,
-    claimFromLink,
-    claimToAddress,
+    claimAnyWay,
+    probeClaim,
     address,
     submitting,
     error,
@@ -52,6 +51,23 @@ export default function ClaimPage() {
     lastTx,
   } = useLumen()
   const [state, setState] = useState<PageState>({ kind: 'reading' })
+  // Known before the button is pressed, so the one line about publicity can be
+  // shown *before* anything is signed rather than discovered after.
+  const [route, setRoute] = useState<'private' | 'public' | null>(null)
+
+  useEffect(() => {
+    if (status !== 'connected') {
+      setRoute(null)
+      return
+    }
+    let live = true
+    void probeClaim().then((result) => {
+      if (live) setRoute(result)
+    })
+    return () => {
+      live = false
+    }
+  }, [status, probeClaim])
   const [wallets, setWallets] = useState<readonly WalletWithStarknetFeatures[]>([])
   const [checking, setChecking] = useState(false)
 
@@ -94,35 +110,20 @@ export default function ClaimPage() {
     void refresh(payload)
   }, [refresh])
 
-  /** The public door. Ordinary transfer, no pool, honest about the trade. */
-  const takePublicly = async (payload: ClaimLinkPayload) => {
+  /**
+   * One action. The store picks the door, so nobody has to learn that there
+   * are two; the page reports which was used afterwards.
+   */
+  const take = async (payload: ClaimLinkPayload) => {
     if (!address) return
     try {
-      const txHash = await claimToAddress({ secret: payload.s, recipient: address })
+      const txHash = await claimAnyWay({ payload, recipient: address })
       markInboxClaimed(payload.s, txHash)
       setState({ kind: 'claimed-by-me', payload, txHash })
     } catch {
-      // The store surfaced the wallet's explanation.
-    }
-  }
-
-  const claim = async (payload: ClaimLinkPayload) => {
-    try {
-      const txHash = await claimFromLink(payload)
-      markInboxClaimed(payload.s, txHash)
-      setState({ kind: 'claimed-by-me', payload, txHash })
-    } catch (failure) {
-      // 118 is not a generic failure and must not read like one: the money is
-      // untouched, the link is still good, and one wallet-side step fixes it.
-      // Every other error keeps the store's own explanation.
-      const code =
-        typeof failure === 'object' && failure !== null && 'code' in failure
-          ? Number((failure as { code: unknown }).code)
-          : undefined
-      if (code === STRK20_ERRORS.NOT_REGISTERED) {
-        clearError()
-        setState({ kind: 'needs-wallet-step', payload })
-      }
+      // The store surfaced the reason. The money is untouched either way —
+      // a claim is only spent when it settles.
+      setState({ kind: 'needs-wallet-step', payload })
     }
   }
 
@@ -228,13 +229,21 @@ export default function ClaimPage() {
                 ) : null}
 
                 {connected ? (
-                  <button
-                    onClick={() => claim(state.payload)}
-                    disabled={submitting}
-                    className="btn btn-ink w-full"
-                  >
-                    {submitting ? 'Waiting for your wallet…' : 'Claim privately'}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => void take(state.payload)}
+                      disabled={submitting}
+                      className="btn btn-ink w-full !h-[54px] !text-[16px]"
+                    >
+                      {submitting ? 'Waiting for your wallet…' : `Claim ${amountText}`}
+                    </button>
+                    {route === 'public' ? (
+                      <p className="mt-3 text-center text-[12.5px] leading-relaxed text-ink-muted">
+                        This lands in your wallet publicly — your account has not joined the
+                        privacy pool. Whoever sent it stays private either way.
+                      </p>
+                    ) : null}
+                  </>
                 ) : ready.length > 0 ? (
                   <div className="space-y-2.5">
                     <p className="px-1 text-[13px] font-semibold text-ink-muted">
@@ -295,52 +304,20 @@ export default function ClaimPage() {
         ) : null}
 
         {state.kind === 'needs-wallet-step' ? (
-        <div className="rise">
-          <div className="glass px-7 py-7">
-            <p className="text-[12.5px] font-semibold uppercase tracking-[0.14em] text-glass-faint">
-              Still yours
-            </p>
-            <h1 className="mt-4 text-[26px] font-semibold leading-[1.15] tracking-[-0.025em] text-glass-ink">
-              The money is waiting. Your wallet needs one step first.
-            </h1>
-            <p className="mt-4 text-[15px] leading-relaxed text-glass-muted">
-              {amountText} is held by the escrow contract behind the secret in your link. Nothing
-              about that changed just now, and nothing about it expires — the claim stays valid
-              until you use it.
-            </p>
-            <p className="mt-3 text-[15px] leading-relaxed text-glass-muted">
-              Starknet requires a wallet to join the privacy pool before it can hold a{' '}
-              <em>private</em> balance, and no website can do that for you. So there are two ways
-              to take this money, and you pick.
-            </p>
-
-            <div className="mt-6 space-y-2.5">
-              <button
-                onClick={() => void takePublicly(state.payload)}
-                disabled={submitting}
-                className="btn w-full bg-white text-ink hover:bg-white/90"
-              >
-                {submitting ? 'Waiting for your wallet…' : 'Send it to my wallet now'}
-              </button>
-              <button
-                onClick={() => setState({ kind: 'ready', payload: state.payload, entry: null })}
-                className="btn w-full border border-white/25 text-glass-ink hover:bg-white/10"
-              >
-                I joined the pool — claim it privately
-              </button>
-            </div>
-
-            <p className="mt-5 border-t border-white/10 pt-4 text-[12.5px] leading-relaxed text-glass-faint">
-              Taking it now is an ordinary transfer: your address and the amount become public,
-              the way any payment to your wallet already is. Whoever sent it stays private either
-              way. Join the pool first and nothing about the arrival is published at all — and
-              you can do that any time, this link is not going anywhere.
-            </p>
-          </div>
-          <p className="mt-4 px-1 text-[12.5px] leading-relaxed text-ink-faint">
-            Keep this link. It is the only thing that can open this money, and it works from any
-            device.
+        <div className="rise glass px-7 py-7">
+          <h1 className="text-[24px] font-semibold leading-[1.15] tracking-[-0.025em] text-glass-ink">
+            Still waiting for you.
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-glass-muted">
+            {amountText} is held behind the secret in your link, and nothing about it expires.
+            Something went wrong collecting it just now.
           </p>
+          <button
+            onClick={() => setState({ kind: 'ready', payload: state.payload, entry: null })}
+            className="btn mt-6 w-full bg-white text-ink hover:bg-white/90"
+          >
+            Try again
+          </button>
         </div>
       ) : null}
 

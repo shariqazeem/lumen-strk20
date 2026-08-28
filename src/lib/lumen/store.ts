@@ -165,6 +165,11 @@ interface LumenState {
   }) => Promise<{ link: SentLink; url: string }>
   /** Claim a link into this account's private balance. */
   claimToAddress: (input: { secret: string; recipient: string }) => Promise<string>
+  claimAnyWay: (input: {
+    payload: ClaimLinkPayload
+    recipient: string
+  }) => Promise<string>
+  probeClaim: () => Promise<'private' | 'public'>
   claimFromLink: (payload: ClaimLinkPayload) => Promise<string>
   /** Reclaim an expired, unclaimed link back into this private balance. */
   refundLink: (id: string) => Promise<string>
@@ -794,6 +799,36 @@ export const useLumen = create<LumenState>((set, get) => ({
    * cannot pay the pool's flat fee. What it costs is publicity: this leg names
    * the recipient and the amount. The sender is not named by it.
    */
+  /**
+   * Take the money, whichever way works.
+   *
+   * There are two doors and the person opening a link should not have to learn
+   * that. If this account can hold a private balance the money lands
+   * privately; if it cannot, it lands publicly. Both are collections of the
+   * same claim, and the difference is reported afterwards rather than posed as
+   * a question beforehand.
+   *
+   * The one thing that is never done silently is publishing something. If the
+   * public door is the only one available, the caller is told before it runs —
+   * `probeClaim` exists for that.
+   */
+  async claimAnyWay(input) {
+    const route = await get().probeClaim()
+    return route === 'private'
+      ? get().claimFromLink(input.payload)
+      : get().claimToAddress({ secret: input.payload.s, recipient: input.recipient })
+  },
+
+  /** Which door this account can use, decided before anything is signed. */
+  async probeClaim() {
+    const { address, registered } = get()
+    if (!address) return 'public'
+    if (registered === true) return 'private'
+    if (registered === false) return 'public'
+    const result = await readRegistration(address)
+    return result === 'registered' ? 'private' : 'public'
+  },
+
   async claimToAddress(input) {
     requireIdle(get)
     const { account } = requireAccount(get, set)
