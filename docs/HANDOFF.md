@@ -25,34 +25,73 @@ now different rather than merely expanded:
 | **Connect** | A real bug is fixed: `WalletAccountV6.connect` was handing back addressless accounts — §6.2 |
 | **Tests** | 200 → 237 |
 
+**A later revision than the above** turned the product from *"the private inbox
+for money"* into *"private payments that feel like normal payments"*. Send is
+now the first thing on the account screen and it is a composer, not a button —
+§1 and §5.3b. This **reverses** the earlier instruction that arrivals come
+first and payments are plumbing. That framing was right about what makes Lumen
+different and wrong about what makes it used. If you find a stray sentence
+still calling Lumen an inbox, it is stale; the composer is the product.
+
 ---
 
 ## 1. What this is
 
-**Lumen is the private inbox for money on Starknet.** Money arrives from links,
-pay pages and other apps; it stays private; and the account keeps those
-arrivals from lining up into a public profile of the person.
+**Lumen is private payments that feel like normal payments.** Name, amount,
+Send. The rail underneath happens to be STRK20; the user never learns that,
+and never decides it.
 
-Positioning line: *"Your payments shouldn't become a map of your life."*
+Positioning line: *"Send money. Lumen handles the privacy."*
+The landing film still opens on the problem — *"your payments shouldn't become
+a map of your life"* — because the diagnosis is what earns the product.
 
-It is deliberately **not** framed as a payments app. The STRK20 sprint has ~10
-link-payment projects, 7 payroll projects and StarkWare's own PriPay reference
-implementation. Every one of them protects a **single transaction**. Lumen's
-claim is that it protects the **person across all of them** — which is what the
-2026 "Anonymity Gap" research says actually breaks privacy: provenance and
-behaviour across a sequence, never inside one transfer.
+**The problem is not that people need better privacy.** STRK20 already hides
+the transfer. The problem is that people do not choose private transactions
+when the private path is a *different workflow* from the normal path. PSE's
+2026 research found 86% of surveyed Ethereum users had abandoned a privacy
+flow at least once, with privacy importance rated high and satisfaction low;
+their interview study named the blockers as wallet support, key management,
+fragmented balances and the difficulty of spending privately at all. Earlier
+usability work found only a quarter of participants could complete a real
+private purchase. The gap is human, not cryptographic.
 
-Practical consequence for anyone editing this: **payments are plumbing, not the
-pitch.** The first screen is what arrived. The second object is what the engine
-did. Pay/page/split live in sheets. Do not promote them back to the top.
+So the product does not teach privacy. **It removes the decision to choose
+it.**
+
+Practical consequence for anyone editing this: **Send is the product.** It is
+the first thing on the screen and it is a composer, not a button that opens
+one. Everything else — claim links, pay pages, split, convert, spaces — is
+support. Do not add a privacy mode, a shield step, a toggle, or a button
+reading PRIVATE in capitals; each of those teaches that privacy is a special
+occasion, which is the exact failure being fixed.
+
+**The differentiator, stated carefully.** "Easiest private payment on Starknet"
+is the most occupied sentence on the sprint board — claim links, Whisper Pay,
+VeilPayouts, SABLE. Four things keep Lumen from filing next to them, and all
+four are structural rather than cosmetic:
+
+1. **Send is the product**, not one verb in a wallet.
+2. **The engine stays under the floor** — it rewrites a deposit amount or
+   holds a cash-out without asking (§4.4). The user did not open a privacy
+   app; they paid someone.
+3. **Observer comes after, never before** — it is proof the easy path was
+   genuinely private, not a pitch for privacy.
+4. **Claim links are the loop**, not the pitch — a stranger receives $50
+   without knowing what STRK20 is, and is now inside the network.
 
 ### Prior art to avoid resembling
 
 The founder previously built StarkPay (payment links for AI agents — won a
-bounty), Pulse (QR tipping) and EarnFlow (DeFi savings). The lesson drawn from
-those results: **wins came from a novel counterparty, not a novel payment.**
-"People paying people, but private" is the losing shape. Keep the account/inbox
-framing.
+bounty), Pulse (QR tipping) and EarnFlow (DeFi savings). Those products all
+shipped a *set of verbs*. The correction here is not a different counterparty,
+it is **one interaction done absurdly well**, with everything else demoted
+below it. If you find yourself adding a sixth verb to the sidebar, that is the
+old failure returning.
+
+Specifically ruled out for this sprint, after being considered: a merchant
+SDK / "Accept Lumen" button, a private intent network, private conditional
+orders, and a privacy OS. The first is scope; the rest are lanes STRK20 has
+already named, where execution risk beats a working mainnet product.
 
 ---
 
@@ -294,9 +333,11 @@ wide screen:
 
 - **Sidebar**, fixed 236px, hairlines and type rather than a slab of chrome.
   It replaces every hamburger — there is no menu button on desktop. Items:
-  Incoming (with a waiting-links badge), Pay, Get paid, Add money, What Lumen
+  **Send** (the account screen), Send a link, Get paid, Add money, What Lumen
   did, Links you sent, Activity; Cash out sits alone at the bottom, away from
-  everything else, above the account chip.
+  everything else, above the account chip. Send leads because Send is the
+  product. There is no badge on it — a count of money *waiting to be claimed*,
+  sitting on an item called Send, reads as "two sends pending".
 - **Top pill**, centred: *Your view* / *What the world sees*. The thesis is one
   tap, always.
 - **Content** capped at 560px with a sticky 320px **observer rail** on the
@@ -318,20 +359,42 @@ wallet reads as one piece rather than two products. Ordinary non-privacy
 wallets are listed by name below, described honestly as having no private
 balances yet. No demo entry — see §7.
 
-**Incoming** (`home.tsx`) — the first screen, in this order:
+**The account** (`home.tsx`) — one screen, in this order:
 
-1. **Waiting for you** — claim links this device holds, unclaimed. **Black
+1. **The composer** (`send.tsx`) — see §5.3b. This is the product.
+2. **The balance** — black glass, consent-gated reveal, Convert/Refresh. It
+   sits directly under the composer because it is what the composer spends.
+3. **Waiting for you** — claim links this device holds, unclaimed. **Black
    glass cards** (value), each an `<a>` straight to `/claim#…` reconstructed
    from the inbox entry.
-2. **Arrived** — balance growth the local ledger cannot explain. One line each,
+4. **Arrived** — balance growth the local ledger cannot explain. One line each,
    with the disclaimer stated **once** for the group: *"Nobody published who
    sent these — so nobody can read them, including us."*
-3. **What Lumen did** — the journal digest (3 figures), taps into the sheet.
-4. **The balance** — black glass, consent-gated reveal, Convert/Refresh.
-5. **The verbs, weighted** — `Pay someone` full-width primary; `Get paid` and
-   `Add money` as quiet utility cards. Deliberately asymmetric.
-6. First-run state (when nothing at all exists): a black glass card, *"Add
+5. **What Lumen did** — the journal digest (3 figures), taps into the sheet.
+6. **Get paid / Add money** — equal utility weight. They are not the product.
+7. First-run state (when nothing at all exists): a black glass card, *"Add
    money once. After that, nothing you do here is public."*
+
+### 5.3b The composer — `src/components/lumen/send.tsx`
+
+Two fields and a button. **Nothing before Send may mention privacy as a
+choice.**
+
+- **Two steps on purpose.** Before a recipient is chosen there is no Send
+  button at all — a full-width disabled slab sitting on an empty screen is
+  worse than no button. Choosing a person reveals the amount and Send
+  together, and moves focus to the amount.
+- **The guard runs, invisibly.** `reviewPay` is called on submit and its
+  verdict goes to `noteDecision` — the journal — not to a panel. Do not
+  reintroduce a pre-flight approval step; that is the second workflow this
+  whole design exists to delete.
+- **One explanation, once.** *"Private by default. Nothing about this becomes
+  public."* Not a badge, not a mode, not a capitalised button.
+- **Observer is offered after**, from the success state, beside the receipt.
+- The sheet at `pay-sheet.tsx` no longer lists contacts. It exists for the two
+  things the composer cannot do — a claim link and a split — and is reached
+  from the sidebar's **Send a link**. Two ways to pay the same person would be
+  exactly the confusion this change removes.
 
 `home.tsx` also exports **`ObserverPanel`**, which the shell mounts in the rail.
 
@@ -767,6 +830,10 @@ at a time. It is a contract change plus a redeploy (one command now).
   "Infra-shaped" is a positioning word, never a visual instruction: build
   infrastructure, do not make it *look* like infrastructure people lose
   interest in.
+- **Stop adding features.** The founder's own diagnosis of three previous
+  projects is that they shipped a set of verbs. One interaction done absurdly
+  well beats six done adequately. A sixth sidebar item is the old failure
+  returning.
 - **Show, do not describe.** The recurring note across every round of feedback
   was that the product kept *explaining* its argument instead of *displaying*
   it. The observer rail, the connect screen's redacted panel, and the landing

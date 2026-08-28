@@ -34,12 +34,10 @@ import {
   WorldSaw,
 } from './bits'
 import {
-  ArrowRight,
   ChevronRight,
   Clock,
   LinkIcon,
   People,
-  Plus,
   Receipt as ReceiptIcon,
 } from './icons'
 
@@ -50,7 +48,6 @@ interface PaySheetProps {
   onClose: () => void
   person?: Person
   onReceipt: (receipt: Receipt) => void
-  onNewPerson: () => void
   onSplit: () => void
 }
 
@@ -59,7 +56,6 @@ export function PaySheet({
   onClose,
   person,
   onReceipt,
-  onNewPerson,
   onSplit,
 }: PaySheetProps) {
   const {
@@ -79,7 +75,6 @@ export function PaySheet({
 
   const [step, setStep] = useState<Step>(person ? 'amount' : 'to')
   const [target, setTarget] = useState<Person | null>(person ?? null)
-  const [pasted, setPasted] = useState('')
   const [token, setToken] = useState<TokenSymbol>('USDC')
   const [amountText, setAmountText] = useState('')
   const [note, setNote] = useState('')
@@ -100,7 +95,7 @@ export function PaySheet({
     setReceipt(null)
   }
 
-  const recipientAddress = target?.address ?? pasted.trim()
+  const recipientAddress = target?.address ?? ''
   const recipientName = target?.name ?? personByAddress(people, recipientAddress)?.name
   const validRecipient = looksLikeStarknetAddress(recipientAddress)
 
@@ -245,70 +240,10 @@ export function PaySheet({
             <ChevronRight size={15} className="text-ink-faint" />
           </button>
 
-          {people.length > 0 ? (
-            <div className="card divide-y divide-rule">
-              {people.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setTarget(p)
-                    setStep('amount')
-                  }}
-                  className="flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors hover:bg-card-soft"
-                >
-                  <Avatar name={p.name} size={40} />
-                  <span className="flex-1">
-                    <span className="block text-[14.5px] font-semibold">{p.name}</span>
-                    <span className="block font-mono text-[11.5px] text-ink-faint">
-                      {shortAddress(p.address)}
-                    </span>
-                  </span>
-                  <ChevronRight size={15} className="text-ink-faint" />
-                </button>
-              ))}
-              <button
-                onClick={onNewPerson}
-                className="flex w-full items-center gap-3.5 px-4 py-3 text-left text-ink-muted transition-colors hover:bg-card-soft"
-              >
-                <span className="grid size-10 place-items-center rounded-full border border-dashed border-rule-strong">
-                  <Plus size={16} />
-                </span>
-                <span className="text-[14px] font-semibold">Someone new</span>
-              </button>
-            </div>
-          ) : null}
-
-          <div>
-            <p className="mb-2 px-1 text-[13px] font-semibold text-ink-muted">
-              Or paste an address
-            </p>
-            <div className="flex gap-2">
-              <input
-                value={pasted}
-                onChange={(event) => setPasted(event.target.value)}
-                placeholder="0x…"
-                spellCheck={false}
-                className="h-12 min-w-0 flex-1 rounded-2xl border border-rule bg-card px-4 font-mono text-[13px] outline-none focus:border-rule-strong"
-              />
-              <button
-                onClick={() => {
-                  if (validRecipient) {
-                    setTarget(personByAddress(people, pasted.trim()) ?? null)
-                    setStep('amount')
-                  }
-                }}
-                disabled={!validRecipient}
-                aria-label="Continue"
-                className="btn btn-ink h-12 w-12 flex-none !p-0"
-              >
-                <ArrowRight size={18} />
-              </button>
-            </div>
-            <p className="mt-2.5 px-1 text-[12.5px] leading-relaxed text-ink-faint">
-              They&rsquo;ll receive it privately. Their wallet needs private balances too — first
-              payment to a new wallet may ask them to register once.
-            </p>
-          </div>
+          <p className="px-1 text-[13px] leading-relaxed text-ink-faint">
+            To pay someone you already know, use the composer on the main
+            screen — name, amount, Send.
+          </p>
         </div>
       ) : null}
 

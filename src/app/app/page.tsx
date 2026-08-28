@@ -104,7 +104,6 @@ export default function AppPage() {
         onClose={close}
         {...(payPerson ? { person: payPerson } : {})}
         onReceipt={(created) => open({ kind: 'receipt', receipt: created })}
-        onNewPerson={() => open({ kind: 'new-person' })}
         onSplit={() => open({ kind: 'split' })}
       />
       <ReceiveSheet

@@ -130,6 +130,10 @@ const FILM_BEATS: Beat[] = [
           The same account, seen from outside
         </p>
         <Line>Nothing to read.</Line>
+        <Sub>
+          And you did nothing to get it. No shielding step, no privacy mode, no
+          second workflow — a name, an amount, Send.
+        </Sub>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link href="/app" className="btn btn-ink">
             Open Lumen
@@ -349,11 +353,12 @@ export default function Landing() {
         <section className="py-28">
           <Reveal>
             <h2 className="text-center text-[34px] font-semibold tracking-[-0.03em] sm:text-[42px]">
-              An account with a job.
+              Name. Amount. Send.
             </h2>
-            <p className="mx-auto mt-4 max-w-[52ch] text-center text-[15.5px] leading-relaxed text-ink-muted">
-              A wallet holds a balance and waits. This holds your unlinkability — across every
-              place money reaches you, and across time.
+            <p className="mx-auto mt-4 max-w-[54ch] text-center text-[15.5px] leading-relaxed text-ink-muted">
+              People do not skip private payments because they dislike privacy. They skip them
+              because the private path is a different workflow, and a second workflow loses every
+              time. So Lumen does not have one. This is the only path it has.
             </p>
           </Reveal>
 
