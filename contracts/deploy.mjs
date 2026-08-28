@@ -322,6 +322,18 @@ async function main() {
     console.log()
   }
 
+  if (process.argv.includes('--price-deploy-step')) {
+    const probeClass = arg('probe-class', '0x7455f2335fa2fc44096af7f518b7d8f9e12bd0835ff8b735feb1ccf7e4484e6')
+    const est = await account.estimateDeployFee({
+      classHash: probeClass,
+      constructorCalldata: CallData.compile([POOL_ADDRESS]),
+    })
+    console.log(dim(`     deploy-instance ceiling ${strk(ceiling(tighten(est)))}`))
+    console.log(dim(`     deploy-instance estimate ${strk(est.overall_fee)}`))
+    privateKey = null
+    return
+  }
+
   // --- 1. declare ---------------------------------------------------------
   console.log(`${bold(`1/4  Declaring ${TARGET.name}`)}  (costs gas)`)
   const classHash = hash.computeContractClassHash(sierra)
@@ -381,6 +393,36 @@ async function main() {
     console.log(
       yellow(
         `     get_outstanding(STRK) = ${outstanding} — expected 0. Do not route value through this instance.`,
+      ),
+    )
+  }
+
+  // The three ways a deploy silently lands wrong: a stale artifact, a class
+  // that is not the one just built, and a client whose calldata no longer
+  // matches the ABI. Each is invisible until money is already moving.
+  const onChainClass = await provider.getClassHashAt(escrow).catch(() => null)
+  if (onChainClass && BigInt(onChainClass) === BigInt(classHash)) {
+    console.log('     class at address matches the local build')
+  } else {
+    console.log(yellow(`     class mismatch: chain says ${onChainClass}, built ${classHash}`))
+  }
+
+  const deployedAbi = await provider
+    .getClassAt(escrow)
+    .then((c) => (typeof c.abi === 'string' ? JSON.parse(c.abi) : c.abi))
+    .catch(() => null)
+  const invoke = deployedAbi?.find?.(
+    (item) => item.type === 'function' && item.name === 'privacy_invoke',
+  )
+  const localArgs = TARGET.name === 'LumenEscrow' ? 9 : null
+  if (localArgs === null) {
+    // The splitter has its own shape; nothing to compare here.
+  } else if (invoke?.inputs?.length === localArgs) {
+    console.log(`     privacy_invoke takes ${localArgs} arguments, as the client sends`)
+  } else {
+    console.log(
+      yellow(
+        `     privacy_invoke takes ${invoke?.inputs?.length ?? '?'} arguments but the client sends ${localArgs} — every call will revert.`,
       ),
     )
   }
