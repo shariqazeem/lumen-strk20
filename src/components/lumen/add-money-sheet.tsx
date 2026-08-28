@@ -32,6 +32,7 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
     prices,
     ledger,
     registered,
+    poolFee,
     submitting,
     addMoney,
     noteDecision,
@@ -89,11 +90,35 @@ export function AddMoneySheet({ open, onClose }: { open: boolean; onClose: () =>
     }
   }
 
+  // The fee is denominated in STRK, so the share is only directly comparable
+  // when the deposit is STRK too. For other assets the warning is withheld
+  // rather than guessed at from a price.
+  const feeShare =
+    token === 'STRK' && typedAmount > 0n ? Number(poolFee) / Number(typedAmount) : null
+
   return (
     <Sheet open={open} onClose={onClose} locked={submitting} title={done ? 'Added' : 'Add money'}>
       {!done ? (
         <div>
-          {registered === false ? (
+          {/* The pool charges a flat fee per operation, so the *proportion* it
+          takes depends entirely on the size of the deposit. Six STRK is
+          nothing against 700 and most of the money against 10, and nobody
+          should discover that at the wallet's confirm screen. */}
+      {feeShare !== null && feeShare > 0.05 ? (
+        <div className="mb-5 rounded-2xl bg-glass px-5 py-4 text-glass-ink">
+          <p className="text-[14px] font-semibold">
+            The pool fee would be {(feeShare * 100).toFixed(0)}% of this deposit
+          </p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-glass-muted">
+            It is a flat {formatUnits(poolFee, 18, 2)} STRK per operation, not a percentage — so
+            it barely registers on a large deposit and eats a small one. Adding more at once
+            costs the same fee and leaves you free to spend it in as many private payments as
+            you like, each of which is also one fee.
+          </p>
+        </div>
+      ) : null}
+
+      {registered === false ? (
         <div className="mb-5 rounded-2xl bg-glass px-5 py-4 text-glass-ink">
           <p className="text-[14px] font-semibold">One step happens in your wallet first</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-glass-muted">
