@@ -55,6 +55,12 @@
       "address": "0x6c96b86d5f1eaee16be18ca4f346edb20c098f1106648cef3845b34723df272",
       "class_hash": "0x5a8b231a34692588ba7524a126b87d7db762ab72579265664449720a1785d44",
       "network": "mainnet"
+    },
+    {
+      "name": "LumenVault",
+      "address": "0x73e57be7d6c9d2321d7a01d0c2e426392fd5e736ecfbcd91d4216ba5d7a5f67",
+      "class_hash": "0x4d37d28b2483132634406b7e65c58732d3e60b0e27d11ec2698f7229423db54",
+      "network": "mainnet"
     }
   ],
   "demo_video": "",

@@ -5,6 +5,7 @@
  *
  *   node contracts/deploy.mjs                        # LumenEscrow (default)
  *   node contracts/deploy.mjs --contract splitter    # LumenSplitter
+ *   node contracts/deploy.mjs --contract vault       # LumenVault (strkBTC staking)
  *
  * The private key is decrypted in memory from the keystore, is never written
  * anywhere, and never leaves this process.
@@ -62,6 +63,14 @@ const expand = (p) => (p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) :
  * a contract that cannot take a fee is a stronger promise than one that
  * chooses not to.
  */
+/**
+ * Starknet's shielded Bitcoin, and Endur's liquid-staked form of it. Both were
+ * read from mainnet before use: `xstrkBTC.asset()` returns `strkBTC` exactly,
+ * and the constructor asserts that again on deploy.
+ */
+const STRKBTC_ADDRESS = '0x0787150e306e6eae6e3f79dea881770e8bbff2c1b8eb490f969669ee945b3135'
+const XSTRKBTC_ADDRESS = '0x047751b3532fabca89b0f2e35ca1cb45e5a7b11d5e3d3663dfa1f4406b45fd88'
+
 const TARGETS = {
   escrow: {
     name: 'LumenEscrow',
@@ -74,6 +83,14 @@ const TARGETS = {
     args: () => [POOL_ADDRESS, '0x0', 0],
     describe: () => `pool = ${POOL_ADDRESS}, fee_recipient = 0x0, max_fee_bps = 0`,
     env: 'NEXT_PUBLIC_LUMEN_SPLITTER_ADDRESS',
+  },
+  vault: {
+    name: 'LumenVault',
+    args: () => [POOL_ADDRESS, XSTRKBTC_ADDRESS, STRKBTC_ADDRESS],
+    describe: () =>
+      `pool = ${POOL_ADDRESS}, vault = ${XSTRKBTC_ADDRESS} (Endur xstrkBTC), ` +
+      `asset = ${STRKBTC_ADDRESS} (strkBTC)`,
+    env: 'NEXT_PUBLIC_LUMEN_VAULT_ADDRESS',
   },
 }
 
@@ -368,7 +385,7 @@ async function main() {
   console.log()
 
   // --- 2. deploy an instance ----------------------------------------------
-  console.log(`${bold('2/4  Deploying the escrow')}  (costs gas)`)
+  console.log(`${bold(`2/4  Deploying ${TARGET.name}`)}  (costs gas)`)
   console.log(dim(`     constructor: ${TARGET.describe()}`))
   const payload = { classHash, constructorCalldata: CallData.compile(TARGET.args()) }
   const deployEstimate = await account.estimateDeployFee(payload)
@@ -411,8 +428,31 @@ async function main() {
       (v) => v === BigInt(POOL_ADDRESS),
       'wired to the real STRK20 pool',
     )
-    check('fee_recipient', await readView('fee_recipient'), (v) => v === 0n, 'nobody collects')
-    check('max_fee_bps', await readView('max_fee_bps'), (v) => v === 0n, 'cannot ever charge')
+    if (TARGET.name === 'LumenSplitter') {
+      check('fee_recipient', await readView('fee_recipient'), (v) => v === 0n, 'nobody collects')
+      check('max_fee_bps', await readView('max_fee_bps'), (v) => v === 0n, 'cannot ever charge')
+    } else {
+      check(
+        'vault_address',
+        await readView('vault_address'),
+        (v) => v === BigInt(XSTRKBTC_ADDRESS),
+        'points at Endur xstrkBTC',
+      )
+      check(
+        'asset_address',
+        await readView('asset_address'),
+        (v) => v === BigInt(STRKBTC_ADDRESS),
+        'underlying is strkBTC',
+      )
+      // A live rate proves the vault is reachable and not paused — the two ways
+      // a correctly-deployed helper still reverts on its first real call.
+      check(
+        'preview_stake(1 BTC)',
+        await readView('preview_stake', ['0x5f5e100']),
+        (v) => v > 0n,
+        'the vault quotes a live exchange rate',
+      )
+    }
   }
 
   // The three ways a deploy silently lands wrong: a stale artifact, a class
@@ -435,7 +475,8 @@ async function main() {
     ? deployedAbi.flatMap((item) => (item.type === 'interface' ? (item.items ?? []) : [item]))
     : []
   const invoke = flatAbi.find((item) => item.name === 'privacy_invoke')
-  const localArgs = TARGET.name === 'LumenEscrow' ? 9 : null
+  const localArgs =
+    TARGET.name === 'LumenEscrow' ? 9 : TARGET.name === 'LumenVault' ? 2 : null
   if (localArgs === null) {
     // The splitter has its own shape; nothing to compare here.
   } else if (invoke?.inputs?.length === localArgs) {
