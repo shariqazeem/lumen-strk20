@@ -256,9 +256,12 @@ function withWalletTimeout<T>(work: Promise<T>): Promise<T | null> {
  */
 async function claimSettled(secret: string): Promise<boolean> {
   const holder = await findEscrowHolding(secret)
-  // `findEscrowHolding` only returns entries that still exist and are
-  // unclaimed, so its absence after an attempt means the claim went through.
-  return holder === null
+  // A settled entry is still *present* — `take_entry` flips `claimed` rather
+  // than deleting it, which is what lets the app tell "already collected"
+  // apart from "never existed". Checking only for absence would report a
+  // successful claim as unsettled, which is the bug this function exists to
+  // prevent.
+  return holder !== null && holder.entry.claimed
 }
 
 function requireIdle(get: () => LumenState): void {

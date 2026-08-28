@@ -16,6 +16,18 @@
       "network": "mainnet",
       "block": 14013048,
       "what": "Claim relayed to a wallet that had never joined the privacy pool, held no shielded balance, had no gas, and whose account contract was not deployed \u2014 and still is not. The recipient performed no action. A third party submitted claim_to_address; the Poseidon preimage was the only authority."
+    },
+    {
+      "hash": "0x27c52c631a9f036b4749bb736e305c8d742ce66f9b54cdebb40c267c81519d9",
+      "network": "mainnet",
+      "block": 14013806,
+      "what": "Claim link minted for 9.845994 STRK. The amount was tuned away from a round 10 by the guard, because the escrowed amount is public and a round number is the easiest thing to match a later withdrawal against."
+    },
+    {
+      "hash": "0x535cc6d39343a65ea22d26bdef83ebd0ab3f778c8f5690905b3b77354d75123",
+      "network": "mainnet",
+      "block": 14013837,
+      "what": "The same link collected through the private door: the pool credits an open note, so the arrival is shielded and nothing about the recipient is published. Compare with 0x3af9f5cd, which is the public door \u2014 one link shape, two landings."
     }
   ],
   "contracts": [
