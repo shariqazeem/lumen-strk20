@@ -240,6 +240,45 @@ async function claimSettled(secret: string): Promise<boolean> {
   return holder !== null && holder.entry.claimed
 }
 
+/** Whether an escrow anywhere is holding this commitment at all. */
+async function entryExists(secret: string): Promise<boolean> {
+  return (await findEscrowHolding(secret)) !== null
+}
+
+/**
+ * Submit an escrow operation and find out whether it landed, from either side.
+ *
+ * Returns the wallet's transaction hash, or an empty string when the chain
+ * answered first — the operation is done and there is simply no hash to show
+ * for it. Throws when neither side answered.
+ *
+ * Every escrow operation has a chain-visible outcome, which is what makes this
+ * possible: a mint creates an entry, and a claim or a refund takes one. The
+ * private transfers do not, by design, so they are not routed through here.
+ */
+async function submitEscrowOp(
+  work: Promise<{ transaction_hash: string }>,
+  settled: () => Promise<boolean>,
+): Promise<string> {
+  const result = await raceTheChain(work, settled)
+  if (result === 'settled') return ''
+  if (!result) throw new Error(WALLET_SILENT_MESSAGE)
+  return result.transaction_hash
+}
+
+/** Follow a hash, when there is one to follow. */
+function trackTx(
+  hash: string,
+  kind: LastTx['kind'],
+  set: (fn: (state: LumenState) => Partial<LumenState>) => void,
+): LastTx | null {
+  if (!hash) return null
+  void watchTx(hash, (status) =>
+    set((s) => (s.lastTx?.hash === hash ? { lastTx: { ...s.lastTx, status } } : {})),
+  )
+  return { hash, kind, status: 'submitted' }
+}
+
 function requireIdle(get: () => LumenState): void {
   // Two different kinds of busy. `submitting` is this app's in-flight action;
   // the gate also knows about a request the app stopped waiting for while the
@@ -695,7 +734,12 @@ export const useLumen = create<LumenState>((set, get) => ({
       })
       assertNeverUnshields(actions, { contracts: [ESCROW_ADDRESS] })
 
-      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
+      const transaction_hash = await submitEscrowOp(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        // The batch is one operation: if the first leg's entry exists, the
+        // contract accepted all of them.
+        () => entryExists(drafted[0]!.claimSecret),
+      )
 
       const minted = drafted.map((leg) => {
         addLink(address, {
@@ -705,7 +749,7 @@ export const useLumen = create<LumenState>((set, get) => ({
           amountRaw: leg.amount.toString(),
           expiry,
           createdAt: Date.now(),
-          txHash: transaction_hash,
+          ...(transaction_hash ? { txHash: transaction_hash } : {}),
           ...(leg.note ? { note: leg.note } : {}),
         })
         return {
@@ -729,15 +773,16 @@ export const useLumen = create<LumenState>((set, get) => ({
         asset: input.token,
         amount: total,
         route: 'DIRECT',
-        txHash: transaction_hash,
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         observer: `escrow · ${drafted.length} links · public total`,
       })
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'link', status: 'submitted' }
-      set({ submitting: false, ledger, links: loadLinks(address), lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({
+        submitting: false,
+        ledger,
+        links: loadLinks(address),
+        lastTx: trackTx(transaction_hash, 'link', set),
+      })
       return minted
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
@@ -766,7 +811,13 @@ export const useLumen = create<LumenState>((set, get) => ({
       // withdraw the app is allowed to produce. Enforced, not assumed.
       assertNeverUnshields(actions, { contracts: [ESCROW_ADDRESS] })
 
-      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
+      // A mint writes the entry, so the chain can confirm it even if the
+      // wallet's answer never routes home. The link is built from secrets
+      // this device already holds — a hash was never what made it valid.
+      const transaction_hash = await submitEscrowOp(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        () => entryExists(claimSecret),
+      )
 
       const link = addLink(address, {
         claimSecret,
@@ -775,7 +826,7 @@ export const useLumen = create<LumenState>((set, get) => ({
         amountRaw: input.amount.toString(),
         expiry,
         createdAt: Date.now(),
-        txHash: transaction_hash,
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         ...(input.note ? { note: input.note } : {}),
       })
       const url = encodeClaimLink(window.location.origin, {
@@ -793,15 +844,16 @@ export const useLumen = create<LumenState>((set, get) => ({
         asset: input.token,
         amount: input.amount,
         route: 'DIRECT',
-        txHash: transaction_hash,
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         observer: 'escrow · public amount',
       })
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'link', status: 'submitted' }
-      set({ submitting: false, ledger, links: loadLinks(address), lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({
+        submitting: false,
+        ledger,
+        links: loadLinks(address),
+        lastTx: trackTx(transaction_hash, 'link', set),
+      })
       return { link, url }
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
@@ -873,24 +925,11 @@ export const useLumen = create<LumenState>((set, get) => ({
       })
       // A plain Starknet invoke, deliberately not `strk20InvokeTransaction`:
       // nothing about this touches the pool.
-      const submitted = await raceTheChain(
+      const transaction_hash = await submitEscrowOp(
         walletRequest(() => account.execute([call])),
         () => claimSettled(input.secret),
       )
-      // The chain got there first: the money moved, we just never heard the
-      // wallet say so. That is a success with no hash to show for it.
-      if (submitted === 'settled') {
-        set({ submitting: false, error: null })
-        return ''
-      }
-      if (!submitted) throw new Error(WALLET_SILENT_MESSAGE)
-      const { transaction_hash } = submitted
-
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
-      set({ submitting: false, lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({ submitting: false, lastTx: trackTx(transaction_hash, 'claim', set) })
       return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
@@ -912,18 +951,15 @@ export const useLumen = create<LumenState>((set, get) => ({
         secret: payload.s,
         ...(holder ? { escrowAddress: holder.address } : {}),
       })
-      const submitted = await raceTheChain(
+      const transaction_hash = await submitEscrowOp(
         walletRequest(() => account.strk20InvokeTransaction(actions)),
         () => claimSettled(payload.s),
       )
-      if (submitted === 'settled') {
-        set({ submitting: false, error: null })
-        return ''
-      }
-      if (!submitted) throw new Error(WALLET_SILENT_MESSAGE)
-      const { transaction_hash } = submitted
 
       const token = tokenByAddress(payload.t)
+      // Recorded whether or not a hash came back: the money arrived either
+      // way, and a claim missing from the ledger is a claim the app will
+      // later fail to explain.
       const ledger = token
         ? appendLedger(address, {
             timestamp: Date.now(),
@@ -931,16 +967,12 @@ export const useLumen = create<LumenState>((set, get) => ({
             asset: token.symbol,
             amount: BigInt(payload.a),
             route: 'DIRECT',
-            txHash: transaction_hash,
+            ...(transaction_hash ? { txHash: transaction_hash } : {}),
             observer: 'claim · public amount',
           })
         : get().ledger
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
-      set({ submitting: false, ledger, lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({ submitting: false, ledger, lastTx: trackTx(transaction_hash, 'claim', set) })
       return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
@@ -983,28 +1015,29 @@ export const useLumen = create<LumenState>((set, get) => ({
         secret: link.refundSecret,
         escrowAddress: holder.address,
       })
-      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
+      // A refund takes the entry, the same way a claim does, so the chain can
+      // confirm it landed even when the wallet never answers.
+      const transaction_hash = await submitEscrowOp(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        () => claimSettled(link.claimSecret),
+      )
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
         type: 'CLAIM',
         asset: link.token,
         amount: BigInt(link.amountRaw),
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         route: 'DIRECT',
-        txHash: transaction_hash,
         observer: 'reclaim · public amount',
       })
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'claim', status: 'submitted' }
       set({
         submitting: false,
         ledger,
         links: updateLinkStatus(address, id, 'refunded'),
-        lastTx,
+        lastTx: trackTx(transaction_hash, 'claim', set),
       })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
       return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })

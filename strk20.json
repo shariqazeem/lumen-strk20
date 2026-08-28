@@ -34,6 +34,12 @@
       "network": "mainnet",
       "block": 14014301,
       "what": "Three people paid in one operation via DepositMany: 2.8 STRK split into 0.933333 STRK links, three Deposited events and one BatchDeposited under a single pool fee. Sequentially the same payout costs the flat fee three times, so batching is a 3x cost argument here and a 50x one for an agent paying a payroll — and an observer sees one operation, not three."
+    },
+    {
+      "hash": "0x30b617458ee8adab1903f84eb7fdb3a4484ca3c21cfb8db4d1ea69d059d323",
+      "network": "mainnet",
+      "block": 14015553,
+      "what": "A link nobody collected, reclaimed by its sender after the refund window opened — and out of a superseded escrow, since the entry was minted before the current one was deployed. Claim and refund secrets hash under separate domains, so the reclaim key can never spend a link and the link can never trigger a reclaim. Money parked behind a secret cannot be stranded by a recipient who never shows up."
     }
   ],
   "contracts": [

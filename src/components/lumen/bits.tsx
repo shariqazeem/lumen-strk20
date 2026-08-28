@@ -264,6 +264,15 @@ export function GuardPanel({ report }: { report: GuardReport }) {
 /* ------------------------------------------------------------------ */
 
 export function TxLink({ hash }: { hash: string }) {
+  // An operation the chain confirmed while the wallet stayed silent has no
+  // hash of ours to link to. It still happened; there is just nothing to open.
+  if (!hash) {
+    return (
+      <span className="text-[12.5px] text-ink-muted">
+        Confirmed on-chain — your wallet never returned a transaction hash.
+      </span>
+    )
+  }
   return (
     <a
       href={explorerTx(hash)}
