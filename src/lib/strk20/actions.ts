@@ -322,6 +322,29 @@ export const STRK20_ERRORS = {
   PRIVACY_LEAK: 120,
 } as const
 
+/** SNIP-29 `UNKNOWN_ERROR`: a wrapper whose `data` holds the actual reason. */
+const PAYMASTER_UNKNOWN_ERROR = 163
+
+/**
+ * The reason inside an error, wherever the layer that wrapped it put it.
+ *
+ * Paymaster errors nest: SNIP-29 uses `data`, and the SDKs that relay them
+ * variously re-wrap as `cause`, `error.data`, or a JSON string. Any of those
+ * is worth more to a user than "an error occurred".
+ */
+function detailOf(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null
+  const record = error as Record<string, unknown>
+  for (const value of [record.data, (record.error as Record<string, unknown>)?.data, record.cause]) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'object' && value !== null) {
+      const nested = (value as Record<string, unknown>).message
+      if (typeof nested === 'string' && nested.trim()) return nested.trim()
+    }
+  }
+  return null
+}
+
 export function explainWalletError(error: unknown): string {
   const code =
     typeof error === 'object' && error !== null && 'code' in error
@@ -340,6 +363,27 @@ export function explainWalletError(error: unknown): string {
       return 'Not enough shielded balance for this action once the pool fee is included. Shield more, or reduce the amount.'
     case STRK20_ERRORS.PRIVACY_LEAK:
       return 'The wallet refused this action because it would leak a link between your public and private identity.'
+    case PAYMASTER_UNKNOWN_ERROR: {
+      // SNIP-29 code 163 is a wrapper: `UNKNOWN_ERROR` carries the real reason
+      // in a `data` string. Showing only the wrapper is how a diagnosable
+      // failure becomes "an error occurred", which is what happened on mainnet.
+      const detail = detailOf(error)
+      if (detail?.includes('api-key')) {
+        // Verified against AVNU's live paymaster: its SDK sends
+        // `mode: "sponsored_private"` for every private swap regardless of the
+        // fee mode a caller passes, and that mode is gated behind an API key.
+        // Nothing a browser can fix, and nothing about the amount or the pair.
+        return (
+          'Private swaps through AVNU need a paymaster API key that this deployment does not ' +
+          'have — the route always asks for sponsored mode. Nothing was sent to your wallet. ' +
+          'Acquire the token publicly and shield it instead; everything else here works ' +
+          'without a key.'
+        )
+      }
+      return detail
+        ? `The paymaster refused to build this transaction: ${detail}`
+        : 'The paymaster refused to build this transaction and gave no reason. The route may not support this pair yet.'
+    }
     default:
       return error instanceof Error ? error.message : 'The wallet rejected the transaction.'
   }
