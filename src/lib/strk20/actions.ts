@@ -92,37 +92,44 @@ export interface PrivateDefiPlan {
  * Observers see: pool → helper → AMM → helper. They never see who initiated it.
  */
 export function buildPrivateDefi(plan: PrivateDefiPlan): STRK20_ACTION[] {
+  // Every felt goes to the wallet minimal, never zero-padded — a padded address
+  // was rejected as INVALID_REQUEST_PAYLOAD on mainnet. Normalised here rather
+  // than at each call site, because these addresses arrive from third-party
+  // APIs that make no promises about their spelling.
+  const helper = walletFelt(plan.helperAddress)
+  const tokenOut = walletFelt(plan.tokenOut)
+
   const actions: STRK20_ACTION[] = [
     {
       type: 'withdraw',
-      token: plan.tokenIn,
+      token: walletFelt(plan.tokenIn),
       amount: `0x${plan.amountIn.toString(16)}`,
-      recipient: plan.helperAddress,
+      recipient: helper,
     },
   ]
 
   if (plan.fee && plan.fee.amount > 0n) {
     actions.push({
       type: 'withdraw',
-      token: plan.fee.token,
+      token: walletFelt(plan.fee.token),
       amount: `0x${plan.fee.amount.toString(16)}`,
-      recipient: plan.fee.recipient,
+      recipient: walletFelt(plan.fee.recipient),
     })
   }
 
   actions.push({
     type: 'transfer',
-    token: plan.tokenOut,
+    token: tokenOut,
     amount: 'OPEN',
-    recipient: plan.takerAddress,
+    recipient: walletFelt(plan.takerAddress),
   })
 
   actions.push({
     type: 'invoke',
-    contract: plan.helperAddress,
+    contract: helper,
     // Calldata is deserialized straight into the helper's `privacy_invoke`
     // parameters, so the order must match that signature exactly.
-    calldata: [plan.tokenOut, ...plan.helperCalldata, openNoteRef(0)],
+    calldata: [tokenOut, ...plan.helperCalldata, openNoteRef(0)],
   })
 
   return actions

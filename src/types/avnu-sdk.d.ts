@@ -179,9 +179,46 @@ declare module '@avnu/avnu-sdk' {
   /**
    * Quote → paymaster fee → executor calls → wallet proof → relayed
    * submission. Resolves with the relayer's transaction hash.
+   *
+   * Declared for completeness; Lumen does not call it. Its `toRpcFeeMode`
+   * hardcodes `mode: "sponsored_private"` whatever `feeMode` says, and that
+   * mode requires a paymaster API key a browser cannot hold. `swap.ts` uses
+   * `quoteToCalls` below and submits through the wallet instead.
    */
   export function executePrivateSwap(
     params: ExecutePrivateSwapParams,
     options?: AvnuRequestOptions,
   ): Promise<{ transactionHash: string }>
+
+  /** Body for `POST /swap/v3/build`. */
+  export interface QuoteToCallsRequest {
+    quoteId: string
+    takerAddress?: string
+    /** Decimal fraction, e.g. 0.005 for 0.5%. */
+    slippage?: number
+    /** Sent as `includeApprove`. */
+    executeApprove?: boolean
+    /** Ask for the private route; adds `executorAddress` to the response. */
+    private?: boolean
+  }
+
+  export interface QuoteToCallsResult {
+    /** The calls the executor should run — an approve and the swap itself. */
+    calls: Call[]
+    /**
+     * The anonymizer AVNU deployed behind the pool's `privacy_invoke`. Returned
+     * only for `private: true`; absent means the pair has no private route.
+     */
+    executorAddress?: string
+  }
+
+  /**
+   * Turn a quote into executor calls. A public endpoint: no API key, no
+   * credits, no paymaster — which is the whole reason Lumen calls this rather
+   * than `executePrivateSwap`.
+   */
+  export function quoteToCalls(
+    request: QuoteToCallsRequest,
+    options?: AvnuRequestOptions,
+  ): Promise<QuoteToCallsResult>
 }

@@ -16,22 +16,31 @@
  * own refusal, which is the stronger guarantee because it sits behind the
  * signature prompt.
  *
- * No `paymasterApiKey` is ever passed from this module: that fee mode needs a
- * server-held secret, and Lumen is a browser dapp. The pool fee is instead
- * charged from private balance in the sell token (`feeMode.poolFeeToken`).
+ * ## Why this does not use the SDK's `executePrivateSwap`
+ *
+ * That helper routes the swap through AVNU's paymaster, and its `toRpcFeeMode`
+ * hardcodes `mode: "sponsored_private"` no matter which fee mode a caller
+ * passes. Sponsored execution is gated behind a paymaster API key, so the call
+ * fails with SNIP-29 code 163 and `data: "x-paymaster-api-key is invalid"` —
+ * verified directly against the live paymaster. A browser dapp cannot hold that
+ * key: anything shipped to the client is a published secret.
+ *
+ * It does not need one. Everything the paymaster contributes is *submission*,
+ * and the user's own wallet already submits every other private operation in
+ * this app through its own relayer. So this module asks AVNU only for the part
+ * it alone knows — which executor to call and with what calldata, from the
+ * public `/swap/build` endpoint — assembles the STRK20 action set itself, and
+ * hands it to the wallet. No key, no credits, no server, and one fewer party
+ * between the user and the pool.
+ *
+ * The fee leg the SDK adds is dropped with the paymaster: it pays AVNU for a
+ * relay this route does not use.
  */
 
-import {
-  BASE_URL,
-  PRIVACY_POOL_ADDRESS,
-  createStrk20WalletProver,
-  executePrivateSwap,
-  getPrices,
-  getQuotes,
-  type Quote,
-} from '@avnu/avnu-sdk'
-import type { WalletAccountV6 } from 'starknet'
+import { BASE_URL, PRIVACY_POOL_ADDRESS, getPrices, getQuotes, quoteToCalls, type Quote } from '@avnu/avnu-sdk'
+import { num, transaction, type WalletAccountV6 } from 'starknet'
 import { POOL_ADDRESS, TOKENS, sameAddress, tokenByAddress, type TokenSymbol } from './config'
+import { assertNeverUnshields, buildPrivateDefi } from './actions'
 
 export type { Quote }
 
@@ -120,19 +129,43 @@ export async function executeAvnuPrivateSwap(
     )
   }
 
-  const prover = createStrk20WalletProver(account)
-
-  return executePrivateSwap(
-    {
-      quote,
-      slippage,
-      takerAddress: account.address,
-      poolAddress: POOL_ADDRESS,
-      feeMode: { poolFeeToken: quote.sellTokenAddress },
-      prover,
-    },
+  // 1. Ask AVNU only for what it alone knows: which executor to call, and the
+  //    calls to run there. Public endpoint, no key, no credits.
+  const { calls, executorAddress } = await quoteToCalls(
+    { quoteId: quote.quoteId, slippage, private: true },
     { baseUrl: BASE_URL },
   )
+  if (!executorAddress) {
+    throw new Error(
+      'AVNU did not return a private executor for this route. Private swaps may not be ' +
+        'enabled for this pair.',
+    )
+  }
+
+  // 2. Assemble the pool action set ourselves — the same four-phase shape as
+  //    every other anonymizer call in this app, minus the paymaster's fee leg.
+  //    The executor's `privacy_invoke` reads `(buy_token, ...execute_calldata,
+  //    note_id)`, so the order here is its signature's order.
+  const actions = buildPrivateDefi({
+    tokenIn: quote.sellTokenAddress,
+    amountIn: BigInt(quote.sellAmount),
+    tokenOut: quote.buyTokenAddress,
+    helperAddress: executorAddress,
+    takerAddress: account.address,
+    helperCalldata: transaction
+      .fromCallsToExecuteCalldata_cairo1(calls)
+      .map((value) => num.toHex(value)),
+  })
+
+  // 3. The withdraw leg funds the executor, which returns the output to the
+  //    pool inside the same transaction. Checked rather than assumed — the one
+  //    invariant separating a private swap from an unshield.
+  assertNeverUnshields(actions, { contracts: [executorAddress] })
+
+  // 4. The user's wallet proves it and its own relayer submits it, exactly as
+  //    it does for links, batches, claims and stakes.
+  const { transaction_hash } = await account.strk20InvokeTransaction(actions)
+  return { transactionHash: transaction_hash }
 }
 
 /**
