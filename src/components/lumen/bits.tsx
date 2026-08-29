@@ -84,7 +84,8 @@ interface AmountFieldProps {
   value: string
   onChange: (next: string) => void
   token: TokenSymbol
-  onToken: (token: TokenSymbol) => void
+  /** Omitted when the flow offers a single token and there is nothing to switch to. */
+  onToken?: (token: TokenSymbol) => void
   tokens: TokenSymbol[]
   prices: Partial<Record<TokenSymbol, number>>
   /** Raw max the flow allows for the active token, when known. */
@@ -152,7 +153,7 @@ export function AmountField({
           {tokens.map((symbol) => (
             <button
               key={symbol}
-              onClick={() => onToken(symbol)}
+              onClick={() => onToken?.(symbol)}
               className={`h-9 flex-none rounded-full px-4 text-[13.5px] font-medium transition-colors ${
                 symbol === token ? 'bg-ink text-white' : 'bg-sunk text-ink-soft hover:bg-rule'
               }`}

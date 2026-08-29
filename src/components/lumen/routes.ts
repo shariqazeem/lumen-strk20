@@ -19,3 +19,4 @@ export type SheetRoute =
   | { kind: 'split' }
   | { kind: 'activity' }
   | { kind: 'mirror' }
+  | { kind: 'stake' }

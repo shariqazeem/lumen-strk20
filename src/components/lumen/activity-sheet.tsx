@@ -14,7 +14,7 @@ import type { LedgerEntry } from '@/lib/history'
 import { formatUnits } from '@/lib/strk20/wallet'
 import { TOKENS } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
-import { ArrowDown, ArrowUpRight, Globe, LinkIcon, Plus, Sparkle } from './icons'
+import { ArrowDown, ArrowUpRight, Globe, LinkIcon, Plus, ShieldCheck, Sparkle } from './icons'
 import type { Receipt } from '@/lib/lumen/receipts'
 
 function relativeTime(timestamp: number): string {
@@ -77,7 +77,9 @@ export function ActivitySheet({
                           ? entry.observer.startsWith('reclaim')
                             ? 'Reclaimed a link'
                             : 'Claimed money'
-                          : 'Private move'
+                          : entry.type === 'STAKE'
+                            ? 'Staked Bitcoin privately'
+                            : 'Private move'
               const isPublic = entry.observer !== '—'
               const clickable = entry.type === 'TRANSFER' && entry.txHash
               return (
@@ -104,6 +106,8 @@ export function ActivitySheet({
                       <LinkIcon size={16} />
                     ) : entry.type === 'CLAIM' ? (
                       <ArrowDown size={16} />
+                    ) : entry.type === 'STAKE' ? (
+                      <ShieldCheck size={16} />
                     ) : (
                       <Sparkle size={16} />
                     )}

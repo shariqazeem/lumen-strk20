@@ -62,6 +62,13 @@ export function navItems(): NavItem[] {
     },
     { id: 'add', label: 'Add money', short: 'Add', icon: <Plus size={17} />, route: { kind: 'add' } },
     {
+      id: 'stake',
+      label: 'Earn on Bitcoin',
+      short: 'Earn',
+      icon: <ShieldCheck size={17} />,
+      route: { kind: 'stake' },
+    },
+    {
       id: 'journal',
       label: 'What Lumen did',
       short: 'Log',

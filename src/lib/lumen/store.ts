@@ -16,6 +16,7 @@
 import { create } from 'zustand'
 import type { WalletAccountV6 } from 'starknet'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
+import { STAKE_ASSET, VAULT_ADDRESS, buildPrivateStake } from '@/lib/strk20/vault'
 import {
   raceTheChain,
   walletIsBusy,
@@ -188,6 +189,14 @@ interface LumenState {
    * the sheet; this is the signing half.
    */
   convert: (input: { quote: Quote; sellToken: TokenSymbol; sellAmount: bigint }) => Promise<string>
+
+  /**
+   * Stake shielded strkBTC into Endur without unshielding it.
+   *
+   * `minShares` is a floor on the xstrkBTC credited back, or `0` to accept any
+   * fill. Resolves to the transaction hash.
+   */
+  stakeBitcoin: (input: { amount: bigint; minShares: bigint }) => Promise<string>
 
   /** Persist what the engine decided about an action that just executed. */
   noteDecision: (input: {
@@ -1046,13 +1055,16 @@ export const useLumen = create<LumenState>((set, get) => ({
   },
 
   async convert(input) {
+    requireIdle(get)
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
-      const { transactionHash } = await executeAvnuPrivateSwap({
-        account,
-        quote: input.quote,
-      })
+      // Through the gate like everything else that reaches a wallet: the AVNU
+      // prover asks the wallet to prove, so this is a wallet request wearing a
+      // swap's clothes.
+      const { transactionHash } = await walletRequest(() =>
+        executeAvnuPrivateSwap({ account, quote: input.quote }),
+      )
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -1070,6 +1082,49 @@ export const useLumen = create<LumenState>((set, get) => ({
         set((s) => (s.lastTx?.hash === transactionHash ? { lastTx: { ...s.lastTx, status } } : {})),
       )
       return transactionHash
+    } catch (error) {
+      set({ submitting: false, error: explainWalletError(error) })
+      throw error
+    }
+  },
+
+  async stakeBitcoin(input) {
+    requireIdle(get)
+    const { account, address } = requireAccount(get, set)
+    set({ submitting: true, error: null })
+    try {
+      const actions = buildPrivateStake({
+        amount: input.amount,
+        recipient: address,
+        minShares: input.minShares,
+      })
+      // The withdraw leg funds the helper, which returns everything to the pool
+      // inside the same transaction. Enforced, not assumed: this is the one
+      // invariant separating a private stake from an unshield.
+      assertNeverUnshields(actions, { contracts: [VAULT_ADDRESS] })
+
+      const { transaction_hash } = await walletRequest(() =>
+        account.strk20InvokeTransaction(actions),
+      )
+
+      const ledger = appendLedger(address, {
+        timestamp: Date.now(),
+        type: 'STAKE',
+        asset: STAKE_ASSET,
+        amount: input.amount,
+        route: 'POOL',
+        txHash: transaction_hash,
+        // The operation is visible; the staker is not. Saying "private" here
+        // would be the same lie the observer panel already told once.
+        observer: 'pool → Endur · amount public, staker not',
+      })
+
+      const lastTx: LastTx = { hash: transaction_hash, kind: 'convert', status: 'submitted' }
+      set({ submitting: false, ledger, lastTx })
+      void watchTx(transaction_hash, (status) =>
+        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
+      )
+      return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
       throw error

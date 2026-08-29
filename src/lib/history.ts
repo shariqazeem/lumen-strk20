@@ -23,7 +23,16 @@ export interface LedgerEntry {
   id: string
   /** ms epoch */
   timestamp: number
-  type: 'SHIELD' | 'SWAP' | 'REBALANCE' | 'COMPACT' | 'TRANSFER' | 'UNSHIELD' | 'LINK' | 'CLAIM'
+  type:
+    | 'SHIELD'
+    | 'SWAP'
+    | 'REBALANCE'
+    | 'COMPACT'
+    | 'TRANSFER'
+    | 'UNSHIELD'
+    | 'LINK'
+    | 'CLAIM'
+    | 'STAKE'
   asset: TokenSymbol
   /** Raw amount in the asset's smallest unit. */
   amount: bigint
@@ -52,6 +61,9 @@ const LEDGER_TYPES = new Set<LedgerEntry['type']>([
   // cannot express; the guard reads them from the raw ledger.
   'LINK',
   'CLAIM',
+  // Private Bitcoin staking through LumenVault. Public as an operation —
+  // pool to helper to Endur — but never attributable to the staker.
+  'STAKE',
 ])
 const LEDGER_ROUTES = new Set<LedgerEntry['route']>(['AVNU', 'POOL', 'DIRECT'])
 

@@ -31,6 +31,7 @@ import { JournalSheet } from '@/components/lumen/journal-sheet'
 import { SplitSheet } from '@/components/lumen/split-sheet'
 import { ActivitySheet } from '@/components/lumen/activity-sheet'
 import { MirrorSheet } from '@/components/lumen/mirror-sheet'
+import { StakeSheet } from '@/components/lumen/stake-sheet'
 
 export default function AppPage() {
   const status = useLumen((state) => state.status)
@@ -118,6 +119,7 @@ export default function AppPage() {
       <JournalSheet open={route?.kind === 'journal'} onClose={close} />
       <SplitSheet open={route?.kind === 'split'} onClose={close} />
       <MirrorSheet open={route?.kind === 'mirror'} onClose={close} />
+      <StakeSheet open={route?.kind === 'stake'} onClose={close} />
 
       <ActivitySheet
         open={route?.kind === 'activity'}

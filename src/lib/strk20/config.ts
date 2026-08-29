@@ -91,7 +91,7 @@ export const NOTE_MATURITY_BLOCKS = 10
  */
 export const FALLBACK_POOL_FEE_STRK = 6n * 10n ** 18n
 
-export type TokenSymbol = 'STRK' | 'USDC' | 'ETH' | 'WBTC' | 'strkBTC'
+export type TokenSymbol = 'STRK' | 'USDC' | 'ETH' | 'WBTC' | 'strkBTC' | 'xstrkBTC'
 
 export interface TokenConfig {
   symbol: TokenSymbol
@@ -155,6 +155,18 @@ export const TOKENS: Record<TokenSymbol, TokenConfig> = {
     symbol: 'WBTC',
     name: 'Wrapped BTC',
     address: '0x03fe2b97c1fd336e750087d68b9b867997fd64a2661ff3ca5a7c771641e8e7ac',
+    decimals: 8,
+    kind: 'major',
+  },
+  // Appended, never inserted: `TOKEN_LIST` order is the wire format a minted
+  // link carries, so anything above this line is frozen.
+  xstrkBTC: {
+    symbol: 'xstrkBTC',
+    name: 'Endur staked strkBTC',
+    // Endur's liquid-staking receipt for strkBTC, and an ERC-4626 vault whose
+    // `asset()` returns strkBTC exactly — checked on-chain, and asserted again
+    // by LumenVault's constructor. Shieldable: the pool already holds some.
+    address: '0x047751b3532fabca89b0f2e35ca1cb45e5a7b11d5e3d3663dfa1f4406b45fd88',
     decimals: 8,
     kind: 'major',
   },
