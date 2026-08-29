@@ -17,12 +17,19 @@ import { Check, ChevronDown, Globe, ShieldCheck, Sparkle, Warning } from './icon
 /* ------------------------------------------------------------------ */
 
 export function usdText(value: number): string {
+  // Above a thousand, cents are noise. Below it, whole amounts read as buttons
+  // and ".00" reads as a total.
+  //
+  // The two bounds are computed together on purpose: a minimum above the
+  // maximum is a RangeError, not a formatting quirk, and it takes the whole
+  // page down. That was reachable with any non-integer value over $1,000 —
+  // latent until a token priced in tens of thousands made typing "1" enough.
+  const big = Math.abs(value) >= 1000
   return value.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
-    // Whole amounts read as buttons; ".00" reads as a total.
-    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
-    maximumFractionDigits: value >= 1000 ? 0 : 2,
+    minimumFractionDigits: big || Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: big ? 0 : 2,
   })
 }
 
