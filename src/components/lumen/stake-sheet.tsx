@@ -20,11 +20,21 @@ import { formatUnits } from '@/lib/strk20/wallet'
 import { TOKENS } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
 import { AmountField, ErrorNote, parseAmount, SuccessMark, TxLink } from './bits'
-import { ArrowDown, Check, Clock, ShieldCheck } from './icons'
+import { ArrowDown, ArrowUpRight, Check, Clock, ShieldCheck } from './icons'
+import type { SheetRoute } from './routes'
 
 const ASSET_DECIMALS = TOKENS[STAKE_ASSET].decimals
 
-export function StakeSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function StakeSheet({
+  open,
+  onClose,
+  onRoute,
+}: {
+  open: boolean
+  onClose: () => void
+  /** Unstaking is a private swap back, so this sheet hands off to Convert. */
+  onRoute?: (route: SheetRoute) => void
+}) {
   const { balances, prices, submitting, stakeBitcoin, error, clearError, lastTx } = useLumen()
 
   const [amountText, setAmountText] = useState('')
@@ -123,9 +133,23 @@ export function StakeSheet({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
 
           {staked && staked.raw > 0n ? (
-            <p className="mt-3 px-1 text-[12.5px] text-ink-muted">
-              Already earning: {formatUnits(staked.raw, ASSET_DECIMALS, 8)} {STAKE_RECEIPT}
-            </p>
+            <div className="card mt-3 flex items-center justify-between gap-3 px-5 py-3.5">
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold">
+                  Already earning {formatUnits(staked.raw, ASSET_DECIMALS, 8)} {STAKE_RECEIPT}
+                </span>
+                <span className="block text-[12px] text-ink-muted">
+                  Leaves as a private swap — it never unshields.
+                </span>
+              </span>
+              <button
+                onClick={() => onRoute?.({ kind: 'convert', sell: STAKE_RECEIPT, buy: STAKE_ASSET })}
+                className="btn btn-quiet btn-small flex-none"
+              >
+                <ArrowUpRight size={14} />
+                Unstake
+              </button>
+            </div>
           ) : null}
 
           {error ? (
@@ -170,7 +194,7 @@ export function StakeSheet({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <div className="mx-auto mt-3 flex w-fit items-center gap-2 text-[12.5px] text-ink-muted">
             <ShieldCheck size={14} />
-            Exit any time with a private swap — no unshielding.
+            Exit any time — it never has to unshield.
           </div>
           <button onClick={close} className="btn btn-ink mt-7 w-full">
             <Check size={17} />

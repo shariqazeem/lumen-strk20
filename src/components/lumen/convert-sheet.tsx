@@ -21,11 +21,30 @@ import { Sheet } from './sheet'
 import { AmountField, ErrorNote, parseAmount, SuccessMark, TxLink, usdText } from './bits'
 import { ArrowDown, Check, Clock, ShieldCheck } from './icons'
 
-export function ConvertSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ConvertSheet({
+  open,
+  onClose,
+  sell,
+  buy,
+}: {
+  open: boolean
+  onClose: () => void
+  /** Preselected pair, when the caller knows which way the user is going. */
+  sell?: TokenSymbol
+  buy?: TokenSymbol
+}) {
   const { address, balances, prices, submitting, convert, error, clearError, lastTx } = useLumen()
 
-  const [sellToken, setSellToken] = useState<TokenSymbol>('USDC')
-  const [buyToken, setBuyToken] = useState<TokenSymbol>('STRK')
+  const [sellToken, setSellToken] = useState<TokenSymbol>(sell ?? 'USDC')
+  const [buyToken, setBuyToken] = useState<TokenSymbol>(buy ?? 'STRK')
+
+  // Re-apply on open: the sheet keeps its payload while animating out, so a
+  // second visit with a different pair would otherwise show the first one.
+  useEffect(() => {
+    if (!open) return
+    if (sell) setSellToken(sell)
+    if (buy) setBuyToken(buy)
+  }, [open, sell, buy])
   const [amountText, setAmountText] = useState('')
   const [quoteState, setQuoteState] = useState<
     | { kind: 'idle' }

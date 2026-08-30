@@ -1,3 +1,4 @@
+import type { TokenSymbol } from '@/lib/strk20/config'
 import type { Person } from '@/lib/lumen/people'
 import type { Receipt } from '@/lib/lumen/receipts'
 
@@ -14,7 +15,11 @@ export type SheetRoute =
   | { kind: 'receipt'; receipt: Receipt }
   | { kind: 'links' }
   | { kind: 'my-page' }
-  | { kind: 'convert' }
+  /**
+   * `sell`/`buy` preselect the pair. Unstaking is a convert from the receipt
+   * token back to the asset, and a user should not have to infer that.
+   */
+  | { kind: 'convert'; sell?: TokenSymbol; buy?: TokenSymbol }
   | { kind: 'journal' }
   | { kind: 'split' }
   | { kind: 'activity' }

@@ -115,11 +115,16 @@ export default function AppPage() {
         onMyPage={() => open({ kind: 'my-page' })}
       />
       <MyPageSheet open={route?.kind === 'my-page'} onClose={close} />
-      <ConvertSheet open={route?.kind === 'convert'} onClose={close} />
+      <ConvertSheet
+        open={route?.kind === 'convert'}
+        onClose={close}
+        {...(route?.kind === 'convert' && route.sell ? { sell: route.sell } : {})}
+        {...(route?.kind === 'convert' && route.buy ? { buy: route.buy } : {})}
+      />
       <JournalSheet open={route?.kind === 'journal'} onClose={close} />
       <SplitSheet open={route?.kind === 'split'} onClose={close} />
       <MirrorSheet open={route?.kind === 'mirror'} onClose={close} />
-      <StakeSheet open={route?.kind === 'stake'} onClose={close} />
+      <StakeSheet open={route?.kind === 'stake'} onClose={close} onRoute={open} />
 
       <ActivitySheet
         open={route?.kind === 'activity'}
