@@ -126,3 +126,49 @@ export function floorFromPreview(previewed: bigint, slippageBps = 50n): bigint {
   const floor = (previewed * (10_000n - slippageBps)) / 10_000n
   return floor > 0n ? floor : 0n
 }
+
+/**
+ * Whether a stake of exactly `assets` landed since `sinceBlock`.
+ *
+ * `LumenVault` emits `Staked` on every successful deposit, so a stake — unlike
+ * a private transfer — has an outcome the chain can be asked about. That is
+ * what lets the UI stop believing the wallet: the first stake on mainnet
+ * succeeded while the button sat on "Waiting for your wallet…" forever.
+ *
+ * This matches on amount within a short window rather than on something only
+ * this user could have produced, because a stake carries no commitment of
+ * ours. It is strong evidence rather than proof — and the guard's habit of
+ * rewriting round amounts works in its favour, since two identical non-round
+ * stakes seconds apart is not a case that occurs. Used only to resolve a
+ * wallet that has gone quiet, never to claim a stake that was not requested.
+ */
+export async function stakeLanded(assets: bigint, sinceBlock: number): Promise<boolean> {
+  if (!stakingEnabled() || assets <= 0n) return false
+  try {
+    const events = await rpc().getEvents({
+      address: VAULT_ADDRESS,
+      from_block: { block_number: Math.max(0, sinceBlock) },
+      to_block: 'latest',
+      chunk_size: 100,
+    })
+    return (events?.events ?? []).some((event) => {
+      const first = event.data?.[0]
+      try {
+        return first !== undefined && BigInt(first) === assets
+      } catch {
+        return false
+      }
+    })
+  } catch {
+    return false
+  }
+}
+
+/** Current head, so a settlement scan starts where the submission did. */
+export async function currentBlock(): Promise<number> {
+  try {
+    return await rpc().getBlockNumber()
+  } catch {
+    return 0
+  }
+}

@@ -47,6 +47,12 @@
       "network": "mainnet",
       "block": 14111534,
       "what": "STRK swapped to strkBTC privately, inside the pool, without AVNU-s paymaster. Its SDK hardcodes sponsored_private and needs an API key a browser cannot hold, so Lumen asks the public build endpoint only for the executor and its calls, assembles the STRK20 action set itself, and submits through the wallet-s own relayer. The trace: 300 STRK pool to executor, 6 STRK pool fee, executor to Ekubo, 0.000101 strkBTC returned into an open note. One fewer party between the user and the pool, and the paymaster-s fee leg dropped with it."
+    },
+    {
+      "hash": "0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752",
+      "network": "mainnet",
+      "block": 14111764,
+      "what": "Shielded Bitcoin staked into Endur without ever unshielding it. LumenVault sits behind the pool-s privacy_invoke: the pool withdrew 0.0001 strkBTC to it, it deposited into Endur-s ERC-4626 vault, and 0.00009934 xstrkBTC came back into an open note — one atomic private operation. The alternative on offer is unshield, deposit publicly, re-shield: two public legs of matching size, seconds apart, on one account. preview_stake quoted 0.00009934 and execution returned 0.00009934."
     }
   ],
   "contracts": [

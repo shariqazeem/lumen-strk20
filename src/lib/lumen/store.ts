@@ -16,7 +16,13 @@
 import { create } from 'zustand'
 import type { WalletAccountV6 } from 'starknet'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
-import { STAKE_ASSET, VAULT_ADDRESS, buildPrivateStake } from '@/lib/strk20/vault'
+import {
+  STAKE_ASSET,
+  VAULT_ADDRESS,
+  buildPrivateStake,
+  currentBlock,
+  stakeLanded,
+} from '@/lib/strk20/vault'
 import {
   raceTheChain,
   walletIsBusy,
@@ -1103,8 +1109,14 @@ export const useLumen = create<LumenState>((set, get) => ({
       // invariant separating a private stake from an unshield.
       assertNeverUnshields(actions, { contracts: [VAULT_ADDRESS] })
 
-      const { transaction_hash } = await walletRequest(() =>
-        account.strk20InvokeTransaction(actions),
+      // A stake is chain-visible — LumenVault emits `Staked` — so the wallet
+      // gets raced like every escrow operation. The first mainnet stake landed
+      // while this button sat on "Waiting for your wallet…" indefinitely, on
+      // the one path that had no fallback.
+      const since = await currentBlock()
+      const transaction_hash = await submitEscrowOp(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        () => stakeLanded(input.amount, since),
       )
 
       const ledger = appendLedger(address, {
@@ -1113,17 +1125,13 @@ export const useLumen = create<LumenState>((set, get) => ({
         asset: STAKE_ASSET,
         amount: input.amount,
         route: 'POOL',
-        txHash: transaction_hash,
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         // The operation is visible; the staker is not. Saying "private" here
         // would be the same lie the observer panel already told once.
         observer: 'pool → Endur · amount public, staker not',
       })
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'convert', status: 'submitted' }
-      set({ submitting: false, ledger, lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({ submitting: false, ledger, lastTx: trackTx(transaction_hash, 'convert', set) })
       return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
