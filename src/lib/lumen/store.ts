@@ -16,6 +16,7 @@
 import { create } from 'zustand'
 import type { WalletAccountV6 } from 'starknet'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
+import { chainHead, poolLegLanded } from '@/lib/strk20/settle'
 import {
   STAKE_ASSET,
   VAULT_ADDRESS,
@@ -604,7 +605,18 @@ export const useLumen = create<LumenState>((set, get) => ({
     set({ submitting: true, error: null })
     try {
       const actions = buildShield(TOKENS[input.token].address, input.amount)
-      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
+      // A shield is a public deposit, so the chain can confirm it.
+      const since = await chainHead()
+      const transaction_hash = await submitEscrowOp(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        () =>
+          poolLegLanded({
+            token: TOKENS[input.token].address,
+            amount: input.amount,
+            direction: 'in',
+            sinceBlock: since,
+          }),
+      )
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -612,15 +624,11 @@ export const useLumen = create<LumenState>((set, get) => ({
         asset: input.token,
         amount: input.amount,
         route: 'DIRECT',
-        txHash: transaction_hash,
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         observer: 'deposit · public',
       })
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'add', status: 'submitted' }
-      set({ submitting: false, ledger, lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({ submitting: false, ledger, lastTx: trackTx(transaction_hash, 'add', set) })
       return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
@@ -690,7 +698,18 @@ export const useLumen = create<LumenState>((set, get) => ({
         input.amount,
         input.recipient,
       )
-      const { transaction_hash } = await walletRequest(() => account.strk20InvokeTransaction(actions))
+      // The withdrawal itself is the public leg, so the chain can confirm it.
+      const since = await chainHead()
+      const transaction_hash = await submitEscrowOp(
+        walletRequest(() => account.strk20InvokeTransaction(actions)),
+        () =>
+          poolLegLanded({
+            token: TOKENS[input.token].address,
+            amount: input.amount,
+            direction: 'out',
+            sinceBlock: since,
+          }),
+      )
 
       const ledger = appendLedger(address, {
         timestamp: Date.now(),
@@ -698,16 +717,12 @@ export const useLumen = create<LumenState>((set, get) => ({
         asset: input.token,
         amount: input.amount,
         route: 'DIRECT',
-        txHash: transaction_hash,
+        ...(transaction_hash ? { txHash: transaction_hash } : {}),
         counterparty: input.recipient,
         observer: 'withdrawal · public',
       })
 
-      const lastTx: LastTx = { hash: transaction_hash, kind: 'out', status: 'submitted' }
-      set({ submitting: false, ledger, lastTx })
-      void watchTx(transaction_hash, (status) =>
-        set((s) => (s.lastTx?.hash === transaction_hash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({ submitting: false, ledger, lastTx: trackTx(transaction_hash, 'out', set) })
       return transaction_hash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
@@ -1065,11 +1080,23 @@ export const useLumen = create<LumenState>((set, get) => ({
     const { account, address } = requireAccount(get, set)
     set({ submitting: true, error: null })
     try {
-      // Through the gate like everything else that reaches a wallet: the AVNU
-      // prover asks the wallet to prove, so this is a wallet request wearing a
-      // swap's clothes.
-      const { transactionHash } = await walletRequest(() =>
-        executeAvnuPrivateSwap({ account, quote: input.quote }),
+      // The swap's funding leg is a public transfer out of the pool, so this
+      // is confirmable without the wallet — and the wallet went quiet here
+      // too, on the very first unstake.
+      const since = await chainHead()
+      const transactionHash = await submitEscrowOp(
+        walletRequest(() =>
+          executeAvnuPrivateSwap({ account, quote: input.quote }).then((result) => ({
+            transaction_hash: result.transactionHash,
+          })),
+        ),
+        () =>
+          poolLegLanded({
+            token: TOKENS[input.sellToken].address,
+            amount: input.sellAmount,
+            direction: 'out',
+            sinceBlock: since,
+          }),
       )
 
       const ledger = appendLedger(address, {
@@ -1078,15 +1105,11 @@ export const useLumen = create<LumenState>((set, get) => ({
         asset: input.sellToken,
         amount: input.sellAmount,
         route: 'AVNU',
-        txHash: transactionHash,
+        ...(transactionHash ? { txHash: transactionHash } : {}),
         observer: 'executor → AMM',
       })
 
-      const lastTx: LastTx = { hash: transactionHash, kind: 'convert', status: 'submitted' }
-      set({ submitting: false, ledger, lastTx })
-      void watchTx(transactionHash, (status) =>
-        set((s) => (s.lastTx?.hash === transactionHash ? { lastTx: { ...s.lastTx, status } } : {})),
-      )
+      set({ submitting: false, ledger, lastTx: trackTx(transactionHash, 'convert', set) })
       return transactionHash
     } catch (error) {
       set({ submitting: false, error: explainWalletError(error) })
