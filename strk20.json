@@ -41,6 +41,12 @@
       "network": "mainnet",
       "block": 14015553,
       "what": "A link nobody collected, reclaimed by its sender after the refund window opened — and out of a superseded escrow, since the entry was minted before the current one was deployed. Claim and refund secrets hash under separate domains, so the reclaim key can never spend a link and the link can never trigger a reclaim. Money parked behind a secret cannot be stranded by a recipient who never shows up."
+    },
+    {
+      "hash": "0x5448e3d00587ab99e9b589234a5b8df67aa574e4f5571b8c291a77eb5cd2d42",
+      "network": "mainnet",
+      "block": 14111534,
+      "what": "STRK swapped to strkBTC privately, inside the pool, without AVNU-s paymaster. Its SDK hardcodes sponsored_private and needs an API key a browser cannot hold, so Lumen asks the public build endpoint only for the executor and its calls, assembles the STRK20 action set itself, and submits through the wallet-s own relayer. The trace: 300 STRK pool to executor, 6 STRK pool fee, executor to Ekubo, 0.000101 strkBTC returned into an open note. One fewer party between the user and the pool, and the paymaster-s fee leg dropped with it."
     }
   ],
   "contracts": [
