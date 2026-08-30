@@ -1,79 +1,17 @@
 {
   "transactions": [
-    {
-      "hash": "0x747ea8c9ef941c278275c2c8e12e54b1ba7f1cab0c25d421a2718e45a6b5d52",
-      "network": "mainnet",
-      "what": "Claim link minted: 2 STRK withdrawn from the pool into LumenEscrow behind a Poseidon commitment. Claimable by whoever holds the secret, with no wallet or pool registration needed until they open it.",
-      "block": 14011191
-    },
-    {
-      "hash": "0x423c246aa3ee4d47718f8c8a2b65733074a08cca765dcacd88ff00bbffff6f",
-      "network": "mainnet",
-      "block": 14012471,
-      "what": "LumenEscrow deployed with claim_to_address — the second door. A claim can now be collected straight to a public address by someone who has never joined the privacy pool, has no shielded balance, and cannot pay the pool's flat fee."
-    },
-    {
-      "hash": "0x3af9f5cdd408a9d92e38caaf4071895474a0d1d9790a96a3c798de23d57b20b",
-      "network": "mainnet",
-      "block": 14013048,
-      "what": "Claim relayed to a wallet that had never joined the privacy pool, held no shielded balance, had no gas, and whose account contract was not deployed — and still is not. The recipient performed no action. A third party submitted claim_to_address; the Poseidon preimage was the only authority."
-    },
-    {
-      "hash": "0x27c52c631a9f036b4749bb736e305c8d742ce66f9b54cdebb40c267c81519d9",
-      "network": "mainnet",
-      "block": 14013806,
-      "what": "Claim link minted for 9.845994 STRK. The amount was tuned away from a round 10 by the guard, because the escrowed amount is public and a round number is the easiest thing to match a later withdrawal against."
-    },
-    {
-      "hash": "0x535cc6d39343a65ea22d26bdef83ebd0ab3f778c8f5690905b3b77354d75123",
-      "network": "mainnet",
-      "block": 14013837,
-      "what": "The same link collected through the private door: the pool credits an open note, so the arrival is shielded and nothing about the recipient is published. Compare with 0x3af9f5cd, which is the public door — one link shape, two landings."
-    },
-    {
-      "hash": "0x1056fd098f3459be36fec57ca5ba6dcb09c4ab1f04810c49072d495c1bc5f5a",
-      "network": "mainnet",
-      "block": 14014301,
-      "what": "Three people paid in one operation via DepositMany: 2.8 STRK split into 0.933333 STRK links, three Deposited events and one BatchDeposited under a single pool fee. Sequentially the same payout costs the flat fee three times, so batching is a 3x cost argument here and a 50x one for an agent paying a payroll — and an observer sees one operation, not three."
-    },
-    {
-      "hash": "0x30b617458ee8adab1903f84eb7fdb3a4484ca3c21cfb8db4d1ea69d059d323",
-      "network": "mainnet",
-      "block": 14015553,
-      "what": "A link nobody collected, reclaimed by its sender after the refund window opened — and out of a superseded escrow, since the entry was minted before the current one was deployed. Claim and refund secrets hash under separate domains, so the reclaim key can never spend a link and the link can never trigger a reclaim. Money parked behind a secret cannot be stranded by a recipient who never shows up."
-    },
-    {
-      "hash": "0x5448e3d00587ab99e9b589234a5b8df67aa574e4f5571b8c291a77eb5cd2d42",
-      "network": "mainnet",
-      "block": 14111534,
-      "what": "STRK swapped to strkBTC privately, inside the pool, without AVNU-s paymaster. Its SDK hardcodes sponsored_private and needs an API key a browser cannot hold, so Lumen asks the public build endpoint only for the executor and its calls, assembles the STRK20 action set itself, and submits through the wallet-s own relayer. The trace: 300 STRK pool to executor, 6 STRK pool fee, executor to Ekubo, 0.000101 strkBTC returned into an open note. One fewer party between the user and the pool, and the paymaster-s fee leg dropped with it."
-    },
-    {
-      "hash": "0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752",
-      "network": "mainnet",
-      "block": 14111764,
-      "what": "Shielded Bitcoin staked into Endur without ever unshielding it. LumenVault sits behind the pool-s privacy_invoke: the pool withdrew 0.0001 strkBTC to it, it deposited into Endur-s ERC-4626 vault, and 0.00009934 xstrkBTC came back into an open note — one atomic private operation. The alternative on offer is unshield, deposit publicly, re-shield: two public legs of matching size, seconds apart, on one account. preview_stake quoted 0.00009934 and execution returned 0.00009934."
-    }
+    "0x747ea8c9ef941c278275c2c8e12e54b1ba7f1cab0c25d421a2718e45a6b5d52",
+    "0x27c52c631a9f036b4749bb736e305c8d742ce66f9b54cdebb40c267c81519d9",
+    "0x535cc6d39343a65ea22d26bdef83ebd0ab3f778c8f5690905b3b77354d75123",
+    "0x1056fd098f3459be36fec57ca5ba6dcb09c4ab1f04810c49072d495c1bc5f5a",
+    "0x30b617458ee8adab1903f84eb7fdb3a4484ca3c21cfb8db4d1ea69d059d323",
+    "0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752"
   ],
   "contracts": [
-    {
-      "name": "LumenSplitter",
-      "address": "0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0",
-      "class_hash": "0x1de1ef961ed84c9657414693490f50f500d155c9baca07795bb6d80644bc06d",
-      "network": "mainnet"
-    },
-    {
-      "name": "LumenEscrow",
-      "address": "0x6c96b86d5f1eaee16be18ca4f346edb20c098f1106648cef3845b34723df272",
-      "class_hash": "0x5a8b231a34692588ba7524a126b87d7db762ab72579265664449720a1785d44",
-      "network": "mainnet"
-    },
-    {
-      "name": "LumenVault",
-      "address": "0x73e57be7d6c9d2321d7a01d0c2e426392fd5e736ecfbcd91d4216ba5d7a5f67",
-      "class_hash": "0x4d37d28b2483132634406b7e65c58732d3e60b0e27d11ec2698f7229423db54",
-      "network": "mainnet"
-    }
+    "0x6c96b86d5f1eaee16be18ca4f346edb20c098f1106648cef3845b34723df272",
+    "0x73e57be7d6c9d2321d7a01d0c2e426392fd5e736ecfbcd91d4216ba5d7a5f67",
+    "0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0",
+    "0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288"
   ],
   "demo_video": "",
   "demo_url": "https://lumen-strk20.vercel.app"

@@ -1,291 +1,166 @@
-# Lumen
+# Lumen — a private Bitcoin account on Starknet
 
-**Your Bitcoin shouldn't become a map of your life.**
+**Hold Bitcoin privately. Earn on it without unshielding it. Pay anyone — including people who have never touched Starknet.**
 
-Lumen is the private account for Bitcoin on Starknet. Name, amount, Send —
-that is the whole interaction. There is no shielding step, no privacy mode and
-no toggle, because the reason people do not use private transfers is not that
-they dislike privacy: it is that the private path is a *different workflow*
-from the normal one, and a second workflow loses every time. So Lumen does not
-have one.
-
-Underneath, every send is an [STRK20](https://strk20-by-example.org) private
-transfer, and the flagship asset is
-[strkBTC](https://www.starknet.io/blog/strkbtc-is-live-private-bitcoin-arrives-on-starknet/) —
-the first asset built on STRK20, backed 1:1 by BTC locked on the Bitcoin base
-layer.
-
-**Where this fits.** StarkWare spent 2026 completing three sides of a triangle:
-STRK20 made privacy native to any Starknet asset, strkBTC made Bitcoin the
-first of them, and in August a StarkWare researcher mined
-[the first quantum-safe Bitcoin transaction](https://starkware.co/blog/the-first-quantum-safe-bitcoin-transaction-has-been-mined/)
-using hash-based rather than curve-based constructions. All three exist at the
-infrastructure level. None of them has a consumer surface. Lumen is that
-surface — and its claim links are already hash locks, Poseidon preimages with
-no elliptic curve in the path (see [What Lumen does not claim](#what-lumen-does-not-claim)).
-
-Money also arrives from more than one place — a claim link, your page, a team
-split, another app entirely. Each of those is private on its own. Together they
-are exactly how a public profile of you gets built. Lumen is the account they
-land in, and the thing that stops them lining up: it holds your
-*unlinkability*, across every counterparty and across time.
-
-Built on the live [STRK20](https://strk20-by-example.org) privacy pool,
-Starknet **mainnet**. Non-custodial: the user's privacy-enabled wallet holds
-every key, discovers every note, and approves every move — Lumen never sees
-private state and never asks for a viewing key.
-
-**Live at [lumen-strk20.vercel.app](https://lumen-strk20.vercel.app).**
-`LumenEscrow` is deployed on mainnet at
-[`0x293c8a95…8cd8`](https://voyager.online/contract/0x293c8a9541d00d0762797a16353f2505aeeaef650bf9f3e8f0a68a98d9b8cd8),
-so claim links are live. Nothing in the product is sample data.
-
-## What Lumen does not claim
-
-Lumen is **not a quantum-safe product**, and Starknet is not quantum-ready
-today. Three things are true and are the only three claimed:
-
-1. **The claim link is a hash lock.** `LumenEscrow` stores
-   `poseidon(LUMEN_ESCROW_CLAIM:V1, secret)` and never the secret or any public
-   key, so there is no elliptic curve between minting a link and the money
-   moving.
-2. **The pool's integrity rests on STARKs**, which have never depended on
-   elliptic-curve assumptions.
-3. **The account signature is rotatable.** Native account abstraction lets a
-   Starknet account change its signature scheme without a protocol change, and
-   post-quantum signers already run on mainnet.
-
-What is *not* covered: the account signature that authorises a transaction is
-still elliptic-curve, and so is the bridge. Naming that here is deliberate —
-the people scoring this sprint wrote the quantum-safe Bitcoin work, and a
-privacy product that overclaims is worse than one that underclaims.
-
-## Why this is not the other private-payment projects
-
-The sprint has ten link-payment apps, seven payroll apps, and a reference
-payroll implementation from StarkWare itself. **Every one of them protects a
-single transaction.** None protects the *person* across all of them — which is
-precisely where the 2026 Anonymity Gap work says privacy actually dies:
-provenance and behaviour across a sequence, never inside one transfer.
-
-That gap is only closable by something that holds history:
-
-- **Not PriPay / ShadowPay / Private Payroll** — those are a company's book.
-  Lumen is the recipient's account.
-- **Not VeilPayouts / kelpay / SABLE** — those mint a link and finish. Lumen is
-  where the link lands and keeps mattering.
-- **Not Preflight / VeilCheck** — those check one signature. Lumen keeps a
-  month, and can catch this action correlating with last Tuesday's.
-- **Not Pulse or a tip jar** — the unit here is an account with a job, not a
-  payment with a nicer screen.
-
-Those projects are not competitors so much as **suppliers**: every one of them
-can pay into a Lumen account, and the moment two of them do, only Lumen is in
-a position to keep those two arrivals from becoming one profile.
-
-## What the account actually does
-
-1. **Incoming.** The first screen is what arrived, not what you hold. Links
-   this device holds but has not claimed, and balance growth its own ledger
-   cannot explain — shown as *"we can't see who sent it, and neither can
-   anyone else,"* because a private transfer publishes no sender. It never
-   renders a source label it cannot defend.
-2. **The decision journal.** Before anything is signed the engine checks the
-   move against everything already done, rewrites what would leak, and writes
-   down what it did: *12 moves made privately · 5 amounts rewritten · 1
-   flagged.* Agency with receipts — and the only feature here that structurally
-   requires history.
-3. **Observer View.** One tap redacts the account to exactly what an explorer
-   can ever know, and it appears again after every action as *"what the world
-   just saw."*
-
-Payments are the plumbing underneath: claim links for people with no wallet,
-a pay page for a bio or an invoice, and group send that pays several people as
-one operation nobody can split apart.
+Live: **[lumen-strk20.vercel.app](https://lumen-strk20.vercel.app)** · Mainnet · No backend, no database, no server that could hold your secrets.
 
 ---
 
-## The idea
+## The one-line claim
 
-Ordinary money movement should not publish a financial profile.
+> **Lumen stakes shielded Bitcoin into Endur without it ever becoming public** — and, as of writing, that has happened exactly once on Starknet mainnet, through this app.
 
-On a transparent chain, salaries, rent, friends and savings form one connected
-graph with your name on it. Cryptographic pools hide individual transactions —
-but 2026 research on shielded UTXO systems (the "Anonymity Gap" line of work)
-keeps measuring the same result: provenance, value constraints, timing and
-habit shrink the *effective* anonymity set by 40–59% on real deployments, and
-plenty of transactions collapse to a handful of candidates. The leaks are not
-in the cryptography. They are in behaviour — and behaviour is the app layer's
-job.
+Everything below is checkable. Every number was read off the chain, not estimated.
 
-Lumen's answer is to make the private path the only easy path, to make good
-behaviour automatic — and to make the network recruit itself:
+---
 
-0. **Links are the product.** A claim link carries a secret in its URL
-   fragment (fragments never reach a server); the `LumenEscrow` anonymizer
-   holds the value until the recipient's brand-new wallet claims it into an
-   open note. A pay page travels the same way — the page *is* the link, no
-   backend anywhere. Every link recruits its recipient; every page recruits
-   its payers.
+## Why this is not another privacy wallet
 
-1. **Relationship boundaries.** Each person you pay sees only what you send
-   them. Nothing connects one relationship to another — and the app enforces
-   the *behavioural* half of that promise too, warning when a distinctive
-   amount or a rigid cadence would bridge two boundaries.
+STRK20 launched with **strkBTC** — Starknet's shielded Bitcoin — and its liquid-staked form **xstrkBTC**. On launch they were the only two shieldable assets in the pool. Both can be held privately.
 
-2. **Private receipts.** A payment can be *proven* without being *published*.
-   Every payment mints a receipt carrying exactly one fact — this amount, this
-   moment, this settlement transaction — that the payer can hand to exactly
-   one counterparty. The settlement is publicly verifiable yet names no
-   sender, recipient or amount.
+**But the step between them is public.**
 
-3. **The silent engine.** For every action, Lumen answers internally: does
-   this create a public record? does the amount re-link me (round, reused,
-   mirroring a deposit)? does the timing stitch two events together? Where the
-   action is Lumen's own (a deposit, a cash-out) the engine *rewrites* it — a
-   tuned non-round amount, a suggested waiting window. Where the amount is a
-   contract with another person, it warns instead. The user never sees a
-   score. They just stay private.
+Endur's vault is ERC-4626: `deposit` calls `transfer_from` against the caller's **public** ERC-20 balance. Inside the pool your Bitcoin is a commitment, not a balance — there is nothing for a vault to pull. So staking shielded strkBTC means:
 
-## What the user sees
+```
+unshield  →  deposit publicly  →  re-shield
+```
 
-- **Incoming** — the first screen: links waiting for you, and arrivals this
-  device cannot attribute. The balance is an object further down, not the
-  brand.
-- **What Lumen did** — the decision journal, second on the screen and in its
-  own sheet.
-- **Pay with a link** — for someone with no wallet: the guard tunes the
-  public escrow amount, the link carries the claim secret, `/claim` walks the
-  recipient from "what is this" to a private balance. Unclaimed after the
-  window? Take it back.
-- **Get paid** — a standing pay page (`/pay/you`, presets priced live) or a
-  one-off request that locks an exact amount. Payments to either are private
-  transfers.
-- **Pay several people** — one operation, one pool fee, and no recipient can
-  see what any other received.
-- **Convert** — AVNU private swaps: value changes token inside the pool;
-  observers see an executor talk to an AMM, never you.
-- **Spaces** — Rent, Travel, Rainy day: a private partition of the one
-  shielded balance, kept on-device. Moving between spaces is instant and free
-  because nothing touches the chain — a boundary the chain could see would
-  itself leak.
-- **People** — the address book of relationship identities.
-- **Activity** — every entry tells the truth twice: what you did, and what
-  the public chain saw (almost always: *nothing*).
-- **Cash out** — deliberately one level deeper in the menu, warned, and
-  guard-checked: the exit is where private money historically gets traced.
+Three public transactions. Two of them matching amounts on the same address, seconds apart. The pool's anonymity set does nothing for you, because the entry and the exit are provably the same person. **Privacy ends exactly where yield begins.**
 
-No seed phrases, no "notes", no "nullifiers", no jargon anywhere on the
-surface.
+The only way through is a contract that sits between the pool and the vault and does the whole thing atomically. STRK20 publishes an extension point for exactly that — `privacy_invoke` and open notes — and StarkWare's own words for what comes next are *"private balances and transfers into **private execution**."*
 
-## Honest privacy model
+`LumenVault` is that contract, pointed at Bitcoin yield.
 
-| Never public                              | Public, by nature                        |
-| ----------------------------------------- | ---------------------------------------- |
-| Who you pay, and how much                 | Adding money (an ERC-20 deposit)         |
-| Your balance and everything in it         | Cashing out (a withdrawal)               |
-| Spaces, people, notes-to-self, history    | That the pool processed *something*      |
-| Receiving money                           |                                          |
+```
+pool  →[withdraw strkBTC]→  LumenVault  →[ERC-4626 deposit]→  Endur
+                                        ←[xstrkBTC]←
+pool  ←[credited into an open note]←
+```
 
-Both boundary crossings run through the guard first, so what is public cannot
-be matched against what is not. Private transfers are submitted by a relayer;
-the transaction sender on-chain is the relayer for all users.
+One atomic pool operation. The chain sees an operation and an amount. It does not see your address, your balance, or that the stake is yours.
 
-Product data (people, spaces, receipts, the action ledger) lives in
-`localStorage` on the user's device, keyed per account. There is no server and
-no analytics.
+**Proven on mainnet:** [`0x1c0f54bf…`](https://voyager.online/tx/0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752) — 0.0001 strkBTC in, 0.00009934 xstrkBTC back into a shielded note. `preview_stake` quoted 0.00009934 and execution returned 0.00009934.
 
-## The guard, concretely
+---
 
-`src/lib/lumen/guard.ts` — pure, deterministic, unit-tested underneath by the
-engine it draws from:
+## The second thing nobody else has: a door out of the pool
 
-- **Pay** (`reviewPay`): route privacy (a private transfer has no public
-  leg), cross-relationship amount reuse inside a 48 h window, cadence
-  detection (coefficient of variation over inter-payment gaps).
-- **Add money** (`reviewShield`): deposits are public forever, so round or
-  recently-used amounts are *rewritten* into pool-typical, non-round, fresh
-  ones (`nudgeAmount`, ≤ ~2 % drift, deterministic per account per day, with a
-  one-tap "keep exact" escape hatch).
-- **Cash out** (`reviewCashOut`): exit↔entry amount correlation against every
-  deposit in the window (the classic mixer heuristic), roundness, and timing —
-  if the user was active minutes ago, the engine proposes an irregular
-  execution window drawn from a de-periodised exponential schedule.
+A privacy pool has a one-way boundary. Money inside can be *addressed* to a stranger, but a stranger cannot step inside to collect it. A first-time recipient hits error **118 — not registered** — and no dapp can fix that for them, because the Wallet API has no register method.
 
-The engine underneath (`src/lib/engine/`, `src/lib/deanon/`) is a seeded,
-reproducible implementation of the attacks themselves — amount correlation,
-round-number salience, timing windows, cadence periodicity, anonymity-set
-thinning, exit matching. Same inputs, same review, always: a decision the user
-can audit.
+So `LumenEscrow` has **two doors on one link**:
 
-## STRK20 integration
+| door | who it is for | what it costs them |
+|---|---|---|
+| **`privacy_invoke` Claim** | someone already in the pool | lands in a shielded note; nothing about them is published |
+| **`claim_to_address`** | someone with nothing | no pool membership, no shielded balance, no gas, no deployed account contract |
 
-Everything chain-touching goes through the user's wallet via the Wallet API
-(`WalletAccountV6`, API ≥ 0.10.3):
+`claim_to_address` is ungated on purpose — **the Poseidon preimage is the authority, not the caller** — so anyone, including a relayer, can push it through for a recipient who owns nothing.
 
-- `strk20InvokeTransaction` with `deposit` / `transfer` / `withdraw` action
-  lists (`src/lib/strk20/actions.ts`)
-- `strk20Balances` for shielded balances — called only as an explicit,
-  consent-prompting "reveal", never to feature-detect
-- Capability detection by advertised Wallet API version
-- Live pool fee from `get_fee_amount` (mainnet returns 6 STRK today, not the
-  documented 4 — read, never hardcoded)
-- Pool: [`0x040337…812a`](https://voyager.online/contract/0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a)
-  on mainnet; note maturity (~10 blocks) surfaced in the add-money flow
-- `assertNeverUnshields` guards every action list Lumen builds: a `withdraw`
-  to anything but a same-transaction helper is refused mechanically. The only
-  code path that can produce a public withdrawal is the explicit cash-out
-  flow.
-- **`LumenEscrow`** (`contracts/src/escrow.cairo`) — the claim-link
-  anonymizer: `privacy_invoke` with Deposit / Claim / Refund, dual
-  domain-separated poseidon commitments (a refund secret is unusable on the
-  claim path), expiry-gated refunds, per-token solvency accounting (an
-  unbacked entry cannot exist), events. The commitment math is pinned by the
-  *same* test vector in both the snforge suite and vitest — client and
-  contract can never drift on the hash that carries the money.
-- **`LumenSplitter`** (`contracts/src/splitter.cairo`) — `privacy_invoke`
-  splitting one withdrawal into up to 16 non-round open notes atomically.
-- **AVNU private swaps** live in the product (Convert): the wallet proves,
-  AVNU's relayer submits, the output lands in a fresh note.
-- Claim links stay hidden in the UI until `NEXT_PUBLIC_LUMEN_ESCROW_ADDRESS`
-  points at a deployed instance — `contracts/deploy.sh` prints the exact
-  declare/deploy walkthrough for both helpers.
+Verified on mainnet against a wallet that had none of those four things. It received 1.969194 STRK and performed no action at all.
+
+---
+
+## What is actually deployed
+
+| contract | address | what it does |
+|---|---|---|
+| **LumenEscrow** | [`0x6c96b86d…`](https://voyager.online/contract/0x6c96b86d5f1eaee16be18ca4f346edb20c098f1106648cef3845b34723df272) | claim links: two doors, batch payouts, expiry-gated reclaim |
+| **LumenVault** | [`0x73e57be7…`](https://voyager.online/contract/0x73e57be7d6c9d2321d7a01d0c2e426392fd5e736ecfbcd91d4216ba5d7a5f67) | stakes shielded strkBTC into Endur, never unshielding |
+| **LumenSplitter** | [`0x44d15d99…`](https://voyager.online/contract/0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0) | splits one private amount into N non-round notes |
+| LumenEscrow (v2) | [`0x43e41de8…`](https://voyager.online/contract/0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288) | superseded, still holds and honours links minted against it |
+
+**64 Cairo tests. 320 TypeScript tests. All green.**
+
+---
+
+## Six mainnet transactions, each proving one thing
+
+| what it proves | transaction |
+|---|---|
+| **Private Bitcoin staking** — shielded strkBTC → Endur → shielded xstrkBTC, one operation | [`0x1c0f54bf…`](https://voyager.online/tx/0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752) |
+| **Batch payout** — three people paid in one operation, under one flat fee | [`0x1056fd09…`](https://voyager.online/tx/0x1056fd098f3459be36fec57ca5ba6dcb09c4ab1f04810c49072d495c1bc5f5a) |
+| **The private door** — a link collected into a shielded note | [`0x535cc6d3…`](https://voyager.online/tx/0x535cc6d39343a65ea22d26bdef83ebd0ab3f778c8f5690905b3b77354d75123) |
+| **Reclaim** — uncollected money returned to its sender, out of a superseded contract | [`0x30b61745…`](https://voyager.online/tx/0x30b617458ee8adab1903f84eb7fdb3a4484ca3c21cfb8db4d1ea69d059d323) |
+| **A link minted** — the guard moved it off a round 10 before signing | [`0x27c52c63…`](https://voyager.online/tx/0x27c52c631a9f036b4749bb736e305c8d742ce66f9b54cdebb40c267c81519d9) |
+| **The first link** — minted from a shielded balance | [`0x747ea8c9…`](https://voyager.online/tx/0x747ea8c9ef941c278275c2c8e12e54b1ba7f1cab0c25d421a2718e45a6b5d52) |
+
+Two more that are real but sit outside the manifest's rule, because they deliberately do not route through the pool:
+
+- [`0x3af9f5cd…`](https://voyager.online/tx/0x3af9f5cdd408a9d92e38caaf4071895474a0d1d9790a96a3c798de23d57b20b) — **the public door.** Paid an address with no registration, no gas, no deployed account. Bypassing the pool is the entire point of it.
+- [`0x5448e3d0…`](https://voyager.online/tx/0x5448e3d00587ab99e9b589234a5b8df67aa574e4f5571b8c291a77eb5cd2d42) — **a private swap with no paymaster** (see below).
+
+---
+
+## How deep the STRK20 integration goes
+
+| surface | how Lumen uses it |
+|---|---|
+| Shielded balances | read through the Wallet API, on explicit user consent only |
+| Private transfers | Send, batch payouts, scatter |
+| **Anonymizer contracts** | three of our own, behind `privacy_invoke` and open notes |
+| Open notes | `${openNoteIds[0]}` filled by our helper's return, in the receipt token |
+| AVNU private swaps | **without the paymaster** — see below |
+| Compliance posture | the pool's own viewing-key model; Lumen adds nothing and removes nothing |
+
+### The private swap, without a paymaster
+
+AVNU's SDK routes private swaps through its paymaster, and `toRpcFeeMode` hardcodes `mode: "sponsored_private"` regardless of the fee mode you pass. Sponsored mode is gated behind an API key — and a key shipped to a browser is a published key. Verified against the live paymaster: SNIP-29 code 163, `data: "x-paymaster-api-key is invalid"`.
+
+Everything the paymaster contributed was *submission*, and the user's wallet already submits every other private operation. So Lumen asks AVNU only for what it alone knows — which executor, with what calldata, from the public build endpoint — assembles the STRK20 action set itself, and hands it to the wallet.
+
+**No key, no credits, no server, one fewer party between the user and the pool**, and the paymaster's fee leg drops with it. See [`src/lib/strk20/swap.ts`](src/lib/strk20/swap.ts).
+
+---
+
+## The part most privacy apps skip
+
+Cryptography is not what deanonymizes people. **Behaviour is.**
+
+Lumen runs seven heuristics over your local ledger *before* anything is signed — amount correlation, exit-amount matching, round numbers, timing correlation, thin anonymity sets, repeated amounts, cadence periodicity — and acts on them silently. A round `10` becomes `9.845994`. You are never asked to think about privacy; you are paying someone.
+
+The nudge is budgeted at ~2%, and that budget is tested at every scale a token can be denominated in. It was silently blown at 8 decimals — a 10,000-sat link drifted 8.12% — because the grain came from token decimals rather than the amount. [Fixed, and pinned by tests.](src/lib/lumen/__tests__/guard-drift.test.ts)
+
+**And the app shows you its own worst case.** The *What the world sees* panel recomputes your public history from `starknet_getEvents` against an ordinary RPC — no indexer, no API key — because if it needed privileged access it would prove nothing. It reads **your own address only**; an earlier version accepted any address and was cut for being a doxxing tool wearing the product's brand.
+
+---
+
+## Honest limits
+
+A README that only lists wins is marketing. These are in the code and the docs too.
+
+- **The recipient must join the pool to claim privately.** Only they can do it. `claim_to_address` routes around it; it does not remove it.
+- **The pool fee is flat** — 6 STRK per operation, whatever the size. Batching is therefore a 6× cost argument at six recipients, and reclaiming 2 STRK costs 6. The product says so rather than letting you find out.
+- **The escrowed amount is public.** The recipient is not, the sender is not, and the roster is not.
+- **Private transfers cannot be confirmed from the chain** — by design, they leave nothing but a flat fee. Every other operation here is confirmed against the chain rather than the wallet's promise, because a wallet that goes quiet after success is the worst thing a payments UI can display. It happened four times; [`src/lib/strk20/settle.ts`](src/lib/strk20/settle.ts) is the general answer.
+- **LumenSplitter has no mainnet transaction.** Built, tested, deployed, unexercised.
+- **The Bitcoin anonymity set is thin today** — under 1 BTC shielded pool-wide. Hold in the deep pool and convert at payout; the app's guard implies the same advice.
+
+---
 
 ## Run it
 
 ```bash
-npm install
-cp .env.example .env.local   # add a Starknet mainnet RPC URL (Alchemy free tier works)
-npm run dev
+npm install && npm run dev          # needs a STRK20-enabled wallet (Ready)
+npm test                            # 320 TypeScript tests
+cd contracts && snforge test        # 64 Cairo tests
 ```
 
-Open `http://localhost:3000`. The app needs a privacy-enabled Starknet wallet
-(e.g. [Ready](https://www.ready.co/)) on mainnet.
+## Read it
 
-```bash
-npm run typecheck && npm run lint && npm test   # 172 tests: engine, rails, codecs
-(cd contracts && scarb test)               # 50 tests: both anonymizers
-npm run build
-```
+| doc | what it is |
+|---|---|
+| [`docs/WHAT-LUMEN-ACTUALLY-IS.md`](docs/WHAT-LUMEN-ACTUALLY-IS.md) | the engineering record — including what is *not* proven |
+| [`docs/INTEGRATING-WITH-LUMEN.md`](docs/INTEGRATING-WITH-LUMEN.md) | wiring your own product into these contracts |
+| [`docs/TRAPS.md`](docs/TRAPS.md) | every trap from eleven days of mainnet work, so the next build pays for none |
+| [`docs/WHAT-MAINNET-TAUGHT-US.md`](docs/WHAT-MAINNET-TAUGHT-US.md) | what running it for real changed about the design |
 
-## Repository map
+**This design has already been built on.** [Sage](https://sagepays.xyz), an autonomous payout agent with real users, derived its own `SageClaims` contract from `LumenEscrow` in two days — its own tags, its own deployment, no runtime dependency. The two docs above are what it was built from.
 
-```
-src/
-  app/                  landing (/), the app (/app), claim pages (/claim),
-                        pay pages (/pay/[name])
-  components/lumen/     the product surface — home, sheets, guard panel,
-                        receipt, links, pay page owner sheet, convert
-  lib/lumen/            store, guard, people, spaces, receipts, links, paypage
-  lib/strk20/           wallet, action builders, escrow rails, pool reads,
-                        AVNU swaps
-  lib/engine/           seeded splitter, timing scheduler, privacy scoring
-  lib/deanon/           the attack heuristics the guard runs in reverse
-contracts/              LumenEscrow + LumenSplitter (Cairo anonymizers),
-                        50-test snforge suite, deploy walkthrough
-docs/                   the pivot brief and attack model
-```
+## Stack
+
+Next.js 15.5 · React 19 · Tailwind v4 · zustand · starknet.js 10.4.0 · `@starknet-io/types-js` 0.10.3 · AVNU SDK 4.2.0 · Cairo 2.15 · Scarb · snforge
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. The contracts are unaudited — read them before trusting them with anything you cannot lose.
