@@ -69,15 +69,21 @@ describe('the paymaster-free swap payload', () => {
   it('strips the zero-padding AVNU may hand back', () => {
     // A padded felt was rejected on mainnet, and these addresses come from a
     // third-party API that makes no promises about their spelling.
-    const actions = buildPrivateDefi(plan())
-    for (const action of actions) {
-      const felts = [
-        action.type === 'invoke' ? action.contract : action.token,
-        action.type === 'invoke' ? null : action.recipient,
-      ].filter((v): v is string => typeof v === 'string')
-      for (const felt of felts) {
-        expect(felt.startsWith('0x0'), felt).toBe(false)
+    const felts: string[] = []
+    for (const action of buildPrivateDefi(plan())) {
+      // Narrowed per variant rather than by ternary: a `deposit` action has no
+      // `recipient`, and the union does not let you ask for one.
+      if (action.type === 'invoke') {
+        felts.push(action.contract)
+      } else if (action.type === 'withdraw' || action.type === 'transfer') {
+        felts.push(action.token, action.recipient)
+      } else {
+        felts.push(action.token)
       }
+    }
+    expect(felts.length).toBeGreaterThan(0)
+    for (const felt of felts) {
+      expect(felt.startsWith('0x0'), felt).toBe(false)
     }
   })
 

@@ -93,7 +93,13 @@ export function nudgeAmount(
   now: number,
 ): bigint {
   if (amount <= 0n) return amount
-  const grain = 10n ** BigInt(Math.max(0, decimals - 6))
+  // Grain is relative to the amount, not to the token's decimals. Deriving it
+  // from decimals assumed 18-decimal tokens, where 10^12 is genuine dust. At 8
+  // decimals it is not: a grain of 100 put up to 900 sats of dust on a
+  // 10,000-sat payment — 8% drift against a ~2% budget, on exactly the amounts
+  // Bitcoin is denominated in. Perturbing below the fourth significant digit
+  // keeps the trailing digits irregular at every scale.
+  const grain = 10n ** BigInt(Math.max(0, amount.toString().length - 4))
   const rng = mulberry32(mixSeed(seed, Number(amount % 65_536n)))
 
   let candidate = amount
