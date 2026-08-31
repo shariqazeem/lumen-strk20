@@ -47,6 +47,22 @@ export const MIN_GAPS_FOR_CADENCE = 3
 /** The mainnet pool fee, so `out ≈ in − fee` can be checked. */
 export const POOL_FEE_STRK = 6
 
+/**
+ * How many exits a single entry is checked against as a group.
+ *
+ * Splitting one exit into several defeats pairwise amount matching and does
+ * nothing at all against the sum — which is the attack an analyst reaches for
+ * next, and the one Lumen's own splitter creates. Four legs is where the
+ * combinatorics stop being cheap and the false-positive risk starts to bite.
+ */
+export const MAX_SPLIT_LEGS = 4
+
+/** Exits considered per entry, most recent first. Bounds the search. */
+export const MAX_SPLIT_CANDIDATES = 12
+
+/** A split spread wider than this is not obviously one movement of money. */
+export const SPLIT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -442,6 +458,105 @@ export function cadencePeriodicity(events: ObservedEvent[]): Finding[] {
 /*  7 · Exit reconstructs entry minus the known fee                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Several exits that add up to one entry.
+ *
+ * `amount-correlation` and `exit-amount-match` are both pairwise: one deposit
+ * against one withdrawal. Splitting an exit into three defeats them completely
+ * — and defeats nothing at all against addition, which is where a competent
+ * analyst goes next. Value has to conserve, so the sum is still there.
+ *
+ * This is deliberately the heuristic most likely to indict Lumen's own advice.
+ * The product's fix for a matching amount is "break it with an uneven split",
+ * and an uneven split whose parts still total the entry has moved the leak
+ * rather than removed it. An adversary that cannot see the thing its own
+ * product does is not an adversary.
+ *
+ * The tolerance tightens as legs are added, because more legs mean more
+ * combinations tried and therefore more chance of hitting a sum by accident.
+ * Only the tightest match per entry is reported, so one deposit cannot flood
+ * the report with every subset that happens to fit.
+ */
+export function splitSumMatch(events: ObservedEvent[]): Finding[] {
+  const findings: Finding[] = []
+  const deposits = known(events).filter((event) => event.kind === 'deposit')
+  const exits = known(events).filter((event) => event.kind === 'withdrawal')
+
+  for (const deposit of deposits) {
+    const inUnits = units(deposit)
+    if (inUnits <= 0) continue
+
+    const candidates = exits
+      .filter(
+        (exit) =>
+          exit.asset === deposit.asset &&
+          exit.timestamp > deposit.timestamp &&
+          exit.timestamp - deposit.timestamp <= SPLIT_WINDOW_MS,
+      )
+      .slice(0, MAX_SPLIT_CANDIDATES)
+
+    let best: { legs: ObservedEvent[]; delta: number; fee: number } | null = null
+
+    const walk = (start: number, picked: ObservedEvent[], sum: number) => {
+      if (picked.length >= 2) {
+        // The pool charges its flat fee once per operation, so a k-way exit
+        // costs k fees. Both the gross and net readings are checked, because
+        // a planner that nets the fee off is not disguising anything.
+        for (const fee of [0, POOL_FEE_STRK * picked.length]) {
+          const target = inUnits - fee
+          if (target <= 0) continue
+          const delta = relativeDelta(sum, target)
+          if (delta > AMOUNT_MATCH_TOLERANCE / picked.length) continue
+          if (!best || delta < best.delta) best = { legs: [...picked], delta, fee }
+        }
+      }
+      if (picked.length >= MAX_SPLIT_LEGS) return
+      for (let i = start; i < candidates.length; i += 1) {
+        const next = candidates[i]
+        if (!next) continue
+        walk(i + 1, [...picked, next], sum + units(next))
+      }
+    }
+    walk(0, [], 0)
+
+    if (!best) continue
+    const match = best as { legs: ObservedEvent[]; delta: number; fee: number }
+    const legs = match.legs.length
+    // More legs adding to the same total is stronger evidence of one movement,
+    // but it was also found among more combinations. The tightened tolerance
+    // already paid for that, so confidence stays deliberately moderate.
+    const confidence = Math.min(0.9, 0.55 + 0.08 * legs)
+    const total = match.legs.reduce((sum, leg) => sum + units(leg), 0)
+
+    findings.push({
+      id: `split-sum-match:${deposit.timestamp}:${legs}`,
+      heuristic: 'split-sum-match',
+      title: `${legs} withdrawals add up to one deposit`,
+      severity: severityFrom(confidence),
+      confidence,
+      explanation:
+        `${legs} separate exits totalling ${fmt(total)} ${deposit.asset} reconstruct a ` +
+        `${fmt(inUnits)} ${deposit.asset} deposit` +
+        (match.fee > 0 ? `, once ${legs} pool fees are netted off` : '') +
+        '. Splitting breaks a one-to-one amount match and leaves the sum untouched — value ' +
+        'conserves, so addition is the next thing anyone looks at.',
+      evidence: [
+        `in  ${fmt(inUnits)} ${deposit.asset}`,
+        `out ${match.legs.map((leg) => fmt(units(leg))).join(' + ')}`,
+        `= ${fmt(total)}${match.fee > 0 ? ` (fees ${match.fee})` : ''}`,
+        `within ${(match.delta * 100).toFixed(2)}%`,
+      ],
+      fix: {
+        label: 'Leave part of it in, or split across assets rather than only across amounts',
+        mode: 'PRIVACY_FIRST',
+        action: 'split-amounts',
+      },
+    })
+  }
+
+  return findings
+}
+
 export function exitAmountMatch(events: ObservedEvent[]): Finding[] {
   const findings: Finding[] = []
   const deposits = known(events).filter((event) => event.kind === 'deposit')
@@ -493,6 +608,7 @@ export function exitAmountMatch(events: ObservedEvent[]): Finding[] {
 export const ALL_HEURISTICS: Heuristic[] = [
   { id: 'amount-correlation', run: (events) => amountCorrelation(events) },
   { id: 'exit-amount-match', run: (events) => exitAmountMatch(events) },
+  { id: 'split-sum-match', run: (events) => splitSumMatch(events) },
   { id: 'round-number', run: (events) => roundNumber(events) },
   { id: 'timing-correlation', run: (events) => timingCorrelation(events) },
   { id: 'anonymity-set-thin', run: (events, context) => anonymitySetThin(events, context) },
