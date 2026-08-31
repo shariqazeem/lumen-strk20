@@ -71,9 +71,21 @@ export interface PoolPulse {
   /** Anonymizer invocations — how much private DeFi is happening. */
   helperCalls: number
   byToken: Partial<Record<TokenSymbol, TokenActivity>>
+  /**
+   * Gaps between consecutive pool operations, in ms, oldest first.
+   *
+   * Derived from block numbers rather than timestamps: every event in a window
+   * this wide would otherwise need a block fetch each. Blocks are ~1.7s apart,
+   * which is precise enough for a timing heuristic that asks whether a rhythm
+   * exists, not what its phase is.
+   */
+  gapsMs: number[]
   /** ms epoch, so a stale reading can be labelled rather than trusted. */
   readAt: number
 }
+
+/** Starknet mainnet block time, measured rather than assumed. */
+export const BLOCK_MS = 1_700
 
 const EMPTY: TokenActivity = { deposits: 0, withdrawals: 0 }
 
@@ -108,8 +120,11 @@ export async function readPoolPulse(
       registrations: 0,
       helperCalls: 0,
       byToken: {},
+      gapsMs: [],
       readAt: Date.now(),
     }
+
+    const blocks: number[] = []
 
     // The pool is busy enough that a single chunk will not hold a long window,
     // and a partial read would understate the crowd — which is the one
@@ -133,6 +148,8 @@ export async function readPoolPulse(
         } catch {
           continue
         }
+        if (typeof event.block_number === 'number') blocks.push(event.block_number)
+
         switch (selector) {
           case SELECTOR.noteCreated:
             pulse.notesCreated += 1
@@ -170,6 +187,14 @@ export async function readPoolPulse(
       token = page?.continuation_token
       guard += 1
     } while (token && guard < 25)
+
+    // Consecutive gaps, skipping the zeros that come from several events in
+    // one block — those are one operation, not several moments.
+    blocks.sort((a, b) => a - b)
+    for (let i = 1; i < blocks.length; i += 1) {
+      const delta = blocks[i]! - blocks[i - 1]!
+      if (delta > 0) pulse.gapsMs.push(delta * BLOCK_MS)
+    }
 
     return pulse
   } catch {

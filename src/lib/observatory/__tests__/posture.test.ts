@@ -28,6 +28,9 @@ const MAINNET: PoolPulse = {
     xstrkBTC: { deposits: 0, withdrawals: 2 },
     ETH: { deposits: 1, withdrawals: 1 },
   },
+  // Real spacing, roughly: 353 notes over 48 hours is one every ~8 minutes,
+  // arriving in bursts rather than on a clock.
+  gapsMs: [120_000, 900_000, 60_000, 1_800_000, 240_000, 75_000],
   readAt: 1_700_000_000_000,
 }
 
@@ -90,6 +93,7 @@ describe('an empty pool', () => {
     registrations: 0,
     helperCalls: 0,
     byToken: {},
+    gapsMs: [],
     readAt: 0,
   }
 

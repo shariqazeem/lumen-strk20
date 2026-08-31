@@ -13,6 +13,7 @@ import { useMemo } from 'react'
 import { useLumen } from '@/lib/lumen/store'
 import { summarize, type JournalAction, type JournalEntry } from '@/lib/lumen/journal'
 import { Sheet } from './sheet'
+import { FootprintPanel } from './footprint'
 import { Check, Sparkle, Warning } from './icons'
 
 const ACTION_LABEL: Record<JournalAction, string> = {
@@ -108,6 +109,8 @@ export function JournalSheet({ open, onClose }: { open: boolean; onClose: () => 
             ))}
           </div>
           <p className="mt-2 px-1 text-[12px] text-ink-faint">Last 30 days</p>
+
+          <FootprintPanel />
 
           <div className="card mt-4 divide-y divide-rule">
             {journal.slice(0, 60).map((entry) => (

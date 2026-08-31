@@ -20,7 +20,23 @@ export const AMOUNT_MATCH_TOLERANCE = 0.01
 export const TIMING_WINDOW_MS = 60 * 60 * 1000
 
 /** Below this many peers, a denomination tier does not hide anyone. */
-export const MIN_ANON_SET = 5
+/**
+ * The smallest set that counts as a crowd.
+ *
+ * Was 5, which is the floor data-publishing uses for "not immediately
+ * identifying" — far too weak for a payments pool, where an analyst can simply
+ * enumerate the set. A 1-in-14 prior is a strong lead, not anonymity.
+ *
+ * Calibrated 31 Aug 2026 against measured mainnet depth over 48 hours: STRK
+ * 398 public moves, USDC 139, strkBTC 14, xstrkBTC 2. A floor of 5 called
+ * strkBTC healthy. It is not.
+ *
+ * Deliberately equal to `THIN_MOVES` in `observatory/posture.ts`. The two
+ * models are shown on the same screen, and a product whose adversary says
+ * "fine" while its observatory says "you are alone" is not measuring — it is
+ * arguing with itself. A test pins them together.
+ */
+export const MIN_ANON_SET = 20
 
 /** Gaps this consistent read as a schedule rather than as human irregularity. */
 export const PERIODICITY_CV_THRESHOLD = 0.35
