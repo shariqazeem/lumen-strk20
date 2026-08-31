@@ -20,6 +20,7 @@ import { TOKENS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 import { Sheet } from './sheet'
 import { AmountField, ErrorNote, parseAmount, SuccessMark, TxLink, usdText } from './bits'
 import { ArrowDown, Check, Clock, ShieldCheck } from './icons'
+import { CrowdNote } from './crowd'
 
 export function ConvertSheet({
   open,
@@ -210,6 +211,8 @@ export function ConvertSheet({
               <p className="text-ink-muted">Re-quoting…</p>
             )}
           </div>
+
+          <CrowdNote token={buyToken} />
 
           <p className="mt-3 flex items-start gap-2 px-1 text-[12.5px] leading-relaxed text-ink-muted">
             <ShieldCheck size={14} className="mt-0.5 flex-none" />

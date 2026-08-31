@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLumen, portfolioUsd } from '@/lib/lumen/store'
 import { loadInbox, verifyInbox, waitingLinks, type InboxLink } from '@/lib/lumen/inbox'
+import { CrowdLine } from './crowd'
 import { summarize } from '@/lib/lumen/journal'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
 import type { Receipt } from '@/lib/lumen/receipts'
@@ -503,6 +504,7 @@ export function Home({
                   ))}
                 </div>
               </button>
+              <CrowdLine holdings={nonZero.map((balance) => balance.symbol)} />
             </section>
           ) : null}
 

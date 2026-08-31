@@ -22,6 +22,7 @@ import { Sheet } from './sheet'
 import { AmountField, ErrorNote, parseAmount, SuccessMark, TxLink } from './bits'
 import { ArrowDown, ArrowUpRight, Check, Clock, ShieldCheck } from './icons'
 import type { SheetRoute } from './routes'
+import { CrowdNote } from './crowd'
 
 const ASSET_DECIMALS = TOKENS[STAKE_ASSET].decimals
 
@@ -131,6 +132,8 @@ export function StakeSheet({
               Staked with Endur. It earns while you hold it, and stays shielded.
             </p>
           </div>
+
+          <CrowdNote token={STAKE_ASSET} />
 
           {staked && staked.raw > 0n ? (
             <div className="card mt-3 flex items-center justify-between gap-3 px-5 py-3.5">
