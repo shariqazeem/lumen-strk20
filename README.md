@@ -70,7 +70,7 @@ Verified on mainnet against a wallet that had none of those four things. It rece
 | **LumenSplitter** | [`0x44d15d99…`](https://voyager.online/contract/0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0) | splits one private amount into N non-round notes |
 | LumenEscrow (v2) | [`0x43e41de8…`](https://voyager.online/contract/0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288) | superseded, still holds and honours links minted against it |
 
-**64 Cairo tests. 320 TypeScript tests. All green.**
+**64 Cairo tests. 353 TypeScript tests. All green.**
 
 ---
 
@@ -102,6 +102,7 @@ Two more that are real but sit outside the manifest's rule, because they deliber
 | Open notes | `${openNoteIds[0]}` filled by our helper's return, in the receipt token |
 | AVNU private swaps | **without the paymaster** — see below |
 | Compliance posture | the pool's own viewing-key model; Lumen adds nothing and removes nothing |
+| **Pool telemetry** | `Deposit`, `Withdrawal`, `EncNoteCreated`, `NoteUsed`, `ViewingKeySet`, `ExternalContractInvoked` — read live to measure the crowd |
 
 ### The private swap, without a paymaster
 
@@ -112,6 +113,36 @@ Everything the paymaster contributed was *submission*, and the user's wallet alr
 **No key, no credits, no server, one fewer party between the user and the pool**, and the paymaster's fee leg drops with it. See [`src/lib/strk20/swap.ts`](src/lib/strk20/swap.ts).
 
 ---
+
+## The observatory: reading the crowd you would hide in
+
+Every privacy tool on this board reasons about *your* transaction. None of them answers the thing that actually decides whether it hides you: **is anybody else moving right now, in this asset, in this window?** Perfect cryptography in an empty hour still narrows you to whoever was awake.
+
+All of it is public. The pool emits `Deposit` and `Withdrawal` with the token indexed, `EncNoteCreated` and `NoteUsed` for private activity that names nobody, `ViewingKeySet` on joins, `ExternalContractInvoked` when any anonymizer runs. Read together they are a live picture of the crowd — and reading them needs no indexer and no API key, which is the only reason it proves anything.
+
+Measured on mainnet, 48 hours:
+
+| asset | public moves | verdict |
+|---|---|---|
+| STRK | 398 | crowded |
+| USDC | 139 | crowded |
+| **strkBTC** | **14** | **exposed** |
+| xstrkBTC | 2 | exposed |
+
+So the app tells you, on its own staking screen:
+
+> **Almost nobody else is moving strkBTC right now.**
+> Moving now makes this operation distinctive. Holding in STRK and converting at the moment you need strkBTC gives you a much larger set.
+
+**That contradicts Lumen's own headline feature, and it is the reason to believe the rest of the page.** A product that will not say its flagship asset is risky today is not measuring anything.
+
+## The adversary runs against you, not for you
+
+`lib/deanon` models how pool users are actually deanonymized — eight heuristics that re-forge the deposit/withdrawal link statistically, without touching the cryptography. It runs over your real ledger against the pool's real depth, and reports what an analyst could infer.
+
+It is allowed to return a bad answer. Run over a real week of this project's own test history it returns **"partially linkable", score 69.5**, and names the reason: the same amount appearing twice.
+
+The eighth heuristic exists specifically to catch what Lumen itself advises. The product's fix for a matching amount is *"break it with an uneven split"* — and an uneven split whose parts still total the entry has moved the leak, not removed it. `amount-correlation` and `exit-amount-match` are both pairwise and see nothing; `split-sum-match` walks up to four exits per entry, gross and net of one pool fee per leg, and finds it. **An adversary that cannot see what its own product does is not an adversary.**
 
 ## The part most privacy apps skip
 
@@ -143,7 +174,7 @@ A README that only lists wins is marketing. These are in the code and the docs t
 
 ```bash
 npm install && npm run dev          # needs a STRK20-enabled wallet (Ready)
-npm test                            # 320 TypeScript tests
+npm test                            # 353 TypeScript tests
 cd contracts && snforge test        # 64 Cairo tests
 ```
 
