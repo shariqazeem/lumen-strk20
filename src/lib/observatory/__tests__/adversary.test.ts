@@ -160,3 +160,34 @@ describe('the two models agree', () => {
     expect(MIN_ANON_SET).toBe(THIN_MOVES)
   })
 })
+
+describe('classification an observer would recognise', () => {
+  it('files a link mint and a stake as exits, because that is what they are', () => {
+    // Both move money out of the pool to a helper, publicly, amount in the
+    // clear. Filing them as generic actions hid them from every exit
+    // heuristic — the engine understated the user, which is the one direction
+    // it must never be wrong in.
+    const observed = observedFrom([
+      entry({ type: 'LINK' }),
+      entry({ type: 'STAKE' }),
+      entry({ type: 'CLAIM' }),
+      entry({ type: 'SWAP' }),
+    ])
+    expect(observed.map((e) => e.kind)).toEqual(['withdrawal', 'withdrawal', 'deposit', 'action'])
+  })
+
+  it('finds the matched pair a mint and its reclaim create', () => {
+    // A reclaim returns exactly what is in the entry, so the two public legs
+    // carry the same number. Unavoidable, and worth being told about.
+    const amount = 2_000_000_000_000_000_000n
+    const footprint = standingFootprint({
+      ledger: [
+        entry({ type: 'LINK', amount, timestamp: NOW - 2 * DAY }),
+        entry({ type: 'CLAIM', amount, timestamp: NOW - DAY }),
+      ],
+      pulse: PULSE,
+      now: NOW,
+    })
+    expect(footprint!.result.findings.length).toBeGreaterThan(0)
+  })
+})

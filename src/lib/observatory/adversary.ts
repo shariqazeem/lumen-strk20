@@ -73,8 +73,18 @@ export function observedFrom(ledger: readonly LedgerEntry[]): ObservedEvent[] {
       entry.type === 'CLAIM' ||
       entry.type === 'STAKE'
 
+    // Classified as an observer sees it, not as the product names it. A link
+    // mint and a stake both move money out of the pool to a helper contract,
+    // publicly, with the amount in the clear — so to anyone reading the chain
+    // they are withdrawals, whatever the app calls them. Filing them as
+    // generic actions hid them from every exit heuristic and understated the
+    // user, which is the one direction this engine must never be wrong in.
     const kind: ObservedEvent['kind'] =
-      entry.type === 'SHIELD' ? 'deposit' : entry.type === 'UNSHIELD' ? 'withdrawal' : 'action'
+      entry.type === 'SHIELD' || entry.type === 'CLAIM'
+        ? 'deposit'
+        : entry.type === 'UNSHIELD' || entry.type === 'LINK' || entry.type === 'STAKE'
+          ? 'withdrawal'
+          : 'action'
 
     return {
       kind,

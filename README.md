@@ -132,6 +132,7 @@ A README that only lists wins is marketing. These are in the code and the docs t
 - **The recipient must join the pool to claim privately.** Only they can do it. `claim_to_address` routes around it; it does not remove it.
 - **The pool fee is flat** — 6 STRK per operation, whatever the size. Batching is therefore a 6× cost argument at six recipients, and reclaiming 2 STRK costs 6. The product says so rather than letting you find out.
 - **The escrowed amount is public.** The recipient is not, the sender is not, and the roster is not.
+- **A reclaim republishes the mint amount.** It returns exactly what is in the entry, so minting 2 STRK and reclaiming it puts the same number on chain twice. Unavoidable, and the footprint panel will tell you about it rather than the README quietly not mentioning it.
 - **Private transfers cannot be confirmed from the chain** — by design, they leave nothing but a flat fee. Every other operation here is confirmed against the chain rather than the wallet's promise, because a wallet that goes quiet after success is the worst thing a payments UI can display. It happened four times; [`src/lib/strk20/settle.ts`](src/lib/strk20/settle.ts) is the general answer.
 - **LumenSplitter has no mainnet transaction.** Built, tested, deployed, unexercised.
 - **The Bitcoin anonymity set is thin today** — under 1 BTC shielded pool-wide. Hold in the deep pool and convert at payout; the app's guard implies the same advice.
