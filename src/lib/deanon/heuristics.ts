@@ -477,33 +477,50 @@ export function cadencePeriodicity(events: ObservedEvent[]): Finding[] {
  * Only the tightest match per entry is reported, so one deposit cannot flood
  * the report with every subset that happens to fit.
  */
-export function splitSumMatch(events: ObservedEvent[]): Finding[] {
+/**
+ * One leg reconstructed by adding several on the other side.
+ *
+ * Shared by both directions because the attack is one attack. `split` is one
+ * entry paid out over several exits — the shape Lumen's own "break it with an
+ * uneven split" advice produces. `gather` is the mirror: several entries
+ * accumulated and taken out in one go, which is what being paid looks like.
+ *
+ * Pairwise matching sees neither. Addition sees both, because value conserves.
+ */
+function sumMatch(
+  events: ObservedEvent[],
+  direction: 'split' | 'gather',
+): Finding[] {
   const findings: Finding[] = []
-  const deposits = known(events).filter((event) => event.kind === 'deposit')
-  const exits = known(events).filter((event) => event.kind === 'withdrawal')
+  const anchorKind = direction === 'split' ? 'deposit' : 'withdrawal'
+  const legKind = direction === 'split' ? 'withdrawal' : 'deposit'
+  const anchors = known(events).filter((event) => event.kind === anchorKind)
+  const legs = known(events).filter((event) => event.kind === legKind)
 
-  for (const deposit of deposits) {
-    const inUnits = units(deposit)
-    if (inUnits <= 0) continue
+  for (const anchor of anchors) {
+    const anchorUnits = units(anchor)
+    if (anchorUnits <= 0) continue
 
-    const candidates = exits
-      .filter(
-        (exit) =>
-          exit.asset === deposit.asset &&
-          exit.timestamp > deposit.timestamp &&
-          exit.timestamp - deposit.timestamp <= SPLIT_WINDOW_MS,
-      )
+    // Legs always sit on the far side of the anchor in time: a split pays out
+    // after the entry, a gather accumulates before the exit.
+    const candidates = legs
+      .filter((leg) => {
+        if (leg.asset !== anchor.asset) return false
+        const delta =
+          direction === 'split' ? leg.timestamp - anchor.timestamp : anchor.timestamp - leg.timestamp
+        return delta > 0 && delta <= SPLIT_WINDOW_MS
+      })
       .slice(0, MAX_SPLIT_CANDIDATES)
 
     let best: { legs: ObservedEvent[]; delta: number; fee: number } | null = null
 
     const walk = (start: number, picked: ObservedEvent[], sum: number) => {
       if (picked.length >= 2) {
-        // The pool charges its flat fee once per operation, so a k-way exit
-        // costs k fees. Both the gross and net readings are checked, because
-        // a planner that nets the fee off is not disguising anything.
+        // The pool charges its flat fee once per operation, so k legs cost k
+        // fees. Both the gross and net readings are checked, because netting
+        // the fee off is not a disguise.
         for (const fee of [0, POOL_FEE_STRK * picked.length]) {
-          const target = inUnits - fee
+          const target = direction === 'split' ? anchorUnits - fee : anchorUnits + fee
           if (target <= 0) continue
           const delta = relativeDelta(sum, target)
           if (delta > AMOUNT_MATCH_TOLERANCE / picked.length) continue
@@ -521,40 +538,81 @@ export function splitSumMatch(events: ObservedEvent[]): Finding[] {
 
     if (!best) continue
     const match = best as { legs: ObservedEvent[]; delta: number; fee: number }
-    const legs = match.legs.length
+    const count = match.legs.length
     // More legs adding to the same total is stronger evidence of one movement,
     // but it was also found among more combinations. The tightened tolerance
     // already paid for that, so confidence stays deliberately moderate.
-    const confidence = Math.min(0.9, 0.55 + 0.08 * legs)
+    const confidence = Math.min(0.9, 0.55 + 0.08 * count)
     const total = match.legs.reduce((sum, leg) => sum + units(leg), 0)
 
     findings.push({
-      id: `split-sum-match:${deposit.timestamp}:${legs}`,
-      heuristic: 'split-sum-match',
-      title: `${legs} withdrawals add up to one deposit`,
+      id: `${direction}-sum-match:${anchor.timestamp}:${count}`,
+      heuristic: direction === 'split' ? 'split-sum-match' : 'gather-sum-match',
+      title:
+        direction === 'split'
+          ? `${count} withdrawals add up to one deposit`
+          : `One withdrawal empties ${count} deposits`,
       severity: severityFrom(confidence),
       confidence,
       explanation:
-        `${legs} separate exits totalling ${fmt(total)} ${deposit.asset} reconstruct a ` +
-        `${fmt(inUnits)} ${deposit.asset} deposit` +
-        (match.fee > 0 ? `, once ${legs} pool fees are netted off` : '') +
-        '. Splitting breaks a one-to-one amount match and leaves the sum untouched — value ' +
-        'conserves, so addition is the next thing anyone looks at.',
-      evidence: [
-        `in  ${fmt(inUnits)} ${deposit.asset}`,
-        `out ${match.legs.map((leg) => fmt(units(leg))).join(' + ')}`,
-        `= ${fmt(total)}${match.fee > 0 ? ` (fees ${match.fee})` : ''}`,
-        `within ${(match.delta * 100).toFixed(2)}%`,
-      ],
-      fix: {
-        label: 'Leave part of it in, or split across assets rather than only across amounts',
-        mode: 'PRIVACY_FIRST',
-        action: 'split-amounts',
-      },
+        direction === 'split'
+          ? `${count} separate exits totalling ${fmt(total)} ${anchor.asset} reconstruct a ` +
+            `${fmt(anchorUnits)} ${anchor.asset} deposit` +
+            (match.fee > 0 ? `, once ${count} pool fees are netted off` : '') +
+            '. Splitting breaks a one-to-one amount match and leaves the sum untouched — value ' +
+            'conserves, so addition is the next thing anyone looks at.'
+          : `${count} deposits totalling ${fmt(total)} ${anchor.asset} account for a single ` +
+            `${fmt(anchorUnits)} ${anchor.asset} exit` +
+            (match.fee > 0 ? `, with ${count} pool fees` : '') +
+            '. Taking everything out at once ties every payment that went in to the one address ' +
+            'it came out to.',
+      evidence:
+        direction === 'split'
+          ? [
+              `in  ${fmt(anchorUnits)} ${anchor.asset}`,
+              `out ${match.legs.map((leg) => fmt(units(leg))).join(' + ')}`,
+              `= ${fmt(total)}${match.fee > 0 ? ` (fees ${match.fee})` : ''}`,
+              `within ${(match.delta * 100).toFixed(2)}%`,
+            ]
+          : [
+              `in  ${match.legs.map((leg) => fmt(units(leg))).join(' + ')}`,
+              `= ${fmt(total)}${match.fee > 0 ? ` (fees ${match.fee})` : ''}`,
+              `out ${fmt(anchorUnits)} ${anchor.asset}`,
+              `within ${(match.delta * 100).toFixed(2)}%`,
+            ],
+      fix:
+        direction === 'split'
+          ? {
+              label: 'Leave part of it in, or split across assets rather than only across amounts',
+              mode: 'PRIVACY_FIRST',
+              action: 'split-amounts',
+            }
+          : {
+              label: 'Leave a remainder in, and exit on a different schedule from the arrivals',
+              mode: 'PRIVACY_FIRST',
+              action: 'split-amounts',
+            },
     })
   }
 
   return findings
+}
+
+/** One entry paid out across several exits. See `sumMatch`. */
+export function splitSumMatch(events: ObservedEvent[]): Finding[] {
+  return sumMatch(events, 'split')
+}
+
+/**
+ * Several entries taken out in one exit.
+ *
+ * The shape of being paid: money arrives in pieces over weeks, and leaves in a
+ * single movement. That exit ties every arrival to one destination — which is
+ * exactly the position a person using claim links to get paid ends up in, so
+ * it is the failure this product's own users are most likely to walk into.
+ */
+export function gatherSumMatch(events: ObservedEvent[]): Finding[] {
+  return sumMatch(events, 'gather')
 }
 
 export function exitAmountMatch(events: ObservedEvent[]): Finding[] {
@@ -609,6 +667,7 @@ export const ALL_HEURISTICS: Heuristic[] = [
   { id: 'amount-correlation', run: (events) => amountCorrelation(events) },
   { id: 'exit-amount-match', run: (events) => exitAmountMatch(events) },
   { id: 'split-sum-match', run: (events) => splitSumMatch(events) },
+  { id: 'gather-sum-match', run: (events) => gatherSumMatch(events) },
   { id: 'round-number', run: (events) => roundNumber(events) },
   { id: 'timing-correlation', run: (events) => timingCorrelation(events) },
   { id: 'anonymity-set-thin', run: (events, context) => anonymitySetThin(events, context) },

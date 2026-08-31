@@ -17,6 +17,7 @@ export type HeuristicId =
   | 'round-number'
   | 'timing-correlation'
   | 'split-sum-match'
+  | 'gather-sum-match'
   | 'anonymity-set-thin'
   | 'repeated-amount'
   | 'cadence-periodicity'

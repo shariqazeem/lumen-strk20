@@ -12,7 +12,12 @@
 
 import { describe, expect, it } from 'vitest'
 import type { ObservedEvent } from '../types'
-import { AMOUNT_MATCH_TOLERANCE, MAX_SPLIT_LEGS, splitSumMatch } from '../heuristics'
+import {
+  AMOUNT_MATCH_TOLERANCE,
+  MAX_SPLIT_LEGS,
+  gatherSumMatch,
+  splitSumMatch,
+} from '../heuristics'
 
 const NOW = 1_700_000_000_000
 const HOUR = 3_600_000
@@ -128,5 +133,54 @@ describe('splitSumMatch', () => {
       tier: 'private',
     }
     expect(splitSumMatch([dep(1000), hidden, out(1000, NOW + 2 * HOUR)])).toHaveLength(0)
+  })
+})
+
+describe('gatherSumMatch — the mirror', () => {
+  it('catches money arriving in pieces and leaving in one movement', () => {
+    // The shape of being paid: several claims land over weeks, then one exit.
+    // That exit ties every arrival to a single destination — the position a
+    // person using claim links to get paid walks straight into.
+    const findings = gatherSumMatch([
+      dep(120, NOW - 300 * HOUR),
+      dep(340, NOW - 200 * HOUR),
+      dep(415, NOW - 100 * HOUR),
+      out(875, NOW),
+    ])
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.title).toBe('One withdrawal empties 3 deposits')
+    expect(findings[0]!.explanation).toContain('one address it came out to')
+  })
+
+  it('adds the pool fees rather than subtracting them, going this way', () => {
+    // Three deposits of 100 cost three fees to get in, so 282 comes out.
+    const findings = gatherSumMatch([
+      dep(100, NOW - 3 * HOUR),
+      dep(100, NOW - 2 * HOUR),
+      dep(100, NOW - HOUR),
+      out(282, NOW),
+    ])
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.explanation).toContain('pool fees')
+  })
+
+  it('requires the deposits to precede the exit', () => {
+    expect(
+      gatherSumMatch([out(1000, NOW), dep(600, NOW + HOUR), dep(400, NOW + 2 * HOUR)]),
+    ).toHaveLength(0)
+  })
+
+  it('stays quiet when the arrivals do not account for the exit', () => {
+    expect(
+      gatherSumMatch([dep(100, NOW - 2 * HOUR), dep(100, NOW - HOUR), out(750, NOW)]),
+    ).toHaveLength(0)
+  })
+
+  it('does not fire on the split shape, and vice versa', () => {
+    // One in, three out is a split, not a gather. The two must not both claim
+    // the same history or every report doubles.
+    const split = [dep(1000, NOW - 5 * HOUR), out(400, NOW - 3 * HOUR), out(300, NOW - 2 * HOUR), out(300, NOW - HOUR)]
+    expect(gatherSumMatch(split)).toHaveLength(0)
+    expect(splitSumMatch(split)).toHaveLength(1)
   })
 })
