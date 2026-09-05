@@ -23,14 +23,9 @@
  * an individual — only at density.
  */
 
-import { RpcProvider, hash } from 'starknet'
-import { POOL_ADDRESS, RPC_URL, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
-
-let provider: RpcProvider | null = null
-function rpc(): RpcProvider {
-  provider ??= new RpcProvider({ nodeUrl: RPC_URL })
-  return provider
-}
+import { hash } from 'starknet'
+import { rpc } from '@/lib/strk20/rpc'
+import { POOL_ADDRESS, TOKEN_LIST, type TokenSymbol } from '@/lib/strk20/config'
 
 const SELECTOR = {
   /** A private note came into existence. Names nobody. */

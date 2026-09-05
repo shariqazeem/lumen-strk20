@@ -14,6 +14,7 @@
  */
 
 import { hash, RpcProvider, shortString } from 'starknet'
+import { rpc } from './rpc'
 import type { STRK20_ACTION } from '@starknet-io/types-js'
 import { walletFelt, RPC_URL, sameAddress, TOKEN_LIST, TOKENS, type TokenConfig } from './config'
 import { decodeClaim, encodeClaim } from '@/lib/lumen/codec'
@@ -429,7 +430,7 @@ export async function readEscrowEntryAt(
   rpcUrl: string = RPC_URL,
 ): Promise<EscrowEntryState | null> {
   try {
-    const provider = new RpcProvider({ nodeUrl: rpcUrl })
+    const provider = rpcUrl === RPC_URL ? rpc() : new RpcProvider({ nodeUrl: rpcUrl })
     const result = await provider.callContract({
       contractAddress: escrowAddress,
       entrypoint: 'get_entry',

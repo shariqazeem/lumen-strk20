@@ -70,7 +70,7 @@ Verified on mainnet against a wallet that had none of those four things. It rece
 | **LumenSplitter** | [`0x44d15d99…`](https://voyager.online/contract/0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0) | splits one private amount into N non-round notes |
 | LumenEscrow (v2) | [`0x43e41de8…`](https://voyager.online/contract/0x43e41de87ebfaec2913a85398a68e011ab2a92bbddb9211956bfabe6ed57288) | superseded, still holds and honours links minted against it |
 
-**64 Cairo tests. 353 TypeScript tests. All green.**
+**81 Cairo tests. 360 TypeScript tests. [![ci](https://github.com/shariqazeem/lumen-strk20/actions/workflows/ci.yml/badge.svg)](https://github.com/shariqazeem/lumen-strk20/actions/workflows/ci.yml)**
 
 ---
 
@@ -110,7 +110,7 @@ AVNU's SDK routes private swaps through its paymaster, and `toRpcFeeMode` hardco
 
 Everything the paymaster contributed was *submission*, and the user's wallet already submits every other private operation. So Lumen asks AVNU only for what it alone knows — which executor, with what calldata, from the public build endpoint — assembles the STRK20 action set itself, and hands it to the wallet.
 
-**No key, no credits, no server, one fewer party between the user and the pool**, and the paymaster's fee leg drops with it. See [`src/lib/strk20/swap.ts`](src/lib/strk20/swap.ts).
+**No key, no credits, no server, and the paymaster's fee leg drops with it.** One honest caveat: AVNU's quote endpoint still receives your address as `takerAddress`, so "one fewer party" is true of the paymaster, not of AVNU as a whole — it learns you asked for a price, not what you did with it. See [`src/lib/strk20/swap.ts`](src/lib/strk20/swap.ts).
 
 ---
 
@@ -152,7 +152,7 @@ Lumen runs seven heuristics over your local ledger *before* anything is signed �
 
 The nudge is budgeted at ~2%, and that budget is tested at every scale a token can be denominated in. It was silently blown at 8 decimals — a 10,000-sat link drifted 8.12% — because the grain came from token decimals rather than the amount. [Fixed, and pinned by tests.](src/lib/lumen/__tests__/guard-drift.test.ts)
 
-**And the app shows you its own worst case.** The *What the world sees* panel recomputes your public history from `starknet_getEvents` against an ordinary RPC — no indexer, no API key — because if it needed privileged access it would prove nothing. It reads **your own address only**; an earlier version accepted any address and was cut for being a doxxing tool wearing the product's brand.
+**And the app shows you its own worst case.** The *What the world sees* panel recomputes your public history from `starknet_getEvents` against an ordinary RPC — no indexer, no API key — because if it needed privileged access it would prove nothing. It reads **your own address only**; an earlier version accepted any address and was cut for being a doxxing tool wearing the product's brand. And one thing it cannot hide: the RPC node answering the query sees which address was asked about. Point `NEXT_PUBLIC_STARKNET_RPC_URL` at a node you trust if that matters to you.
 
 ---
 
@@ -174,8 +174,8 @@ A README that only lists wins is marketing. These are in the code and the docs t
 
 ```bash
 npm install && npm run dev          # needs a STRK20-enabled wallet (Ready)
-npm test                            # 353 TypeScript tests
-cd contracts && snforge test        # 64 Cairo tests
+npm test                            # 360 TypeScript tests
+cd contracts && snforge test        # 81 Cairo tests
 ```
 
 ## Read it
@@ -187,7 +187,7 @@ cd contracts && snforge test        # 64 Cairo tests
 | [`docs/TRAPS.md`](docs/TRAPS.md) | every trap from eleven days of mainnet work, so the next build pays for none |
 | [`docs/WHAT-MAINNET-TAUGHT-US.md`](docs/WHAT-MAINNET-TAUGHT-US.md) | what running it for real changed about the design |
 
-**This design has already been built on.** [Sage](https://sagepays.xyz), an autonomous payout agent with real users, derived its own `SageClaims` contract from `LumenEscrow` in two days — its own tags, its own deployment, no runtime dependency. The two docs above are what it was built from.
+**The integration guide was written against a real integration.** [Sage](https://sagepays.xyz), a payout agent by the same author, wrote its own `SageClaims` contract using `LumenEscrow` as the reference — separate tags, separate deployment, no runtime dependency between the two. `docs/INTEGRATING-WITH-LUMEN.md` and `docs/TRAPS.md` are what that took.
 
 ## Stack
 

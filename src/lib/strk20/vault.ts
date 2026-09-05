@@ -13,9 +13,9 @@
  * and this module builds the three actions the wallet needs.
  */
 
-import { RpcProvider } from 'starknet'
+import { rpc } from './rpc'
 import type { STRK20_ACTION } from '@starknet-io/types-js'
-import { walletFelt, RPC_URL, TOKENS } from './config'
+import { walletFelt, TOKENS } from './config'
 import { openNoteRef } from './actions'
 
 /** Deployed LumenVault instance; empty until the mainnet deploy lands. */
@@ -80,12 +80,6 @@ export function buildPrivateStake(input: {
       calldata: [openNoteRef(0), hex(input.minShares < 0n ? 0n : input.minShares)],
     },
   ]
-}
-
-let provider: RpcProvider | null = null
-function rpc(): RpcProvider {
-  provider ??= new RpcProvider({ nodeUrl: RPC_URL })
-  return provider
 }
 
 /**

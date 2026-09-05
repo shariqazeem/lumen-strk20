@@ -32,14 +32,9 @@
  * to claim an operation nobody asked for.
  */
 
-import { RpcProvider, hash } from 'starknet'
-import { POOL_ADDRESS, RPC_URL, walletFelt } from './config'
-
-let provider: RpcProvider | null = null
-function rpc(): RpcProvider {
-  provider ??= new RpcProvider({ nodeUrl: RPC_URL })
-  return provider
-}
+import { hash } from 'starknet'
+import { rpc } from './rpc'
+import { POOL_ADDRESS, walletFelt } from './config'
 
 const TRANSFER = hash.getSelectorFromName('Transfer')
 

@@ -274,15 +274,15 @@ silently broke `position: sticky` and with it the landing film.
 
 | | |
 |---|---|
-| Commits | 98, from 18 Aug to 29 Aug 2026 |
+| Commits | 119, from 18 Aug to 5 Sep 2026 |
 | TypeScript (app) | ~17,500 lines across `src/app`, `src/components`, `src/lib` |
-| TypeScript (tests) | 3,789 lines · **292 tests** |
-| Cairo (contracts) | 980 lines · **64 tests** in 1,309 lines |
+| TypeScript (tests) | **360 tests** |
+| Cairo (contracts) | **81 tests** |
 | Routes | 4 |
 | Sheets | 16 |
 | Store actions | 17 |
-| Mainnet transactions | 7 |
-| Contracts live | 2 (plus 2 superseded escrows still readable) |
+| Mainnet transactions | 9 (6 in the manifest; see README for the two that bypass the pool by design) |
+| Contracts live | 3 (plus 2 superseded escrows still readable) |
 | Backend | none |
 
 Stack: Next.js 15.5.19, React 19.1, Tailwind v4, zustand 5, starknet.js

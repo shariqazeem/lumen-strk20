@@ -1,298 +1,246 @@
-# LumenSplitter — a STRK20 anonymizer contract
+# Lumen's contracts — three STRK20 anonymizers
 
-A Cairo **helper (anonymizer) contract** for the STRK20 privacy pool on Starknet
-mainnet. It exposes the `privacy_invoke` entry point the pool calls during
-`InvokeExternal`, and it does exactly one thing: **takes one input amount of a
-token and credits it back as N non-round output notes inside a single atomic
-transaction.**
+Cairo **helper (anonymizer) contracts** for the STRK20 privacy pool on Starknet
+mainnet. Each exposes the `privacy_invoke` entry point the pool calls during
+`InvokeExternal`, and each does one thing inside a single atomic pool operation.
 
-> **DRAFT — not audited.** An anonymizer is the app team's code to write, review
-> and audit. Nothing here has been reviewed by StarkWare or anyone else. Read
-> [Security notes](#security-notes) before you even think about `deploy.sh`.
+| contract | mainnet address | what it does | tests |
+|---|---|---|---|
+| **LumenEscrow** | [`0x6c96b86d…`](https://voyager.online/contract/0x6c96b86d5f1eaee16be18ca4f346edb20c098f1106648cef3845b34723df272) | claim links with two doors, batch payouts, expiry-gated reclaim | 35 |
+| **LumenVault** | [`0x73e57be7…`](https://voyager.online/contract/0x73e57be7d6c9d2321d7a01d0c2e426392fd5e736ecfbcd91d4216ba5d7a5f67) | stakes shielded strkBTC into Endur without unshielding | 17 |
+| **LumenSplitter** | [`0x44d15d99…`](https://voyager.online/contract/0x44d15d99fd2fa3a2d44e4c0e2b70e5efc2870009e2ed810380ab20a46b5c7a0) | one private amount into N non-round notes | 29 |
 
----
+**81 tests, all passing.** Two superseded escrows (`0x43e41de8…`, `0x293c8a95…`)
+still hold and honour links minted against them; the app resolves which
+contract holds a commitment before acting on it.
 
-## Why it exists
-
-Lumen's thesis is that **behaviour, not cryptography, deanonymizes privacy-pool
-users**. A pool with perfect cryptography still leaks if its users move round
-numbers at predictable times. The engine's two strongest remedies are:
-
-- **Amount entropy** — never emit a round or repeated amount.
-- **Note-count management** — hold a sane number of notes, neither one giant
-  note nor a hundred crumbs.
-
-Splitting one balance into several unequal notes is the primitive both remedies
-need. Doing it as N separate pool transactions costs a pool fee each (currently
-6 STRK per operation) and leaves a timing trail that re-links the very notes the
-split was meant to decorrelate. `LumenSplitter` performs the whole split inside
-**one** pool transaction: one fee, one timestamp, one proof.
-
-### Does the pool actually support several output notes per transaction?
-
-Yes. Three independent confirmations, all from the references in
-`.agents/skills/`:
-
-1. The wallet placeholder is **indexed and zero-based**:
-   `${openNoteIds[N]}` — *"the ID of the Nth open note in the same transaction
-   (i.e. the Nth transfer action with amount `"OPEN"`); N is a zero-based
-   index"*, with schema pattern `^\$\{(?:openNoteIds\[[0-9]+\]|poolAddress)\}$`.
-   A single-note protocol would not index, and would not allow `[0-9]+`.
-2. `privacy_invoke` returns **`Span<OpenNoteDeposit>`**, a list, and each entry
-   names its own `note_id`. The pool iterates it and applies every entry.
-3. The **phase table** (`actions-and-proofs.md`) marks only phase 7
-   (`InvokeExternal` / `ComputeAndInvoke`) as "at most one". Phase 5
-   (`CreateEncNote` / `CreateOpenNote`) carries no such limit — multiple note
-   creations per transaction are ordinary (every change note is one).
-
-The one hard limit that *does* apply: **one `invoke` per transaction**. That is
-why the splitter is a standalone helper and cannot be chained behind another
-helper in the same transaction.
-
-### When to use it — and when not to
-
-| Situation | Best route |
-| --- | --- |
-| Input amount known when the transaction is proven, and you want the **amounts hidden** | Prefer N `transfer` actions in one pool transaction: they create **encrypted** notes. Cheaper and strictly more private than this helper. |
-| Input amount only known **at execution time** (a delivered balance, a variable inbound payment) | `LumenSplitter` in `Bps` mode. A client cannot split what it cannot predict at proof time. |
-| You want the split **enforced and auditable on-chain** — sum reconciliation, non-zero legs, distinct notes, capped fee | `LumenSplitter` in `Exact` mode. |
-
-Be honest about the trade-off: **open-note amounts are plaintext by design.**
-The owner of each note stays hidden, but an observer of the transaction sees the
-helper being paid and N public amounts that sum to it. That is the cost of a
-value measured on-chain rather than fixed at proof time. Use the helper where
-the execution-time measurement is the point, not as a blanket replacement for
-in-pool transfers.
+> **Unaudited.** An anonymizer is the app team's code to write, review and audit.
+> Nothing here has been reviewed by StarkWare or anyone else. Read the security
+> notes on each contract before deploying anything.
 
 ---
 
-## The shape of the transaction
+## The shape they share
+
+Every helper is a **pool-gated conduit**: stateless, pinned at deployment to one
+pool, holding nothing between transactions.
 
 ```text
-phase 6  Withdraw    amount -> splitter            (public: pool paid the helper)
-phase 5  CreateOpenNote x N                        (transfer actions with amount "OPEN")
-phase 7  InvokeExternal(splitter) -> privacy_invoke
-             ├─ measures the balance actually delivered
-             ├─ pays the declared fee (if any) to the pinned recipient
-             ├─ resolves the caller's plan into N amounts
-             ├─ asserts they sum to exactly input - fee
-             ├─ approves the pool for exactly that sum
+phase 6  Withdraw    tokens -> helper              (public: the pool paid the helper)
+phase 5  CreateOpenNote x N                        (`transfer` actions with amount "OPEN")
+phase 7  InvokeExternal(helper) -> privacy_invoke
+             ├─ measures the balance actually delivered  (never trusts calldata)
+             ├─ does its one job
+             ├─ approves the pool for exactly what it promises
              └─ returns Span<OpenNoteDeposit>, one entry per open note
-         pool pulls the tokens and fills each open note
+         the pool pulls the tokens back and fills each open note
 ```
 
-The helper **approves, it never transfers to the pool** — the pool executes the
-pull itself. Any revert aborts the entire pool transaction and no funds move.
+The helper **approves, it never transfers to the pool** — the pool pulls. Any
+revert aborts the whole pool transaction and no funds move.
 
-## Calldata layout
+Three invariants hold across all three, and the tests pin each:
 
-The pool deserializes calldata straight into `privacy_invoke`'s parameters, so
-**order is load-bearing**:
+- **Balance-delta.** The amount worked on is `balance_of(self)`, measured. A
+  caller who declares less than was delivered strands the difference; one who
+  declares more gets a revert late instead of a rejection early.
+- **Exact allowance.** The pool is approved for precisely the sum being promised
+  in the returned `OpenNoteDeposit`s. Larger aborts the transaction; smaller
+  strands tokens in the helper.
+- **Pool-gated.** `privacy_invoke` asserts `get_caller_address()` is the pinned
+  pool. A permissionless helper would let anyone sweep a mid-transaction balance
+  or grant themselves an allowance.
 
-```text
-index  field           type                     notes
------  --------------  -----------------------  -------------------------------------------
-0      mode            SplitMode (felt)         0 = Exact, 1 = Bps
-1      token           ContractAddress          the ERC-20 being split
-2      in_amount       u128                     Exact: the withdrawn amount
-                                                Bps:  minimum delivered floor (0 = no floor)
-3      fee_amount      u128                     0 for a fee-free route
-4      parts_len       u32                      1..=16
-5..    parts[i]        u128 x parts_len         Exact: absolute amounts
-                                                Bps:  basis points, summing to 10_000
-5+n    note_ids_len    u32                      must equal parts_len
-6+n..  note_ids[i]     felt252 x note_ids_len   ${openNoteIds[0]} ... ${openNoteIds[n-1]}
+`OpenNoteDeposit { note_id: felt252, token: ContractAddress, amount: u128 }` is
+declared locally in each contract, field-for-field identical to
+`privacy::objects::OpenNoteDeposit`, so the package builds standalone.
+
+---
+
+## LumenEscrow — claim links
+
+`src/escrow.cairo` · 35 tests in `src/tests_escrow.cairo`
+
+Parks value behind a secret so it can be paid to someone who is not set up yet.
+The secret travels in a URL fragment (never sent to a server); the recipient
+collects through whichever door they can.
+
+```cairo
+fn privacy_invoke(
+    ref self: T,
+    operation: EscrowOperation,   // Deposit 0x0 · Claim 0x1 · Refund 0x2 · DepositMany 0x3
+    claim_commitment: felt252,
+    refund_commitment: felt252,   // 0 to decline the reclaim path
+    expiry: u64,                  // 0 iff refund_commitment is 0
+    token: ContractAddress,
+    amount: u128,
+    secret: felt252,              // claim/refund preimage; 0 on deposits
+    note_id: felt252,             // the open note to fill; 0 on deposits
+    legs: Span<EscrowLeg>,        // DepositMany only; empty otherwise
+) -> Span<OpenNoteDeposit>;
+
+/// The public door. No pool gate, no caller check: the preimage is the authority.
+fn claim_to_address(ref self: T, secret: felt252, recipient: ContractAddress);
 ```
 
-Signature:
+**Two doors on one link.** `Claim` via `privacy_invoke` lands in a shielded note
+for a recipient already in the pool. `claim_to_address` pays any address for a
+recipient with nothing — no pool membership, no shielded balance, no gas, no
+deployed account contract. Verified on mainnet against a wallet that had none of
+those four.
+
+- **Domain-separated commitments.** `poseidon('LUMEN_ESCROW_CLAIM:V1', s)` and
+  `poseidon('LUMEN_ESCROW_REFUND:V1', s)`, so a reclaim key can never spend a
+  link and a link can never trigger a reclaim. `test_claim_commitment_matches_client_vector`
+  pins the TypeScript side to the Cairo side.
+- **`take_entry` flips `claimed`; it does not delete.** That is what lets a
+  client tell *already collected* apart from *never existed*.
+- **`DepositMany`**: up to `MAX_BATCH = 32` legs in one operation under one
+  pool fee, bound to the funds actually delivered. `assert_solvent` reads the
+  balance once per batch, not once per leg.
+- **Claims stay valid after expiry until a refund actually happens.** Expiry
+  opens the sender's door; it does not close the recipient's.
+- **Token-generic.** `token: ContractAddress` throughout — STRK, USDC and
+  strkBTC all work today.
+
+---
+
+## LumenVault — private Bitcoin staking
+
+`src/vault.cairo` · 17 tests in `src/tests_vault.cairo`
+
+strkBTC is Starknet's shielded Bitcoin; Endur's xstrkBTC is its liquid-staked
+form, an ERC-4626 vault over it. Both are shieldable — but Endur's `deposit`
+pulls from a **public** ERC-20 balance, and inside the pool your Bitcoin is a
+commitment with nothing for a vault to pull. Staking meant unshield → deposit
+publicly → re-shield: three public legs, two of them matching amounts on one
+address seconds apart.
+
+This contract does it in one pool operation.
+
+```cairo
+fn privacy_invoke(ref self: T, note_id: felt252, min_shares: u128) -> Span<OpenNoteDeposit>;
+
+fn pool_address(self: @T) -> ContractAddress;
+fn vault_address(self: @T) -> ContractAddress;   // Endur xstrkBTC, pinned
+fn asset_address(self: @T) -> ContractAddress;   // strkBTC, pinned
+fn preview_stake(self: @T, assets: u128) -> u128;
+```
+
+- **The open note is in xstrkBTC**, the receipt token — not strkBTC. Opening it
+  in the input token makes the pool fill a note that does not exist.
+- **Shares are measured as a balance delta**, not read from the vault's return.
+  If a vault ever disagrees with itself, the balance is the one that can be
+  approved.
+- **`min_shares` is a floor.** An ERC-4626 rate moves between quoting and
+  execution; a caller that quoted can refuse a worse fill. Zero opts out.
+- **Vault and asset pinned at deployment**, and the constructor asserts
+  `vault.asset() == asset` — a deploy naming the wrong underlying aborts
+  rather than silently approving the wrong token.
+- **No unstake operation, on purpose.** Endur redeems through a withdraw queue
+  and the vault's liquid buffer was zero when this was written, so `redeem`
+  cannot fill an open note atomically. A function that always reverts is worse
+  than one that does not exist. The exit is a private AVNU swap, which the app
+  already calls.
+
+Proven on mainnet: [`0x1c0f54bf…`](https://voyager.online/tx/0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752)
+— 0.0001 strkBTC in, 0.00009934 xstrkBTC back into a shielded note, exactly what
+`preview_stake` quoted.
+
+---
+
+## LumenSplitter — N non-round notes from one amount
+
+`src/splitter.cairo` · 29 tests in `src/tests.cairo`
+
+Takes one input amount and credits it back as N non-round output notes in a
+single transaction: one fee, one timestamp, one proof. Deployed and tested;
+**not yet exercised on mainnet** — the one built thing here with no receipt.
 
 ```cairo
 fn privacy_invoke(
     ref self: T,
     mode: SplitMode,           // 0 = Exact, 1 = Bps
     token: ContractAddress,
-    in_amount: u128,
-    fee_amount: u128,
-    parts: Span<u128>,
-    note_ids: Span<felt252>,
+    in_amount: u128,           // Exact: the withdrawn amount · Bps: minimum-delivered floor (0 = none)
+    fee_amount: u128,          // 0 for a fee-free route
+    parts: Span<u128>,         // Exact: absolute amounts · Bps: basis points summing to 10_000
+    note_ids: Span<felt252>,   // ${openNoteIds[0]} … ${openNoteIds[n-1]}
 ) -> Span<OpenNoteDeposit>;
+
+fn preview_bps_split(self: @T, total: u128, parts: Span<u128>) -> Span<u128>;
 ```
 
-Return: `Span<OpenNoteDeposit>` where
-`OpenNoteDeposit { note_id: felt252, token: ContractAddress, amount: u128 }` —
-mirroring `privacy::objects::OpenNoteDeposit` field for field.
+- **`Exact`** asserts `sum(parts) == in_amount − fee_amount` exactly. The normal
+  path: the planner computes non-round legs off-chain with a reproducible seed
+  and the contract enforces reconciliation.
+- **`Bps`** splits the balance **measured on-chain**; the last leg absorbs the
+  rounding remainder so outputs still sum exactly. For amounts only known at
+  execution time.
+- **The contract never invents randomness.** Cairo has no good entropy source,
+  and every split plan must be reproducible by the planner that emitted it.
+- **Fees are opt-in and capped**: deployed with `fee_recipient = 0` and
+  `max_fee_bps = 0`, so this instance cannot charge one.
+- At most `MAX_SPLITS = 16` legs; every note id distinct and non-zero; the sum
+  invariant checked twice, the second time against the deposits actually being
+  returned.
 
-### Dapp side
-
-One `withdraw` in, N open notes, one `invoke`. Note the **N** `transfer` actions
-with amount `"OPEN"`: `${openNoteIds[i]}` refers to the i-th of them.
-
-```ts
-import type { STRK20_ACTION } from '@starknet-io/types-js'
-
-const legs = ['0x5b8...a95', '0x861...1c3', '0x5d5...004'] // planner's entropic amounts, hex
-const actions: STRK20_ACTION[] = [
-  // 1. Move the input to the helper.
-  { type: 'withdraw', token, amount: totalHex, recipient: SPLITTER },
-
-  // 2. Open one note per output leg, in order.
-  { type: 'transfer', token, amount: 'OPEN', recipient: userAddress },
-  { type: 'transfer', token, amount: 'OPEN', recipient: userAddress },
-  { type: 'transfer', token, amount: 'OPEN', recipient: userAddress },
-
-  // 3. Invoke the splitter. Calldata order must match privacy_invoke exactly.
-  {
-    type: 'invoke',
-    contract: SPLITTER,
-    calldata: [
-      '0x0',                    // mode = Exact
-      token,
-      totalHex,                 // in_amount
-      '0x0',                    // fee_amount
-      '0x3', ...legs,           // parts:    len + amounts
-      '0x3',                    // note_ids: len
-      '${openNoteIds[0]}',
-      '${openNoteIds[1]}',
-      '${openNoteIds[2]}',
-    ],
-  },
-]
-
-await account.strk20PrepareInvoke(actions, true) // dry-run first
-```
-
-`"OPEN"`, `"${openNoteIds[i]}"` and `"${poolAddress}"` are **literal placeholder
-strings** the wallet substitutes. Never hex-normalize them.
-
-The repo's existing `buildPrivateDefi()` in `src/lib/strk20/actions.ts` emits a
-single open note and one `${openNoteIds[0]}`; wiring the splitter needs a
-builder variant that emits N of each. That change is deliberately not part of
-this package.
-
-## Two split modes
-
-**`Exact` (mode 0)** — `parts` are absolute amounts. Asserts
-`sum(parts) == in_amount - fee_amount` exactly, and that the helper actually
-holds at least `in_amount`. This is the normal Lumen path: the planner computes
-non-round legs off-chain with a reproducible seed and the contract enforces
-reconciliation.
-
-**`Bps` (mode 1)** — `parts` are basis points summing to exactly `10_000`. The
-total is the balance **measured on-chain**, `in_amount` acts as a
-minimum-delivered floor (`0` opts out). Each leg is floored in u256, and the
-**last leg absorbs the rounding remainder** so the outputs still sum exactly.
-`preview_bps_split(total, parts)` is a free view that reproduces the on-chain
-rounding for the planner.
-
-Proportions are always supplied by the caller. The contract **never invents
-randomness**: Cairo has no good entropy source, and Lumen's split plans must be
-reproducible by the planner that emitted them.
-
-## Guarantees asserted on-chain
-
-| Guard | Error |
-| --- | --- |
-| Caller is the pool pinned at deployment | `CALLER_NOT_POOL` |
-| Pool address non-zero at deployment | `ZERO_POOL_ADDRESS` |
-| Token address non-zero | `ZERO_TOKEN` |
-| Input (declared or delivered) non-zero | `ZERO_IN_AMOUNT` |
-| At least one leg | `EMPTY_SPLIT` |
-| At most `MAX_SPLITS` (16) legs | `TOO_MANY_SPLITS` |
-| One note id per leg | `LENGTH_MISMATCH` |
-| No zero-amount / zero-bps leg | `ZERO_PART` |
-| No zero note id | `ZERO_NOTE_ID` |
-| No note id used twice | `DUPLICATE_NOTE_ID` |
-| **Outputs sum to exactly input − fee** | `SPLIT_SUM_MISMATCH` |
-| Basis points sum to exactly 10_000 | `BPS_SUM_MISMATCH` |
-| Helper actually holds what it promises | `INSUFFICIENT_BALANCE` |
-| Fee below the input and below the pinned cap | `FEE_EXCEEDS_INPUT`, `FEE_ABOVE_CAP` |
-| Non-zero fee requires a configured recipient | `FEE_RECIPIENT_UNSET` |
-| u256→u128 conversions checked | `AMOUNT_OVERFLOW`, `SUM_OVERFLOW` |
-
-The sum invariant is checked twice: once against the caller's plan, and once
-re-derived from the deposits actually being returned. A helper that silently
-loses value is a critical bug, so the last gate reads the output, not the input.
-
-## Security notes
-
-- **Stateless.** No user state persists between transactions, and in the normal
-  path the pool pulls back everything it delivered within the same transaction.
-  One caveat worth stating plainly: in `Exact` mode any balance *above*
-  `in_amount` is left behind, because only the declared amount is distributed.
-  Dust like that is not lost — the next caller sweeps it (`Bps` mode splits the
-  whole measured balance) — but do not treat the contract as a vault.
-- **Pool-gated anyway.** `privacy_invoke` asserts `get_caller_address() ==` the
-  pinned pool. A permissionless helper would let anyone drain a mid-transaction
-  balance or mint themselves an allowance.
-- **Exact allowance.** The pool is approved for precisely the sum being
-  promised, so no allowance lingers after the transaction.
-- **Fees are opt-in and capped.** Deploy with `fee_recipient = 0` and
-  `max_fee_bps = 0` to disable them entirely — that is the intended Lumen
-  configuration.
-- **Open-note amounts are public.** See the trade-off table above.
-- Run the `cairo-security` skill and get a human review before deploying.
+**When to use it, honestly:** if the amount is known at proof time, N `transfer`
+actions creating *encrypted* notes are cheaper and strictly more private —
+open-note amounts are plaintext by design. Use the helper where the
+execution-time measurement is the point.
 
 ---
 
 ## Build, test, deploy
 
-Toolchain: **scarb 2.15.1** (cairo 2.15.0), **snforge 0.56.0**, **starkli 0.4.2**.
+Toolchain: **scarb 2.15.1** (cairo 2.15.0), **snforge 0.56.0**.
 
 ```bash
 cd contracts
-scarb fmt --check     # formatting
-scarb build           # -> target/dev/lumen_splitter_LumenSplitter.contract_class.json
-snforge test          # 29 tests
+scarb fmt --check
+scarb build          # target/dev/lumen_splitter_<Contract>.contract_class.json
+snforge test         # 81 tests
 ```
 
-Build output, the file `starkli` declares:
+Deploy with **`node contracts/deploy.mjs --contract <escrow|splitter|vault>`**,
+on starknet.js. It declares, deploys, verifies, and wires the address into
+`.env.local` and `strk20.json`. The verify step is the part worth reading: it
+reads a view function back and asserts the value, compares the on-chain class
+hash against the local build, and flattens the Cairo 2 ABI before comparing
+argument counts — each of which caught a real failure that "the transaction
+succeeded" would have hidden.
 
-```text
-contracts/target/dev/lumen_splitter_LumenSplitter.contract_class.json
-```
+The keystore password is typed into the running process with echo off; the
+decrypted key exists only in memory and is zeroed when the deploy finishes.
 
-Its class hash can be computed locally, without touching a network or a key:
+**Why not starkli:** 0.4.2 still asks for the `pending` block tag, which mainnet
+replaced with `pre_confirmed`; every call fails. `sncast` works and reads the
+same starkli keystore (`--keystore` plus `--account` as a path).
 
-```bash
-starkli class-hash target/dev/lumen_splitter_LumenSplitter.contract_class.json
-```
-
-Deployment is `contracts/deploy.sh`. It is **documented and non-executing by
-design**: it prints the exact commands and never touches key material. Declaring
-and deploying spend real mainnet gas, so the repo owner runs them, with their own
-account and their own signer. Read the script before running anything it prints.
+**Budget before you spend.** Declaring is charged by Sierra length, about
+0.0102 STRK per felt. `sierra-replace-ids = false` in `Scarb.toml` strips
+identifiers that only carry debugging value — free money on every declare.
 
 ## Layout
 
 ```text
 contracts/
-├─ Scarb.toml          edition 2024_07, starknet 2.15.0, snforge_std 0.56.0
+├─ Scarb.toml            edition 2024_07 · starknet 2.15.0 · snforge_std 0.56.0
+├─ deploy.mjs            declare → deploy → verify → wire, on starknet.js
 ├─ src/
-│  ├─ lib.cairo        module root
-│  ├─ splitter.cairo   LumenSplitter — the contract
-│  ├─ mock_erc20.cairo minimal ERC-20, tests only, never deployed
-│  └─ tests.cairo      29 tests
-├─ deploy.sh           documented, non-executing starkli walkthrough
+│  ├─ lib.cairo          module root
+│  ├─ escrow.cairo       LumenEscrow
+│  ├─ vault.cairo        LumenVault
+│  ├─ splitter.cairo     LumenSplitter
+│  ├─ mock_erc20.cairo   test doubles — never deployed
+│  ├─ mock_vault.cairo
+│  ├─ tests_escrow.cairo 35 tests
+│  ├─ tests_vault.cairo  17 tests
+│  └─ tests.cairo        29 tests
 └─ README.md
 ```
 
-## References
-
-Everything here was written against the on-disk references, not from memory:
-
-- `.agents/skills/strk20-anonymizer-contracts/SKILL.md`
-- `.agents/skills/strk20-anonymizer-contracts/references/helpers__privacy-invoke.md`
-  — the `privacy_invoke` contract surface and the five rules
-- `.agents/skills/strk20-anonymizer-contracts/references/helpers__swap-helper.md`
-  — the balance-delta idiom and the u256→u128 guard
-- `.agents/skills/strk20-anonymizer-contracts/references/helpers__escrow.md`
-  — the pinned-pool / `CALLER_NOT_PRIVACY` access-control pattern
-- `.agents/skills/strk20-privacy/references/actions-and-proofs.md`
-  — the phase table and the per-token balance invariant
-- `.agents/skills/strk20-wallet-api/references/starknet-wallet-api__private-defi.md`
-  — the `${openNoteIds[N]}` placeholder semantics
-- `.research/strk20-starter-kit/cairo/src/lib.cairo`
-  — a working deployable helper with a locally declared `OpenNoteDeposit`
-
-Contract packages live in `starkware-libs/starknet-privacy`; verify current
-sources there before adapting. Reference snapshot: 2026-08-16.
+See [`docs/INTEGRATING-WITH-LUMEN.md`](../docs/INTEGRATING-WITH-LUMEN.md) for
+the payload shapes a dapp sends, and [`docs/TRAPS.md`](../docs/TRAPS.md) for
+everything that cost time getting these onto mainnet.

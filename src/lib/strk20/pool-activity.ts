@@ -10,6 +10,7 @@
  */
 
 import { RpcProvider } from 'starknet'
+import { rpc } from './rpc'
 import type { PoolActivity } from '@/lib/engine/types'
 import { POOL_ADDRESS, RPC_URL, tokenByAddress } from './config'
 
@@ -53,7 +54,7 @@ export function denominationTier(raw: bigint): string {
 export async function readPoolActivity(
   rpcUrl: string = RPC_URL,
 ): Promise<PoolActivityResult> {
-  const provider = new RpcProvider({ nodeUrl: rpcUrl })
+  const provider = rpcUrl === RPC_URL ? rpc() : new RpcProvider({ nodeUrl: rpcUrl })
 
   try {
     const latest = await provider.getBlockLatestAccepted()

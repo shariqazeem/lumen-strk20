@@ -5,6 +5,7 @@
  */
 
 import { RpcProvider, hash } from 'starknet'
+import { rpc } from './rpc'
 import { FALLBACK_POOL_FEE_STRK, POOL_ADDRESS, RPC_URL } from './config'
 
 /**
@@ -23,7 +24,7 @@ export async function readPoolFee(rpcUrl: string = RPC_URL): Promise<{
   live: boolean
 }> {
   try {
-    const provider = new RpcProvider({ nodeUrl: rpcUrl })
+    const provider = rpcUrl === RPC_URL ? rpc() : new RpcProvider({ nodeUrl: rpcUrl })
     const result = await provider.callContract({
       contractAddress: POOL_ADDRESS,
       entrypoint: 'get_fee_amount',

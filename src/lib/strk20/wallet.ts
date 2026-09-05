@@ -11,8 +11,9 @@
 import { createStore, type Store } from '@starknet-io/get-starknet-discovery'
 import type { WalletWithStarknetFeatures } from '@starknet-io/get-starknet-wallet-standard/features'
 import { RpcProvider, WalletAccountV6 } from 'starknet'
+import { rpc } from './rpc'
 import type { STRK20_BALANCE_ENTRY } from '@starknet-io/types-js'
-import { CHAIN_ID, REQUIRED_WALLET_API_VERSION, RPC_URL, TOKEN_LIST, tokenByAddress, type TokenSymbol } from './config'
+import { CHAIN_ID, REQUIRED_WALLET_API_VERSION, TOKEN_LIST, tokenByAddress, type TokenSymbol } from './config'
 
 let store: Store | null = null
 
@@ -63,7 +64,7 @@ export function supportsStrk20(wallet: WalletWithStarknetFeatures): boolean {
 }
 
 export function provider(): RpcProvider {
-  return new RpcProvider({ nodeUrl: RPC_URL })
+  return rpc()
 }
 
 /** A wallet handed us an address we can actually spend from. */

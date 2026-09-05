@@ -1,0 +1,38 @@
+name: ci
+
+# "All green" is a claim in the README. This is what makes it a checkable one.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npx vitest run
+
+  cairo:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.15.1"
+      - uses: foundry-rs/setup-snfoundry@v4
+        with:
+          starknet-foundry-version: "0.56.0"
+      - run: scarb build
+      - run: snforge test
