@@ -1,4 +1,4 @@
-# Demo video script — ~2:50
+# Demo video script — ~3:00
 
 Speak it, don't read it. Short lines on purpose. If you fluff one, keep going —
 the only thing that must be exact is the number **0.00009934**.
@@ -57,6 +57,12 @@ Have ready before you hit record:
 *(click Stake privately — or cut to the already-completed success screen)*
 
 > "That's it. Staked, earning, still shielded. The chain sees one operation and an amount. Not my address, not my balance, not that it's mine."
+
+*(back on the Earn screen — point at the grey note under "You receive": **"Almost nobody else is moving strkBTC right now"**)*
+
+> "And here's the thing I'm proudest of. The app just told me not to.
+> It reads the pool live — every deposit and withdrawal, by asset, over the last two days — and right now Bitcoin has fourteen public moves against about four hundred for STRK. So it says: you'll stand out; hold in STRK and convert when you need it.
+> That's the product arguing against its own headline feature, with numbers anyone can check. If it only ever said yes, it wouldn't be measuring anything."
 
 ---
 

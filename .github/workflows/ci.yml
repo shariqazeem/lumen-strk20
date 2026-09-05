@@ -28,11 +28,31 @@ jobs:
         working-directory: contracts
     steps:
       - uses: actions/checkout@v4
+
       - uses: software-mansion/setup-scarb@v1
         with:
           scarb-version: "2.15.1"
-      - uses: foundry-rs/setup-snfoundry@v4
+
+      # Pinned by hand rather than through setup-snfoundry: on its first run
+      # the action echoed the 0.56.0 pin and installed 0.63.0 anyway, and a
+      # snforge binary seven minors ahead of the snforge_std in Scarb.lock
+      # fails 74 of 81 tests with "reading from buffer failed". The versions
+      # below are the ones every test passes against locally.
+      - name: Install starknet-foundry 0.56.0
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/foundry-rs/starknet-foundry/master/scripts/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/snfoundryup" -v 0.56.0
+
+      - uses: software-mansion/setup-universal-sierra-compiler@v1
         with:
-          starknet-foundry-version: "0.56.0"
+          universal-sierra-compiler-version: "2.7.0"
+
+      - name: Toolchain
+        run: |
+          scarb --version
+          snforge --version
+          universal-sierra-compiler --version
+
       - run: scarb build
       - run: snforge test
