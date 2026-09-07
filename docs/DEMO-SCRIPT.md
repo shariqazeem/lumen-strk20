@@ -1,4 +1,4 @@
-# Demo script — 2:43, one take
+# Demo script — 2:50, one take
 
 Two rules that make this easy:
 
@@ -60,10 +60,33 @@ from the money card.
 
 ---
 
+## What happens live, and what can't
+
+**Live on camera:** the stake. That is a real mainnet transaction, signed and
+confirmed while recording, and it is the one operation nobody else in this
+hackathon has. It is also the one with a scripted line to fill the wait.
+
+**Live but free:** flipping the observer view, typing the amount and watching
+"You receive" fill from the contract, and the observatory reading. None of
+these write to the chain, so they cost seconds, not minutes.
+
+**Not live, and here is why.** Shielding is two sequential on-chain
+transactions: the ERC-20 approve has to land before the deposit can even be
+signed. You would be watching an approve dialog with nothing to say for well
+over a minute of a three-minute video. The convert and the link mint are one
+transaction each, but each still needs proving, relaying and confirmation.
+
+One write fits in three minutes. Spend it on the stake.
+
+If you want a second live write, drop the Voyager beat and mint the claim link
+on camera instead of in prep — but only if a practice run comes in under 2:30.
+
+---
+
 # The take
 
 Every marker below is the words at a normal pace **plus** the clicking. The
-core run lands at **2:43**. Voyager is optional and only if you're ahead.
+core run lands at **2:50**. Voyager is optional and only if you're ahead.
 
 ---
 
@@ -89,7 +112,7 @@ core run lands at **2:43**. Voyager is optional and only if you're ahead.
 
 ---
 
-## 0:32 · **Earn on Bitcoin** — the centrepiece
+## 0:33 · **Earn on Bitcoin** — the centrepiece
 
 **[Open Earn on Bitcoin. Type the full amount. Let "You receive" fill in.]**
 
@@ -110,7 +133,7 @@ core run lands at **2:43**. Voyager is optional and only if you're ahead.
 
 ---
 
-## 1:19 · The observatory — say this *while it processes*
+## 1:20 · The observatory — say this *while it processes*
 
 **[Point at the grey note under "You receive".]**
 
@@ -136,23 +159,25 @@ core run lands at **2:43**. Voyager is optional and only if you're ahead.
 
 ---
 
-## 1:58 · Tab 2 — the claim link, private window
+## 1:59 · Tab 2 — the claim link, private window
 
 **[Switch to the incognito window with the claim link already open.]**
 
-> "Second thing. Paying someone.
+> "Second thing. Paying someone who isn't in the pool.
 >
-> A privacy pool is a one-way door. You can send money to a stranger, but a
-> stranger can't step in to collect it.
+> A privacy pool is a one-way door. I can send to a stranger, but a stranger
+> can't step in and collect — and no app can let them in, only they can.
 >
-> So every link has two. In the pool, it lands in a private note. No wallet, no
-> gas, no deployed account — it still pays you.
+> So every link has two doors. Already in the pool, it arrives as a private
+> note. Never touched it, it pays their address directly. Either way, I stay
+> private.
 >
-> This window has no wallet in it, and I proved that door on mainnet."
+> This is a fresh incognito window. No wallet, no history, no idea who I am.
+> It reads the link and tells them what to do."
 
 ---
 
-## 2:31 · Close
+## 2:38 · Close
 
 **[Back to tab 1, on the money card.]**
 
@@ -161,7 +186,7 @@ core run lands at **2:43**. Voyager is optional and only if you're ahead.
 >
 > Six mainnet transactions, four contracts, no backend. That's Lumen."
 
-**[Stop. — 2:43]**
+**[Stop. — 2:50]**
 
 ---
 
@@ -183,8 +208,8 @@ before the claim link.
 # If you are running long
 
 There is one optional beat and it's already at the end — just don't add it.
-If you're past **2:00** when the success screen lands, go straight to the claim
-link and finish. The stake is never cut.
+If you're past **2:05** when the success screen lands, skip the ⏳ line and go
+straight to the claim link. The stake is never cut.
 
 # Never say
 
@@ -197,6 +222,12 @@ link and finish. The stake is never cut.
   Lumen's own ledger. The genuinely RPC-computed reading is behind **Now read
   your public address**, which is a different screen and takes about eight
   seconds — too slow for this take.
+- **"No wallet, no gas, not even a deployed account — it still pays you."**
+  Three of those four are wrong and the code contradicts them. A claimant needs
+  a Starknet wallet, a deployed account, and gas. The claim page refuses an
+  undeployed account on purpose and explains how to activate it. What they do
+  **not** need is to have joined the privacy pool, and that is the whole point
+  of the second door — say that instead.
 - Any specific count from the observatory. Point at it.
 - Don't read contract addresses aloud.
 - Don't apologise for small amounts. Say nothing about the size — it's a real
