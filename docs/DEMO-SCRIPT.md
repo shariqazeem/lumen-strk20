@@ -1,155 +1,149 @@
-# Demo script — everything live, edited down to under 3:00
+# Lumen demo — natural 3-minute take
 
-You are recording the whole thing for real and cutting the waiting afterwards.
-Every operation below happens on camera, from inside Lumen, on mainnet.
+Record the whole thing. Go quiet on every **✂** and cut those parts later.
 
-**Three rules that make the edit easy:**
+**Three things while you record:**
 
-1. **When a wait starts, stop talking.** Wallet popup, "Waiting for your
-   wallet…", a spinner — go quiet. Silence is where you cut. If you narrate
-   over a wait, cutting it takes your words with it.
-2. **Finish your sentence before you click.** Clean sentence boundaries are
-   clean cut points.
-3. **Never say a number out loud.** The screen shows them. Numbers move between
-   now and the edit, and a wrong one on camera costs more than it adds.
+1. **When a wait starts, stop talking.** Wallet popup, spinner, "waiting for
+   your wallet" — go silent. That silence is your cut.
+2. **Finish the sentence before you click.** Clean sentences cut cleanly.
+3. **Don't say numbers out loud.** Point at the screen instead. Numbers move
+   between now and upload.
 
-Every **✂** below is a cut you make later. Sit through them calmly while
-recording. Raw footage will run 6 to 10 minutes. That is expected.
+Spoken time is about 2:40. Raw footage will be six to ten minutes. That's fine.
 
----
-
-## Before you press record — 5 minutes
-
-**1. Have your STRK public.** About 334 in Ready is what this was written
-against. Nothing needs shielding first — that happens on camera.
-
-**2. Open the app and let it settle.**
-
-> `lumen-strk20.vercel.app/app`, wallet connected. **Leave it sitting for 30
-> seconds.** The pool reading takes a few seconds and you want it already there
-> when you start.
-
-**3. Open an empty incognito window** and leave it on a blank tab. You will
-paste the claim link into it during the recording.
-
-**4. Check the grey note is showing.** Open **Earn on Bitcoin**, confirm you can
-see *"Almost nobody else is moving strkBTC right now."* If it hasn't appeared,
-close the sheet, wait 20 seconds, open it again. Then close it and start from
-the money card.
-
-**5. Optional third tab** —
-`voyager.online/tx/0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752`
+**Before you press record:** have your STRK sitting public in Ready, open
+`lumen-strk20.vercel.app` on the landing page, and have an empty incognito
+window ready on another desktop. Nothing else.
 
 ---
 
-# The take
+## 1. Landing page
 
-Spoken time is 2:35. Once the waits are cut, the edit lands under 3:00 with
-about 25 seconds left for the clicking and typing you keep.
+**[Start on the landing page. Scroll slowly through the hero.]**
 
----
-
-## 1 · Money card
-
-**[Sitting on the money card.]**
-
-> "This is a private account on Starknet. Real balance, real mainnet, and
-> nobody can see it but me."
-
----
-
-## 2 · Click **What the world sees**
-
-**[Click the toggle. Let the greyed-out card sit, then scroll to **Visible
-on-chain**.]**
-
-> "This is what an explorer gets. Balance, hidden. Who paid me, hidden.
-> History, hidden. Forever.
+> "So this is Lumen.
 >
-> And underneath, what Lumen *did* publish. It doesn't hide its own footprint
-> from me."
+> One payment tells nobody anything — but they pile up, and that's how a profile
+> of you gets built."
+
+---
+
+## 2. Open it and connect
+
+**[Click **Open Lumen**. Connect screen loads.]**
+
+> "Let me open it."
+
+**[Click your wallet. Approve the connection.]** ✂
+
+> "Just a Starknet wallet with private balances built in. No account to make."
+
+---
+
+## 3. Money card
+
+**[You land on the money card.]**
+
+> "And that's the account. Real money, real mainnet, and this is what I see."
+
+---
+
+## 4. What the world sees
+
+**[Click **What the world sees**. Let it settle.]**
+
+> "Now let's see what everybody else sees.
+>
+> Balance, hidden. Who paid me, hidden. My history, hidden."
+
+**[Scroll to **Visible on-chain**.]**
+
+> "It does see my deposits — those are public. What it can't see is where the
+> money went."
 
 **[Flip back to your view.]**
 
 ---
 
-## 3 · Put money in — **Add money**
+## 5. Add money
 
-**[Open Add money. Choose STRK. Type `300`. Wait for the guard line to appear
-under the field.]**
+**[Open **Add money**. Pick STRK. Type a round amount.]**
 
-> "Let's put money in. Public STRK, going into the privacy pool.
->
-> And watch — I typed a round number and it's telling me not to. Round deposits
-> are easy to pick back out of the public record."
+> "So let's put some money in."
+
+**[Wait for the guard line to appear under the field.]**
+
+> "And here's something I like. I typed a round number and it's telling me not
+> to — round deposits are easy to pick back out of the public record."
 
 **[Take the tuned amount. Click **Add to private balance**.]**
 
-> "It asks twice. Approve, then deposit."
+> "It'll ask twice. Approve, then deposit."
 
-**[Confirm both prompts. Go quiet.]** ✂
+**[Confirm both. Go quiet.]** ✂
 
 **[Balance updates.]**
 
-> "In. That deposit is public. What happens to it from here, nobody sees."
+> "And we're in."
 
 ---
 
-## 4 · Turn it into Bitcoin — **Convert**
+## 6. Convert to Bitcoin
 
-**[Money card → Convert. Sell STRK, buy strkBTC. Type `100`.]**
+**[Money card → **Convert**. Sell STRK, buy strkBTC. Type an amount.]**
 
-> "Now I want Bitcoin. This swap happens *inside* the pool — no public trade
-> with my name on it."
+> "Now let's turn some of that into Bitcoin. This swap happens inside the pool,
+> so there's no public trade with my name on it."
 
 **[Confirm. Go quiet.]** ✂
 
 **[strkBTC appears on the money card.]**
 
-> "Shielded Bitcoin."
+> "And that's shielded Bitcoin."
 
 ---
 
-## 5 · **Earn on Bitcoin** — the centrepiece
+## 7. Earn on Bitcoin
 
-**[Open Earn on Bitcoin. Type the full strkBTC amount. Let "You receive" fill
-in.]**
+**[Open **Earn on Bitcoin**. Enter the full strkBTC amount. Let "You receive"
+fill in.]**
 
-> "Here's the part nobody else has. I want to earn on this Bitcoin.
+> "This is the part I'm most proud of.
 >
-> Endur is Starknet's liquid staking, but its vault reads your **public**
-> balance. Inside the pool my Bitcoin is a commitment, not a balance. Nothing
-> there to take.
+> I want to earn on this Bitcoin without exposing it. But the staking vault
+> reads your public balance, and in here my Bitcoin isn't a balance — it's a
+> commitment.
 >
-> So normally: unshield, stake in public, shield again. Three public
-> transactions that hand an observer my Bitcoin **and** my identity."
+> So you'd unshield, stake publicly, shield again. Three transactions that give
+> away my Bitcoin and who I am."
 
 **[Point at "You receive".]**
 
-> "Lumen puts a contract between the pool and Endur. One operation."
+> "Lumen puts a contract between the pool and the vault, and does it in one."
 
-**[Before clicking, point at the grey note underneath.]**
+**[Point at the grey note underneath.]**
 
-> "And before I click — look. The app is telling me **not** to.
+> "But watch this — it's telling me not to.
 >
-> It reads the pool live, by asset. Bitcoin has almost no company here.
+> It reads the pool live, asset by asset. Almost nobody else is moving Bitcoin
+> in here, so I'd stand out.
 >
-> That's the product arguing against its own headline feature."
+> That's the app arguing against its own headline feature."
 
 **[Click **Stake privately**. Confirm. Go quiet.]** ✂
 
 **[Success screen.]**
 
-> "Staked, earning, still shielded. The chain sees one operation and an
-> amount — not my address."
+> "Done. Earning, and still shielded."
 
 ---
 
-## 6 · Pay someone — **Send a link**
+## 8. Send a link
 
-**[Open Send a link. STRK, `25`, **10 min** window. Create.]**
+**[Open **Send a link**. STRK, an amount, a short expiry. Create.]**
 
-> "Last thing. Paying someone who isn't in the pool at all."
+> "One more thing. I can pay somebody who's never touched any of this."
 
 **[Confirm. Go quiet.]** ✂
 
@@ -157,93 +151,72 @@ in.]**
 
 ---
 
-## 7 · The claim link, in the incognito window
+## 9. The claim link
 
-**[Switch to the incognito window. Paste. Load.]** ✂ *(cut the paste)*
+**[Switch to the incognito window. Paste. Load.]** ✂
 
-> "A privacy pool is a one-way door. I can send to a stranger, but a stranger
-> can't step in and collect. No app can let them in, only they can.
+> "Here's the link, in a browser that's never seen me.
 >
-> So every link has two doors. Already in the pool, it arrives as a private
-> note. Never touched it, it pays their address directly.
+> A privacy pool is a one-way door. I can pay a stranger, but a stranger can't
+> step in and collect. Only they can let themselves in.
 >
-> No wallet in this window. No history. No idea who I am."
+> So every link has two. In the pool, it arrives privately. Never touched it,
+> it pays their wallet directly."
 
 ---
 
-## 8 · Close
+## 10. Close
 
-**[Back to tab 1, money card.]**
+**[Back to the money card.]**
 
-> "Private money in, private Bitcoin, earning — and a way to pay people who've
-> never touched any of it.
+> "So that's Lumen. Private money in, private Bitcoin, earning on it, and
+> payments to people outside the pool entirely.
 >
-> Everything you just watched was mainnet. Four contracts, no backend, and no
-> server anywhere that could see any of it. That's Lumen."
+> All mainnet. Four contracts, no backend, no server that could see any of it."
 
 **[Stop.]**
 
 ---
 
-## Optional · Voyager · +18s
+# If the edit runs long
 
-Only if the edit is coming in short. Slot it after the stake success screen.
+Cut in this order:
 
-> "Same thing earlier, on mainnet. The app quoted a number before I signed and
-> the contract returned exactly that number.
->
-> As far as I can tell, that's the only shielded stake into Endur that has ever
-> happened."
-
----
-
-# Cutting it down
-
-Cut in this order until you are under 3:00:
-
-1. **All waiting.** Every ✂. This is most of it.
-2. **The Voyager beat**, if you added it.
-3. **The convert (section 4).** The strkBTC has to come from somewhere, but you
-   can cut straight from the shield landing to the Earn screen.
-4. **The second half of the shield beat** — keep the guard moment, cut the
-   "asks twice" line.
+1. **All the waiting.** Every ✂. That's most of it.
+2. **The landing page** (section 1). Start from the connect screen.
+3. **The convert** (section 6). Cut straight from the deposit landing to the
+   Earn screen.
+4. **The "it'll ask twice" line** in section 5. Keep the guard moment.
 
 **Never cut the stake or the grey note.** That pair is the whole submission.
 
 ---
 
-# Never say
+# Don't say
 
-- **"Nobody is doing this."** Say *"as far as I can tell"* or *"the only one I
-  could find."* One overclaim a judge can check costs more than the line gains.
-- **"Fully anonymous."** Amounts are public. Say *"the amount is public; who
+- **"Nobody's doing this."** Say *"as far as I can tell"*. One overclaim a
+  judge can check costs more than the line gains.
+- **"Fully anonymous."** Amounts are public. Say *"the amount is public, who
   it's for isn't."*
-- **"No wallet, no gas, not even a deployed account — it still pays you."**
-  Three of those four are wrong and the code contradicts them. A claimant needs
-  a Starknet wallet, a deployed account, and gas. The claim page refuses an
-  undeployed account on purpose and explains how to activate it. What they do
-  **not** need is to have joined the privacy pool, and that is the whole point
-  of the second door — say that instead.
-- **"That panel is computed from a public RPC."** It isn't. The greyed-out card
-  is an illustration of what is knowable, and the list under it comes from
-  Lumen's own ledger. The RPC-computed reading lives behind **Now read your
-  public address**, a different screen.
-- Any specific count from the observatory. Point at it.
-- **A transaction count.** The recording itself adds four, so anything you say
-  is stale before you upload it.
-- Don't read contract addresses aloud.
-- Don't apologise for small amounts. Say nothing about the size — these are
-  real mainnet transactions, which is the entire point.
+- **"They don't need a wallet."** They do, and they need gas, and the account
+  has to be deployed — the claim page refuses an undeployed one on purpose.
+  What they *don't* need is to have joined the pool. That's the real point.
+- **"That panel is computed live from the chain."** The greyed-out card is an
+  illustration, and the list under it comes from Lumen's own records. The
+  chain-computed reading is behind **Now read your public address**.
+- **Any number** from the observatory, and **any transaction count** — this
+  recording adds four and makes it stale before you upload.
+- Contract addresses. Don't read them out.
+- Don't apologise for small amounts. Say nothing about size at all.
 
 ---
 
-# If something fails on camera
+# If something breaks
 
-Keep recording. You are editing anyway, so a retry costs you nothing but disk.
+Keep recording. You're editing anyway, so a retry costs nothing.
 
-- **A wallet prompt doesn't appear** — the app holds a lock so two prompts can
-  never stack. Wait, it will come.
-- **A button sits on "Waiting for your wallet…"** — it has usually already
-  landed. Check the money card. Do not click again.
-- **The stake fails outright** — say *"that one's still settling, here's the
-  same thing from earlier"*, cut to the Voyager tab, carry on.
+- **No wallet popup** — the app holds a lock so prompts can't stack. Wait.
+- **Stuck on "waiting for your wallet"** — it's usually already landed. Check
+  the money card. Don't click again.
+- **The stake fails** — say *"that one's still settling"*, and move on to the
+  link. You can re-record just that section afterwards and splice it.
