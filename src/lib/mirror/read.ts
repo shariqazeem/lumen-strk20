@@ -13,7 +13,8 @@
  * and a single address's history comes back in a handful of requests.
  */
 
-import { RPC_URL, TOKENS, type TokenSymbol } from '@/lib/strk20/config'
+import { TOKENS, type TokenSymbol } from '@/lib/strk20/config'
+import { rpcFetch } from '@/lib/strk20/rpc'
 
 /** `Transfer` — the standard ERC-20 event selector on Starknet. */
 const TRANSFER = '0x0099cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9'
@@ -57,15 +58,16 @@ export interface MirrorRead {
   truncated: boolean
 }
 
+/**
+ * Throws on failure, and every caller here is inside a try — the mirror shows
+ * nothing rather than a half-read history, because a partial "what the world
+ * sees" is worse than an honest blank.
+ */
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  const response = await fetch(RPC_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-  })
-  const body = (await response.json()) as { result?: T; error?: { message?: string } }
+  const body = await rpcFetch<T>(method, params)
   if (body.error) throw new Error(body.error.message ?? 'RPC error')
-  return body.result as T
+  if (body.result === undefined) throw new Error('No RPC endpoint answered.')
+  return body.result
 }
 
 /**

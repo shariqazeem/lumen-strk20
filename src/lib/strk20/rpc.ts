@@ -117,3 +117,64 @@ export function rpc(): RpcProvider {
   shared ??= withFallback(pool())
   return shared
 }
+
+/**
+ * A JSON-RPC reply, kept in its raw shape.
+ *
+ * Two failures look alike from a distance and must not be treated alike: a
+ * node that answered "no such contract" told us something, and a node that is
+ * gone told us nothing. Callers that turn the second into a claim are how a
+ * dead endpoint becomes a confident wrong answer on screen — which is exactly
+ * what shipped here, when a retired endpoint's HTTP 410 body was read as
+ * "this account is not deployed".
+ */
+export interface RpcReply<T> {
+  result?: T
+  /** Object-shaped, per JSON-RPC. A bare string here means the host, not the node. */
+  error?: { code?: number; message?: string }
+}
+
+/** Answered a call, so it becomes the default for later ones. */
+let fetchCurrent = 0
+
+const answered = (reply: RpcReply<unknown> | null): boolean =>
+  reply !== null &&
+  (reply.result !== undefined || (typeof reply.error === 'object' && reply.error !== null))
+
+/**
+ * `starknet_*` over plain `fetch`, with the same sticky fallback as `rpc()`.
+ *
+ * A few readers predate the provider and speak JSON-RPC directly, because they
+ * want the error object rather than an exception. They still need somewhere to
+ * go when an endpoint dies, so this is that — not a second endpoint list.
+ *
+ * An endpoint is skipped when the transport fails, when the HTTP status is not
+ * ok, or when the body is neither a result nor a JSON-RPC error. Anything else
+ * is an answer and is returned as-is, including a genuine node-level error.
+ */
+export async function rpcFetch<T>(method: string, params: unknown[]): Promise<RpcReply<T>> {
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
+  let last: RpcReply<T> | null = null
+
+  for (let attempt = 0; attempt < RPC_URLS.length; attempt += 1) {
+    const index = (fetchCurrent + attempt) % RPC_URLS.length
+    try {
+      const response = await fetch(RPC_URLS[index]!, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      })
+      if (!response.ok) continue
+      const parsed = (await response.json()) as RpcReply<T>
+      if (answered(parsed)) {
+        fetchCurrent = index
+        return parsed
+      }
+      last = parsed
+    } catch {
+      // Transport failure. Not evidence about the call — try the next node.
+    }
+  }
+
+  return last && answered(last) ? last : {}
+}

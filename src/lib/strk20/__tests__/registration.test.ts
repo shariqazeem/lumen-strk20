@@ -10,8 +10,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readRegistration } from '../registration'
 
+/** A real `fetch` always sets `ok`, and the fallback reads it to tell a dead
+ *  endpoint from a node that answered — so a stand-in has to set it too. */
 const ok = (result: unknown) =>
-  Promise.resolve({ json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result }) } as Response)
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result }),
+  } as Response)
 
 const ADDRESS = '0x048f5f116ba486a0799e3d7f0b6a2f1e5c8d3a9b7f4e2c1d0a9b8c7d6e5f4a3b'
 
@@ -43,7 +48,8 @@ describe('readRegistration', () => {
     // claim link the moment an RPC hiccuped.
     vi.mocked(fetch).mockReturnValue(
       Promise.resolve({
-        json: () => Promise.resolve({ error: { message: 'boom' } }),
+        ok: true,
+        json: () => Promise.resolve({ error: { code: 40, message: 'boom' } }),
       } as Response),
     )
     expect(await readRegistration(ADDRESS)).toBe('unknown')

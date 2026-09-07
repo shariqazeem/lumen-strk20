@@ -7,6 +7,8 @@
 
 import { constants } from 'starknet'
 
+import { RPC_URLS } from './rpc'
+
 /** Lumen targets mainnet only. */
 export const CHAIN_ID = constants.StarknetChainId.SN_MAIN
 
@@ -53,16 +55,16 @@ export const AVAILABLE_ANONYMIZERS = Object.entries(ANONYMIZERS)
   .map(([name]) => name)
 
 /**
- * RPC endpoint. Supplied by the operator via env and never committed.
+ * The endpoint reads start from — the operator's own when `NEXT_PUBLIC_STARKNET_RPC_URL`
+ * is set, otherwise the first keyless public one.
  *
- * The fallback is a keyless public endpoint so the app degrades to read-only
- * rather than dying when no key is configured. It is rate-limited and not
- * suitable for production — set `NEXT_PUBLIC_STARKNET_RPC_URL` to your own
- * Alchemy endpoint. (Blast's public Starknet RPC was retired and now returns
- * an error to every call, so it is deliberately not used here.)
+ * Derived from `RPC_URLS` rather than naming a URL of its own, and that is the
+ * point. It used to carry its own hardcoded default, which went on pointing at
+ * a retired endpoint after the shared list had already moved on — so the app
+ * had two answers to "which node?" and one of them returned HTTP 410 to every
+ * read. One list, one answer.
  */
-export const RPC_URL =
-  process.env.NEXT_PUBLIC_STARKNET_RPC_URL ?? 'https://rpc.starknet.lava.build:443'
+export const RPC_URL = RPC_URLS[0]!
 
 /**
  * Minimum Wallet API version that carries the STRK20 methods.

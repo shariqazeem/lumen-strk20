@@ -23,10 +23,14 @@
  * touches a key or asks the wallet for anything.
  */
 
-import { POOL_ADDRESS, RPC_URL } from './config'
+import { POOL_ADDRESS } from './config'
+import { rpcFetch } from './rpc'
 
 /** `get_public_key` — the pool's registration record for an account. */
 const GET_PUBLIC_KEY = '0x1a35984e05126dbecb7c3bb9929e7dd9106d460c59b1633739a5c733a5fb13b'
+
+/** Starknet JSON-RPC: the node looked for the contract and there was none. */
+const CONTRACT_NOT_FOUND = 20
 
 export type Registration = 'registered' | 'unregistered' | 'unknown'
 
@@ -45,24 +49,14 @@ export async function readRegistration(address: string): Promise<Registration> {
   }
 
   try {
-    const response = await fetch(RPC_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'starknet_call',
-        params: [
-          {
-            contract_address: POOL_ADDRESS,
-            entry_point_selector: GET_PUBLIC_KEY,
-            calldata: [normalised],
-          },
-          'latest',
-        ],
-      }),
-    })
-    const body = (await response.json()) as { result?: string[]; error?: unknown }
+    const body = await rpcFetch<string[]>('starknet_call', [
+      {
+        contract_address: POOL_ADDRESS,
+        entry_point_selector: GET_PUBLIC_KEY,
+        calldata: [normalised],
+      },
+      'latest',
+    ])
     if (body.error || !Array.isArray(body.result)) return 'unknown'
     const key = body.result[0]
     if (typeof key !== 'string') return 'unknown'
@@ -86,19 +80,13 @@ export async function readRegistration(address: string): Promise<Registration> {
  */
 export async function isAccountDeployed(address: string): Promise<boolean | null> {
   try {
-    const response = await fetch(RPC_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'starknet_getClassHashAt',
-        params: ['latest', address],
-      }),
-    })
-    const body = (await response.json()) as { result?: string; error?: unknown }
-    if (body.error) return false
-    return typeof body.result === 'string' && BigInt(body.result) !== 0n
+    const body = await rpcFetch<string>('starknet_getClassHashAt', ['latest', address])
+    if (typeof body.result === 'string') return BigInt(body.result) !== 0n
+    // Only one error means "not deployed": the node looked and found nothing.
+    // Every other error — and no answer at all — is ignorance, and saying
+    // "not deployed" from ignorance is how a retired endpoint turns into a
+    // confident wrong answer on the claim page.
+    return body.error?.code === CONTRACT_NOT_FOUND ? false : null
   } catch {
     // Unknown, and the caller must not turn that into a claim either way.
     return null
