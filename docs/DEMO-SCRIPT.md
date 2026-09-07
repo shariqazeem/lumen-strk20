@@ -1,4 +1,4 @@
-# Demo script — 2:37, one take
+# Demo script — 2:43, one take
 
 Two rules that make this easy:
 
@@ -48,7 +48,13 @@ Wait for it to land.
 - Tab 3 — `voyager.online/tx/0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752`
   (checked today: succeeded, block 14111764)
 
-**4. Check one thing.** Open **Earn on Bitcoin** and confirm the grey note is
+**4. Glance at the observer view once.** Flip **What the world sees** and
+scroll to **Visible on-chain** so you know which of the two it shows you: a list
+of your Lumen deposits, or a card saying Lumen has published nothing. Both work
+for the line you say — you just don't want to meet it for the first time on
+camera. Flip back.
+
+**5. Check one thing.** Open **Earn on Bitcoin** and confirm the grey note is
 there — *"Almost nobody else is moving strkBTC right now."* If it hasn't
 appeared, close the sheet, wait 20 seconds, open it again. Then close it and
 start recording from the money card.
@@ -58,7 +64,7 @@ start recording from the money card.
 # The take
 
 Every marker below is the words at a normal pace **plus** the clicking. The
-core run lands at **2:37**. Voyager is optional and only if you're ahead.
+core run lands at **2:43**. Voyager is optional and only if you're ahead.
 
 ---
 
@@ -73,17 +79,18 @@ core run lands at **2:37**. Voyager is optional and only if you're ahead.
 
 ## 0:10 · Click **What the world sees**
 
-**[Click the toggle. Let the empty rows sit for a beat.]**
+**[Click the toggle. Let the greyed-out card sit for a beat, then scroll to
+**Visible on-chain**.]**
 
-> "This is what an explorer gets. Balance, nothing. Who paid me, nothing.
-> History, nothing.
+> "This is what an explorer gets. Balance, hidden. Who paid me, hidden.
+> History, hidden. And forever — that's not a setting I can switch off.
 >
-> And it's not a mock-up — it's computed from a public RPC, the same way anyone
-> else would compute it."
+> Then underneath, it lists what Lumen *did* publish. It doesn't hide its own
+> footprint from me."
 
 ---
 
-## 0:30 · **Earn on Bitcoin** — the centrepiece
+## 0:32 · **Earn on Bitcoin** — the centrepiece
 
 **[Open Earn on Bitcoin. Type the full amount. Let "You receive" fill in.]**
 
@@ -104,7 +111,7 @@ core run lands at **2:37**. Voyager is optional and only if you're ahead.
 
 ---
 
-## 1:11 · The observatory — say this *while it processes*
+## 1:19 · The observatory — say this *while it processes*
 
 **[Point at the grey note under "You receive".]**
 
@@ -130,7 +137,7 @@ core run lands at **2:37**. Voyager is optional and only if you're ahead.
 
 ---
 
-## 1:50 · Tab 2 — the claim link, private window
+## 1:58 · Tab 2 — the claim link, private window
 
 **[Switch to the incognito window with the claim link already open.]**
 
@@ -139,15 +146,14 @@ core run lands at **2:37**. Voyager is optional and only if you're ahead.
 > A privacy pool is a one-way door. You can send money to a stranger, but a
 > stranger can't step in to collect it.
 >
-> So every link has two doors. In the pool, it lands in a private note. No
-> wallet, no gas, no deployed account — it still pays you.
+> So every link has two. In the pool, it lands in a private note. No wallet, no
+> gas, no deployed account — it still pays you.
 >
-> This window has no wallet in it. I proved that door on mainnet with a fresh
-> one."
+> This window has no wallet in it, and I proved that door on mainnet."
 
 ---
 
-## 2:25 · Close
+## 2:31 · Close
 
 **[Back to tab 1, on the money card.]**
 
@@ -156,7 +162,7 @@ core run lands at **2:37**. Voyager is optional and only if you're ahead.
 >
 > Six mainnet transactions, four contracts, no backend. That's Lumen."
 
-**[Stop. — 2:37]**
+**[Stop. — 2:43]**
 
 ---
 
@@ -187,6 +193,11 @@ link and finish. The stake is never cut.
   could find."* One overclaim a judge can check costs more than the line gains.
 - **"Fully anonymous."** Amounts are public. Say *"the amount is public; who
   it's for isn't."*
+- **"That panel is computed from a public RPC."** It isn't. The greyed-out card
+  is an illustration of what is knowable, and the list under it comes from
+  Lumen's own ledger. The genuinely RPC-computed reading is behind **Now read
+  your public address**, which is a different screen and takes about eight
+  seconds — too slow for this take.
 - Any specific count from the observatory. Point at it.
 - Don't read contract addresses aloud.
 - Don't apologise for small amounts. Say nothing about the size — it's a real
