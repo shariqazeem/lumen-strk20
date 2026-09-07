@@ -2,7 +2,7 @@
 
 **Hold Bitcoin privately. Earn on it without unshielding it. Pay anyone — including people who have never touched Starknet.**
 
-Live: **[lumen-strk20.vercel.app](https://lumen-strk20.vercel.app)** · Mainnet · No backend, no database, no server that could hold your secrets.
+Live: **[lumen-strk20.vercel.app](https://lumen-strk20.vercel.app)** · Demo: **[2:33 walkthrough](https://www.youtube.com/watch?v=_B7ItOfdxQg)** · Mainnet · No backend, no database, no server that could hold your secrets.
 
 ---
 
