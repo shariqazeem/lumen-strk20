@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLumen, portfolioUsd } from '@/lib/lumen/store'
 import { loadInbox, verifyInbox, waitingLinks, type InboxLink } from '@/lib/lumen/inbox'
 import { CrowdLine } from './crowd'
+import { usePoolPulse } from '@/lib/observatory/use-pulse'
 import { summarize } from '@/lib/lumen/journal'
 import { encodeClaimLink } from '@/lib/strk20/escrow'
 import type { Receipt } from '@/lib/lumen/receipts'
@@ -223,6 +224,13 @@ export function Home({
     lastTx,
     walletName,
   } = useLumen()
+
+  // Warm the pool reading the moment this surface mounts, not when a sheet
+  // opens. A 48-hour scan over a public endpoint takes seconds, and every
+  // panel that wants an opinion shares one cached result — so starting it here
+  // means the opinion is already there when someone opens Earn or Convert,
+  // instead of appearing under them mid-decision.
+  usePoolPulse()
 
   const [inbox, setInbox] = useState<InboxLink[]>([])
 

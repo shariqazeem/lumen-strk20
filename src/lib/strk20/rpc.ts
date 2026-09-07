@@ -28,10 +28,20 @@
 
 import { RpcProvider } from 'starknet'
 
-/** Tried in order. Verified 5 Sep 2026: these two answer `starknet_blockNumber` without a key. */
+/**
+ * Tried in order. Re-measured 8 Sep 2026 against the full 48-hour pool scan the
+ * observatory actually runs, not just `starknet_blockNumber`.
+ *
+ * The list churns, which is the entire reason it is a list. Every endpoint this
+ * project shipped with before today has since stopped working: Lava now errors
+ * on every call, 1rpc and dRPC moved Starknet behind a paid plan, Blast retired
+ * its public endpoint, and Nethermind's free host stopped resolving. Two
+ * answered a real scan when this was written, and Cartridge answered it faster
+ * and more reliably, so it leads.
+ */
 export const PUBLIC_RPC_URLS = [
-  'https://rpc.starknet.lava.build:443',
-  'https://1rpc.io/starknet',
+  'https://api.cartridge.gg/x/starknet/mainnet',
+  'https://starknet.api.onfinality.io/public',
 ] as const
 
 export const RPC_URLS: readonly string[] = [
