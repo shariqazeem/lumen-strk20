@@ -12,71 +12,51 @@ Two rules that make this easy:
 
 ## Before you press record — 15 minutes
 
-**Everything you have is public STRK, so step 0 is shielding it.** Pool fees
-come out of your *shielded* STRK, and four operations happen between here and
-the end of the take. The pool charges a flat 6 STRK each, confirmed live
-against `get_fee_amount` today.
+Do all the spending here, so nothing on camera is waiting on a wallet. Let each
+step land before starting the next.
 
-Where the 334 STRK goes:
+**1. Shield 300 STRK.** *Look at the STRK chip on the money card first — that is
+your shielded balance. If it already reads a few hundred, skip this step.*
 
-| | STRK | |
-|---|---|---|
-| Pool fees | 24 | shield, convert, link, stake |
-| | | 18 if you skip the shield |
-| Into strkBTC | 100 | the thing you stake on camera |
-| Into the claim link | 25 | |
-| Left public for gas | 34 | |
-| Left over, shielded | ~151 | |
-
-Nothing here is tight. If a number comes out different, you have room.
-
-**0. Shield 300 STRK.** *Look at the STRK chip on the money card first — that
-is your shielded balance. If it already reads about 150 or more, skip this step
-entirely and save a fee.*
-
-> Money card → **Add money** → **STRK** → `300` → **Add to private balance**.
+> Money card → **Add money** → **STRK** → `300` → **Add to private balance**
 
 The wallet asks **twice**, once to approve and once to deposit. Both are
-expected, neither is a duplicate. The app may offer a tuned amount a little off
-300 so the public deposit does not stand out in the record — take the tuned one,
-that is the product doing its job.
+expected, neither is a duplicate. The app may offer a tuned amount slightly off
+300 so the deposit does not stand out in the public record. Take the tuned one,
+that is the guard doing its job.
 
-Wait for it to land before the next step.
+**2. Convert 100 STRK into strkBTC.** *Skip if the strkBTC chip already shows a
+balance.* The Earn screen needs a real one or it reads "Not enough" on camera.
 
-**1. Convert 100 STRK into strkBTC.** The Earn screen needs a real strkBTC
-balance or it reads "Not enough" on camera. *Skip if the strkBTC chip already
-shows one.*
+> Money card → **Convert** → sell **STRK** → into **strkBTC** → `100` → confirm
 
-> Money card → **Convert** → sell **STRK** → into **strkBTC** → `100` → confirm.
+That comes to about 0.00004 strkBTC at today's rate. Small is fine, and the
+script never says a number out loud.
 
-That is about 0.00004 strkBTC at today's rate, roughly three dollars. Small is
-fine and the script never says the number out loud.
+**3. Mint one claim link, in STRK.** So the claim page is already open and you
+never wait on camera.
 
-**2. Mint one claim link, in STRK.** So the claim page is ready and you never
-wait on camera.
+> **Send a link** → `25` STRK → **10 min** window → create → **Copy link**
 
-> **Send a link** → `25` STRK → **10 min** window → create → **Copy link**.
-
-**3. Open these, in this order, and leave them open:**
+**4. Open these, in this order, and leave them open:**
 
 - Tab 1 — `lumen-strk20.vercel.app/app`, wallet connected. **Leave it sitting
   for 30 seconds** before you record: the pool reading takes a few seconds and
   you want it already there.
-- Tab 2 — the claim link, in a **private/incognito window** (this is the whole
-  point: no wallet, nothing).
+- Tab 2 — the claim link, in a **private/incognito window**. That is the whole
+  point of the beat: no wallet in it, nothing.
 - Tab 3 — `voyager.online/tx/0x1c0f54bfc908796334dff47cdc6117d7591929d9329e5e833a6b76f99a10752`
-  (checked today: succeeded, block 14111764)
 
-**4. Glance at the observer view once.** Flip **What the world sees** and
-scroll to **Visible on-chain** so you know which of the two it shows you: a list
-of your Lumen deposits, or a card saying Lumen has published nothing. Both work
-for the line you say — you just don't want to meet it for the first time on
-camera. Flip back.
+**5. Glance at the observer view once.** Flip **What the world sees** and scroll
+to **Visible on-chain**, so you know which of the two it shows you: a list of
+your Lumen deposits, or a card saying Lumen has published nothing. Both work for
+the line you say. You just don't want to meet it for the first time on camera.
+Flip back.
 
-**5. Check one thing.** Open **Earn on Bitcoin** and confirm the grey note is
-there — *"Almost nobody else is moving strkBTC right now."* If it hasn't
-appeared, close the sheet, wait 20 seconds, open it again. Then close it and
-start recording from the money card.
+**6. Check the grey note.** Open **Earn on Bitcoin** and confirm it is there —
+*"Almost nobody else is moving strkBTC right now."* If it hasn't appeared, close
+the sheet, wait 20 seconds, open it again. Then close it and start recording
+from the money card.
 
 ---
 
@@ -230,6 +210,5 @@ Don't stop and don't re-record. Say:
 
 Then switch to tab 3 and carry on. The Voyager receipt does the same job.
 
-Do not retry the stake on camera. A second attempt costs another 6 STRK and,
-more to the point, the first one has usually landed by then — you would be
-staking twice.
+Do not retry the stake on camera. The first attempt has usually landed by the
+time it looks stuck, so a retry just stakes twice.
