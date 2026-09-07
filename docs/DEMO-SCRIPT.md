@@ -10,33 +10,52 @@ Two rules that make this easy:
 
 ---
 
-## Before you press record — 10 minutes
+## Before you press record — 15 minutes
 
-**Budget check first.** Three pool operations happen between here and the end of
-the take, and the pool charges a flat **6 STRK** each (confirmed live against
-`get_fee_amount` today). So before you start you need, shielded:
+**Everything you have is public STRK, so step 0 is shielding it.** Pool fees
+come out of your *shielded* STRK, and four operations happen between here and
+the end of the take. The pool charges a flat 6 STRK each, confirmed live
+against `get_fee_amount` today.
 
-| | |
-|---|---|
-| STRK | **18** — two in prep, one on camera |
-| USDC | **6** — 4 to convert, 2 for the link |
+Where the 334 STRK goes:
 
-If the STRK chip is under 18, top it up first. Running dry on the third fee is
-the one failure that stops the take dead.
+| | STRK | |
+|---|---|---|
+| Pool fees | 24 | shield, convert, link, stake |
+| | | 18 if you skip the shield |
+| Into strkBTC | 100 | the thing you stake on camera |
+| Into the claim link | 25 | |
+| Left public for gas | 34 | |
+| Left over, shielded | ~151 | |
 
-Then do the spending, so nothing on camera is waiting on a wallet.
+Nothing here is tight. If a number comes out different, you have room.
 
-**1. Get strkBTC into the account.** *Skip this if the strkBTC chip already
-shows a balance.* The Earn screen needs a real one or it reads "Not enough" on
-camera.
+**0. Shield 300 STRK.** *Look at the STRK chip on the money card first — that
+is your shielded balance. If it already reads about 150 or more, skip this step
+entirely and save a fee.*
 
-> Money card → **Convert** → sell **USDC** → into **strkBTC** → `4` → confirm.
+> Money card → **Add money** → **STRK** → `300` → **Add to private balance**.
 
-Wait for it to land.
+The wallet asks **twice**, once to approve and once to deposit. Both are
+expected, neither is a duplicate. The app may offer a tuned amount a little off
+300 so the public deposit does not stand out in the record — take the tuned one,
+that is the product doing its job.
 
-**2. Mint one claim link.** So the claim page is ready and you never wait.
+Wait for it to land before the next step.
 
-> **Send a link** → `2` USDC → **10 min** window → create → **Copy link**.
+**1. Convert 100 STRK into strkBTC.** The Earn screen needs a real strkBTC
+balance or it reads "Not enough" on camera. *Skip if the strkBTC chip already
+shows one.*
+
+> Money card → **Convert** → sell **STRK** → into **strkBTC** → `100` → confirm.
+
+That is about 0.00004 strkBTC at today's rate, roughly three dollars. Small is
+fine and the script never says the number out loud.
+
+**2. Mint one claim link, in STRK.** So the claim page is ready and you never
+wait on camera.
+
+> **Send a link** → `25` STRK → **10 min** window → create → **Copy link**.
 
 **3. Open these, in this order, and leave them open:**
 
@@ -210,3 +229,7 @@ Don't stop and don't re-record. Say:
 > "That one's still settling — here's the same thing from earlier, on mainnet."
 
 Then switch to tab 3 and carry on. The Voyager receipt does the same job.
+
+Do not retry the stake on camera. A second attempt costs another 6 STRK and,
+more to the point, the first one has usually landed by then — you would be
+staking twice.
