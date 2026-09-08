@@ -138,6 +138,12 @@ Use this instead of the thread if you'd rather not split it. Attach the trailer.
   draw the comparison. One overclaim someone can check costs more than the
   line gains — and "first private stake into Endur on mainnet" is already the
   strongest checkable version of it.
+- **Music is cleared.** The trailer's track is "UK Drill Type Beat" by
+  vaitsez from Pixabay Music, under the Pixabay Content Licence: free for
+  commercial use, no attribution required. Keep the download in case anyone
+  asks. It was normalised to -14 LUFS and the trailer is cut to its 140 BPM
+  grid, so if you ever swap the track the edit needs re-timing, not just a
+  new file.
 - The tags in the post are the only two handles I'm certain of. If the Sprint
   or Endur have accounts you know, add them to post 7, not post 1 — post 1
   should read clean.
